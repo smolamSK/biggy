@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Edit · Acme Corp · Biggy (redesign)</title>
+  <link rel="stylesheet" href="redesign.css">
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand">Biggy</span>
+    <span class="spacer"></span>
+    <select id="theme-select" aria-label="Theme">
+      <option value="light">Light</option><option value="dark">Dark</option>
+      <option value="sepia">Sepia</option><option value="ocean">Ocean</option>
+      <option value="contrast">High contrast</option>
+    </select>
+    <a href="dashboard.html">Designer</a><a href="list.html">User mode</a>
+    <a href="#">Help</a><a href="#" class="muted">amelia</a><a href="#">Sign out</a>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar">
+      <a href="list.html">Home</a>
+      <h3>Sales</h3>
+      <a class="active" href="list.html">Customers</a>
+      <a href="#">Deals</a><a href="#">Contacts</a><a href="#">Activities</a>
+      <h3>Operations</h3>
+      <a href="#">Invoices</a><a href="#">Products</a><a href="#">Support tickets</a>
+    </nav>
+
+    <main class="content">
+      <div class="toolbar" style="margin-bottom:.35rem">
+        <a class="muted" href="list.html" style="font-size:var(--fs-sm)">‹ Customers</a>
+      </div>
+      <h1>Edit — Acme Corp</h1>
+      <p class="muted" style="margin-top:-.5rem">Manufacturing account · created Jan 2024 · owner Amelia Stone</p>
+
+      <div class="tabs-wrap" data-tabs>
+        <div class="tabs" role="tablist">
+          <button type="button" class="tab active" data-tab="t-details">Details</button>
+          <button type="button" class="tab" data-tab="t-contacts">Contacts (4)</button>
+          <button type="button" class="tab" data-tab="t-deals">Deals (3)</button>
+          <button type="button" class="tab" data-tab="t-history">History (12)</button>
+        </div>
+
+        <!-- Details -->
+        <div class="tab-panel active" id="t-details">
+          <div class="panel" style="max-width:640px">
+            <form>
+              <div class="field">
+                <label>Account name</label>
+                <input type="text" value="Acme Corp">
+              </div>
+              <div class="field" style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; max-width:none">
+                <div>
+                  <label>Status</label>
+                  <select><option>Active</option><option>Trial</option><option>Onboarding</option><option>Churn risk</option><option>Paused</option></select>
+                </div>
+                <div>
+                  <label>Owner</label>
+                  <select><option>Amelia Stone</option><option>Raj Patel</option><option>Dana Lee</option></select>
+                </div>
+              </div>
+              <div class="field" style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; max-width:none">
+                <div>
+                  <label>MRR (USD)</label>
+                  <input type="number" value="1240">
+                  <div class="help">Monthly recurring revenue.</div>
+                </div>
+                <div>
+                  <label>Seats</label>
+                  <input type="number" value="42">
+                </div>
+              </div>
+              <div class="field">
+                <label>Industry</label>
+                <input type="text" value="Manufacturing">
+              </div>
+              <div class="field">
+                <label>Renewal date</label>
+                <input type="date" value="2026-09-14">
+              </div>
+              <div class="field">
+                <label>Notes</label>
+                <textarea>Expansion conversation scheduled for Q3. Champion: VP Ops.</textarea>
+              </div>
+              <div class="checkline field">
+                <input type="checkbox" id="vip" checked><label for="vip" style="margin:0">Strategic (priority support)</label>
+              </div>
+              <button class="btn primary" type="submit">Save</button>
+              <a class="btn" href="list.html">Cancel</a>
+            </form>
+          </div>
+        </div>
+
+        <!-- Contacts -->
+        <div class="tab-panel" id="t-contacts">
+          <div class="toolbar">
+            <h2 style="margin:0">Contacts <span class="muted">(4)</span></h2>
+            <span style="flex:1"></span>
+            <a class="btn primary" href="#">+ Add Contact</a>
+          </div>
+          <div class="panel" style="padding:0">
+            <table class="grid">
+              <thead><tr><th>Name</th><th>Role</th><th>Email</th><th></th></tr></thead>
+              <tbody>
+                <tr><td class="primary"><a href="#">Maria Gomez</a></td><td>VP Operations</td><td class="muted">maria@acme.example</td><td class="actions"><a class="btn sm" href="#">Edit</a><a class="btn sm danger" href="#">Delete</a></td></tr>
+                <tr><td class="primary"><a href="#">Tom Becker</a></td><td>IT Manager</td><td class="muted">tom@acme.example</td><td class="actions"><a class="btn sm" href="#">Edit</a><a class="btn sm danger" href="#">Delete</a></td></tr>
+                <tr><td class="primary"><a href="#">Priya Nair</a></td><td>Procurement</td><td class="muted">priya@acme.example</td><td class="actions"><a class="btn sm" href="#">Edit</a><a class="btn sm danger" href="#">Delete</a></td></tr>
+                <tr><td class="primary"><a href="#">Sam Wu</a></td><td>Analyst</td><td class="muted">sam@acme.example</td><td class="actions"><a class="btn sm" href="#">Edit</a><a class="btn sm danger" href="#">Delete</a></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Deals -->
+        <div class="tab-panel" id="t-deals">
+          <div class="toolbar"><h2 style="margin:0">Deals <span class="muted">(3)</span></h2><span style="flex:1"></span><a class="btn primary" href="#">+ Add Deal</a></div>
+          <div class="panel" style="padding:0">
+            <table class="grid">
+              <thead><tr><th>Deal</th><th>Stage</th><th class="num">Amount</th><th>Close date</th><th></th></tr></thead>
+              <tbody>
+                <tr><td class="primary"><a href="#">Platform expansion</a></td><td><span class="chip c-blue">Proposal</span></td><td class="num">$24,000</td><td>Aug 30, 2026</td><td class="actions"><a class="btn sm" href="#">Edit</a></td></tr>
+                <tr><td class="primary"><a href="#">Add-on: Analytics</a></td><td><span class="chip c-green">Won</span></td><td class="num">$8,400</td><td>Apr 11, 2026</td><td class="actions"><a class="btn sm" href="#">Edit</a></td></tr>
+                <tr><td class="primary"><a href="#">Renewal 2027</a></td><td><span class="chip c-amber">Negotiation</span></td><td class="num">$14,880</td><td>Sep 14, 2026</td><td class="actions"><a class="btn sm" href="#">Edit</a></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- History -->
+        <div class="tab-panel" id="t-history">
+          <div class="panel" style="padding:0">
+            <table class="grid">
+              <thead><tr><th>When</th><th>Action</th><th>By</th><th>Changes</th></tr></thead>
+              <tbody>
+                <tr><td class="muted">2026-06-26 09:41</td><td><span class="chip c-blue">update</span></td><td>amelia</td><td><code>mrr</code>: 1,180 → 1,240</td></tr>
+                <tr><td class="muted">2026-06-12 14:02</td><td><span class="chip c-violet">status</span></td><td>raj</td><td><code>status</code>: Trial → Active</td></tr>
+                <tr><td class="muted">2026-05-30 11:20</td><td><span class="chip c-green">create</span></td><td>amelia</td><td class="muted">Record created</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      var sel = document.getElementById('theme-select');
+      var saved = null; try { saved = localStorage.getItem('biggy.redesign.theme'); } catch (e) {}
+      if (saved) document.documentElement.setAttribute('data-theme', saved);
+      sel.value = document.documentElement.getAttribute('data-theme') || 'light';
+      sel.addEventListener('change', function () {
+        document.documentElement.setAttribute('data-theme', sel.value);
+        try { localStorage.setItem('biggy.redesign.theme', sel.value); } catch (e) {}
+      });
+      // tabs
+      document.querySelectorAll('[data-tabs]').forEach(function (wrap) {
+        wrap.querySelectorAll('.tab').forEach(function (tab) {
+          tab.addEventListener('click', function () {
+            wrap.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
+            wrap.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+            tab.classList.add('active');
+            var panel = wrap.querySelector('#' + tab.getAttribute('data-tab'));
+            if (panel) panel.classList.add('active');
+          });
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

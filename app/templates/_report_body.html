@@ -106,16 +106,16 @@
   <table class="grid">
     <tr>
       {% if result.grouped %}<th>{{ result.group_label }}</th>{% endif %}
-      {% for t in result.titles %}<th>{{ t }}</th>{% endfor %}
+      {% for t in result.titles %}<th class="num">{{ t }}</th>{% endfor %}
     </tr>
     {% for row in result.rows %}
-      <tr>{% for cell in row %}<td>{{ '' if cell is none else cell }}</td>{% endfor %}</tr>
+      <tr>{% for cell in row %}<td{% if not (result.grouped and loop.first) %} class="num"{% endif %}>{{ '' if cell is none else cell }}</td>{% endfor %}</tr>
     {% else %}
       <tr><td colspan="{{ result.titles|length + (1 if result.grouped else 0) }}" class="muted">No data.</td></tr>
     {% endfor %}
     {% if result.grouped and result.totals %}
       <tr style="font-weight:600">
-        <td>Total</td>{% for cell in result.totals %}<td>{{ '' if cell is none else cell }}</td>{% endfor %}
+        <td>Total</td>{% for cell in result.totals %}<td class="num">{{ '' if cell is none else cell }}</td>{% endfor %}
       </tr>
     {% endif %}
   </table>

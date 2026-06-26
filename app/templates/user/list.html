@@ -94,7 +94,8 @@
         <th class="col-check"><input type="checkbox" id="select-all" title="Select all"></th>
         {% for c in columns %}
           {% set nxt = 'desc' if (sort == c.column and order == 'asc') else 'asc' %}
-          <th data-col="{{ c.column }}"><a href="{{ url_for('user.form_list', form_id=mf.id, sort=c.column, order=nxt, **args_sort) }}">
+          {% set numcol = c.kind == 'field' and c.meta and c.meta.data_type in ('integer','bigint','decimal','float','currency','percent','autonumber') %}
+          <th data-col="{{ c.column }}"{% if numcol %} class="num"{% endif %}><a href="{{ url_for('user.form_list', form_id=mf.id, sort=c.column, order=nxt, **args_sort) }}">
             {{ c.label }}{% if sort == c.column %} {{ '▲' if order == 'asc' else '▼' }}{% endif %}</a></th>
         {% endfor %}
         <th>Actions</th>
@@ -108,7 +109,8 @@
             {% set editable = can_edit and c.kind == 'field' and not c.readonly and c.column != display_col
                               and c.meta.data_type not in ('json', 'tags', 'autonumber', 'formula') %}
             {% set wf_cell = c.column in wf_cols %}
-            <td data-col="{{ c.column }}"
+            {% set numcol = c.kind == 'field' and c.meta and c.meta.data_type in ('integer','bigint','decimal','float','currency','percent','autonumber') %}
+            <td data-col="{{ c.column }}"{% if numcol %} class="num"{% endif %}
                 {%- if editable %} data-editable="1" data-type="{{ c.meta.data_type }}"
                 data-value="{{ '1' if v is sameas true else '0' if v is sameas false else (v if v is not none else '') }}"
                 data-url="{{ url_for('user.cell_update', form_id=mf.id, pk=rid) }}"
@@ -124,6 +126,7 @@
               {% elif v is sameas true %}yes{% elif v is sameas false %}no
               {% elif c.column == display_col %}{{ record_link(view_table_id, rid, v) }}
               {% elif c.meta.data_type in ('email','url','phone','currency','percent','json','tags') %}{{ typed_value(c.meta.data_type, v) }}
+              {% elif c.meta.data_type == 'enum' %}<span class="chip c-{{ v|chip_hue }}">{{ v }}</span>
               {% else %}{{ v }}{% endif %}
             </td>
           {% endfor %}

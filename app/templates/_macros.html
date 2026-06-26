@@ -49,6 +49,7 @@
   {%- elif dt == 'percent' -%}{{ '{:g}'.format(v|float) }}%
   {%- elif dt == 'json' -%}<pre style="margin:0;white-space:pre-wrap;max-width:30rem">{{ v }}</pre>
   {%- elif dt == 'tags' -%}{% for t in v|fromjson %}<span class="badge">{{ t }}</span> {% endfor %}
+  {%- elif dt == 'enum' -%}<span class="chip c-{{ v|chip_hue }}">{{ v }}</span>
   {%- else -%}{{ v }}{%- endif -%}
 {% endmacro %}
 

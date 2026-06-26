@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Customers · Biggy (redesign)</title>
+  <link rel="stylesheet" href="redesign.css">
+  <style>
+    /* mockup-only helpers (not part of the ported app.css) */
+    .tokens { display:flex; flex-wrap:wrap; gap:1rem; align-items:center; font-size:var(--fs-sm); }
+    .tokens .sw { display:inline-flex; align-items:center; gap:.4rem; }
+    .tokens .dot { width:14px; height:14px; border-radius:4px; border:1px solid var(--line-strong); }
+    .scalebar > * { margin-right:.6rem; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand">Biggy</span>
+    <span class="spacer"></span>
+    <select id="theme-select" aria-label="Theme" title="Theme">
+      <option value="light">Light</option><option value="dark">Dark</option>
+      <option value="sepia">Sepia</option><option value="ocean">Ocean</option>
+      <option value="contrast">High contrast</option>
+    </select>
+    <a href="dashboard.html">Designer</a>
+    <a href="#">User mode</a>
+    <a href="#" title="Notifications">Alerts <span class="badge">3</span></a>
+    <a href="#">Help</a>
+    <a href="#" class="muted">amelia</a>
+    <a href="#">Sign out</a>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar">
+      <a href="dashboard.html">Home</a>
+      <h3>Sales</h3>
+      <a class="active" href="#">Customers</a>
+      <a href="#">Deals</a>
+      <a href="#">Contacts</a>
+      <a href="#">Activities</a>
+      <h3>Operations</h3>
+      <a href="#">Invoices</a>
+      <a href="#">Products</a>
+      <a href="#">Support tickets</a>
+      <h3>Views</h3>
+      <a href="kanban-placeholder">Pipeline board</a>
+      <a href="cal-placeholder">Calendar</a>
+    </nav>
+
+    <main class="content">
+      <!-- mockup-only: design tokens legend -->
+      <div class="panel" style="padding:.85rem 1rem">
+        <div class="tokens">
+          <strong style="font-size:var(--fs-sm)">Tokens</strong>
+          <span class="sw"><span class="dot" style="background:var(--bg)"></span>bg</span>
+          <span class="sw"><span class="dot" style="background:var(--panel)"></span>panel</span>
+          <span class="sw"><span class="dot" style="background:var(--ink)"></span>ink</span>
+          <span class="sw"><span class="dot" style="background:var(--brand)"></span>accent</span>
+          <span class="sw"><span class="dot" style="background:var(--line-strong)"></span>line</span>
+          <span class="muted">·</span>
+          <span class="scalebar"><span style="font-size:var(--fs-2xl)">Aa</span><span style="font-size:var(--fs-lg)">Aa</span><span style="font-size:var(--fs-base)">Aa</span><span style="font-size:var(--fs-xs)">Aa</span></span>
+          <span class="muted">· radius 6px · tabular numerics · status chips</span>
+        </div>
+      </div>
+
+      <div class="flash success">Saved “Acme Corp”. <span class="muted">Just now.</span></div>
+
+      <div class="toolbar">
+        <h1 style="margin:0">Customers</h1>
+        <span class="muted">248 records</span>
+        <span style="flex:1"></span>
+        <a class="btn" href="#">Board</a>
+        <a class="btn" href="#">Calendar</a>
+        <a class="btn" href="#">Report</a>
+        <a class="btn" href="#">Export CSV</a>
+        <a class="btn primary" href="record-form.html">+ Add new</a>
+      </div>
+
+      <div class="toolbar" style="margin-bottom:.5rem">
+        <span class="muted">Saved views:</span>
+        <span class="badge" style="gap:.35rem"><a href="#" style="color:inherit">My open accounts</a> ×</span>
+        <span class="badge" style="gap:.35rem"><a href="#" style="color:inherit">Renewals this quarter</a> ×</span>
+        <span style="flex:1"></span>
+        <input type="text" placeholder="Save current view as…" style="max-width:220px">
+        <button class="btn sm">Save view</button>
+      </div>
+
+      <details class="panel" open>
+        <summary><strong>Filters</strong> <span class="badge">2</span></summary>
+        <form style="margin-top:.75rem">
+          <div class="field" style="margin-bottom:.75rem">
+            <label>Quick search</label>
+            <input type="text" placeholder="Search Customers…" value="">
+          </div>
+          <div class="filter-row">
+            <select class="fcol"><option>Status</option></select>
+            <select><option>is any of</option></select>
+            <input type="text" value="Active, Trial" style="min-width:200px">
+            <button type="button" class="btn sm danger">×</button>
+          </div>
+          <div class="filter-row">
+            <select class="fcol"><option>MRR</option></select>
+            <select><option>greater than</option></select>
+            <input type="text" value="500">
+            <button type="button" class="btn sm danger">×</button>
+          </div>
+          <div class="toolbar" style="margin-top:.5rem">
+            <button type="button" class="btn">+ Add condition</button>
+            <button type="submit" class="btn primary">Apply</button>
+            <a class="btn" href="#">Clear</a>
+          </div>
+        </form>
+      </details>
+
+      <div class="panel" style="padding:0">
+        <div class="toolbar" style="margin:0; padding:.6rem .75rem; border-bottom:1px solid var(--line)">
+          <button class="btn danger sm">Delete selected</button>
+          <button class="btn sm">Export selected</button>
+          <button class="btn sm">Send to tools</button>
+          <span class="muted" id="bulk-count">2 selected</span>
+          <span style="flex:1"></span>
+          <button class="btn sm">Columns ▾</button>
+          <label class="muted" style="font-size:var(--fs-sm)">Per page
+            <select style="max-width:none"><option>50</option><option>100</option></select>
+          </label>
+        </div>
+
+        <table class="grid">
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox"></th>
+              <th><a href="#">Account ▲</a></th>
+              <th><a href="#">Status</a></th>
+              <th><a href="#">Owner</a></th>
+              <th><a href="#">Industry</a></th>
+              <th class="num"><a href="#">MRR</a></th>
+              <th class="num"><a href="#">Seats</a></th>
+              <th><a href="#">Renews</a></th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="col-check"><input type="checkbox" checked></td>
+              <td class="primary"><a href="record-form.html">Acme Corp</a></td>
+              <td><span class="chip c-green">Active</span></td>
+              <td>Amelia Stone</td>
+              <td>Manufacturing</td>
+              <td class="num">$1,240</td>
+              <td class="num">42</td>
+              <td>Sep 14, 2026</td>
+              <td class="actions"><a class="btn sm" href="#">View</a><a class="btn sm" href="record-form.html">Edit</a><a class="btn sm danger" href="#">Delete</a></td>
+            </tr>
+            <tr>
+              <td class="col-check"><input type="checkbox" checked></td>
+              <td class="primary"><a href="#">Globex</a></td>
+              <td><span class="chip c-amber">Trial</span></td>
+              <td>Raj Patel</td>
+              <td>Logistics</td>
+              <td class="num">$0</td>
+              <td class="num">5</td>
+              <td><span class="muted">—</span></td>
+              <td class="actions"><a class="btn sm" href="#">View</a><a class="btn sm" href="record-form.html">Edit</a><a class="btn sm danger" href="#">Delete</a></td>
+            </tr>
+            <tr>
+              <td class="col-check"><input type="checkbox"></td>
+              <td class="primary"><a href="#">Initech</a></td>
+              <td><span class="chip c-blue">Onboarding</span></td>
+              <td>Dana Lee</td>
+              <td>Software</td>
+              <td class="num">$860</td>
+              <td class="num">19</td>
+              <td>Jul 02, 2026</td>
+              <td class="actions"><a class="btn sm" href="#">View</a><a class="btn sm" href="record-form.html">Edit</a><a class="btn sm danger" href="#">Delete</a></td>
+            </tr>
+            <tr>
+              <td class="col-check"><input type="checkbox"></td>
+              <td class="primary"><a href="#">Soylent Co</a></td>
+              <td><span class="chip c-violet">Review</span></td>
+              <td>Amelia Stone</td>
+              <td>Food &amp; Bev</td>
+              <td class="num">$3,910</td>
+              <td class="num">128</td>
+              <td>Dec 31, 2026</td>
+              <td class="actions"><a class="btn sm" href="#">View</a><a class="btn sm" href="record-form.html">Edit</a><a class="btn sm danger" href="#">Delete</a></td>
+            </tr>
+            <tr>
+              <td class="col-check"><input type="checkbox"></td>
+              <td class="primary"><a href="#">Umbrella Health</a></td>
+              <td><span class="chip c-red">Churn risk</span></td>
+              <td>Marco Diaz</td>
+              <td>Healthcare</td>
+              <td class="num">$2,150</td>
+              <td class="num">63</td>
+              <td>Aug 20, 2026</td>
+              <td class="actions"><a class="btn sm" href="#">View</a><a class="btn sm" href="record-form.html">Edit</a><a class="btn sm danger" href="#">Delete</a></td>
+            </tr>
+            <tr>
+              <td class="col-check"><input type="checkbox"></td>
+              <td class="primary"><a href="#">Wayne Industries</a></td>
+              <td><span class="chip c-green">Active</span></td>
+              <td>Dana Lee</td>
+              <td>Manufacturing</td>
+              <td class="num">$7,420</td>
+              <td class="num">301</td>
+              <td>Mar 09, 2027</td>
+              <td class="actions"><a class="btn sm" href="#">View</a><a class="btn sm" href="record-form.html">Edit</a><a class="btn sm danger" href="#">Delete</a></td>
+            </tr>
+            <tr>
+              <td class="col-check"><input type="checkbox"></td>
+              <td class="primary"><a href="#">Stark Labs</a></td>
+              <td><span class="chip c-gray">Paused</span></td>
+              <td>Raj Patel</td>
+              <td>R&amp;D</td>
+              <td class="num">$540</td>
+              <td class="num">12</td>
+              <td>Oct 28, 2026</td>
+              <td class="actions"><a class="btn sm" href="#">View</a><a class="btn sm" href="record-form.html">Edit</a><a class="btn sm danger" href="#">Delete</a></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="pager" style="padding:.6rem .75rem">
+          <a class="btn sm" href="#">‹ Prev</a>
+          <span class="muted">Page 1 of 5 · 248 records</span>
+          <a class="btn sm" href="#">Next ›</a>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      var sel = document.getElementById('theme-select');
+      var saved = null; try { saved = localStorage.getItem('biggy.redesign.theme'); } catch (e) {}
+      if (saved) document.documentElement.setAttribute('data-theme', saved);
+      sel.value = document.documentElement.getAttribute('data-theme') || 'light';
+      sel.addEventListener('change', function () {
+        document.documentElement.setAttribute('data-theme', sel.value);
+        try { localStorage.setItem('biggy.redesign.theme', sel.value); } catch (e) {}
+      });
+    })();
+  </script>
+</body>
+</html>

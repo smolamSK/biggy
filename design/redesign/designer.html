@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forms · Designer · Biggy (redesign)</title>
+  <link rel="stylesheet" href="redesign.css">
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand">Biggy</span>
+    <span class="mode-tag">Designer</span>
+    <span class="spacer"></span>
+    <select id="theme-select" aria-label="Theme">
+      <option value="light">Light</option><option value="dark">Dark</option>
+      <option value="sepia">Sepia</option><option value="ocean">Ocean</option>
+      <option value="contrast">High contrast</option>
+    </select>
+    <a href="#">Designer</a><a href="list.html">User mode</a><a href="#">Users</a><a href="#">Connection</a>
+    <a href="#">Help</a><a href="#" class="muted">amelia</a><a href="#">Sign out</a>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar">
+      <a href="dashboard.html">Dashboard</a>
+      <details class="menu-group" open><summary class="group-label">Model</summary>
+        <a class="child" href="#">Relations</a><a class="child" href="#">Diagram</a>
+        <a class="child" href="#">Workflows</a><a class="child" href="#">Adopt tables</a>
+      </details>
+      <details class="menu-group" open><summary class="group-label">Interface</summary>
+        <a class="child active" href="#">Forms</a><a class="child" href="#">Menus</a><a class="child" href="#">Dashboards</a>
+      </details>
+      <details class="menu-group"><summary class="group-label">Data</summary>
+        <a class="child" href="#">SQL</a><a class="child" href="#">Reports</a><a class="child" href="#">Data sources</a>
+      </details>
+      <details class="menu-group"><summary class="group-label">Integrations</summary>
+        <a class="child" href="#">Connections</a><a class="child" href="#">Feeds</a>
+        <a class="child" href="#">Webhooks</a><a class="child" href="#">Pull sources</a>
+      </details>
+      <details class="menu-group"><summary class="group-label">Admin</summary>
+        <a class="child" href="#">Triggers</a><a class="child" href="#">Scheduled jobs</a>
+        <a class="child" href="#">Roles</a><a class="child" href="#">Permissions</a>
+        <a class="child" href="#">Audit log</a><a class="child" href="#">Backup</a><a class="child" href="#">Examples</a>
+      </details>
+      <details class="menu-group" open><summary class="group-label">Tables</summary>
+        <a class="child" href="#">Customers</a><a class="child" href="#">Deals</a>
+        <a class="child" href="#">Contacts</a><a class="child" href="#">Invoices</a>
+        <a class="child" href="#">＋ New table</a>
+      </details>
+    </nav>
+
+    <main class="content">
+      <div class="toolbar">
+        <h1 style="margin:0">Forms</h1>
+        <span class="muted">6 forms</span>
+        <span style="flex:1"></span>
+        <a class="btn primary" href="#">+ New form</a>
+      </div>
+
+      <div class="panel" style="padding:0">
+        <table class="grid">
+          <thead>
+            <tr><th>Form</th><th>Bound table</th><th class="num">Fields</th><th>Status</th><th>In menu</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="primary"><a href="#">Customer details</a></td>
+              <td><code>customers</code></td><td class="num">14</td>
+              <td><span class="chip c-green">Published</span></td><td>Sales › Customers</td>
+              <td class="actions"><a class="btn sm" href="#">Edit</a><a class="btn sm" href="#">Items</a><a class="btn sm danger" href="#">Delete</a></td>
+            </tr>
+            <tr>
+              <td class="primary"><a href="#">Quick add customer</a></td>
+              <td><code>customers</code></td><td class="num">5</td>
+              <td><span class="chip c-green">Published</span></td><td><span class="muted">—</span></td>
+              <td class="actions"><a class="btn sm" href="#">Edit</a><a class="btn sm" href="#">Items</a><a class="btn sm danger" href="#">Delete</a></td>
+            </tr>
+            <tr>
+              <td class="primary"><a href="#">Deal form</a></td>
+              <td><code>deals</code></td><td class="num">9</td>
+              <td><span class="chip c-green">Published</span></td><td>Sales › Deals</td>
+              <td class="actions"><a class="btn sm" href="#">Edit</a><a class="btn sm" href="#">Items</a><a class="btn sm danger" href="#">Delete</a></td>
+            </tr>
+            <tr>
+              <td class="primary"><a href="#">Contact form</a></td>
+              <td><code>contacts</code></td><td class="num">7</td>
+              <td><span class="chip c-amber">Draft</span></td><td><span class="muted">—</span></td>
+              <td class="actions"><a class="btn sm" href="#">Edit</a><a class="btn sm" href="#">Items</a><a class="btn sm danger" href="#">Delete</a></td>
+            </tr>
+            <tr>
+              <td class="primary"><a href="#">Invoice entry</a></td>
+              <td><code>invoices</code></td><td class="num">11</td>
+              <td><span class="chip c-green">Published</span></td><td>Operations › Invoices</td>
+              <td class="actions"><a class="btn sm" href="#">Edit</a><a class="btn sm" href="#">Items</a><a class="btn sm danger" href="#">Delete</a></td>
+            </tr>
+            <tr>
+              <td class="primary"><a href="#">Support ticket</a></td>
+              <td><code>tickets</code></td><td class="num">8</td>
+              <td><span class="chip c-gray">Archived</span></td><td><span class="muted">—</span></td>
+              <td class="actions"><a class="btn sm" href="#">Edit</a><a class="btn sm" href="#">Items</a><a class="btn sm danger" href="#">Delete</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Fields on “Customer details”</h2>
+      <div class="panel" style="padding:0">
+        <table class="grid">
+          <thead><tr><th>Label</th><th>Column</th><th>Type</th><th>Required</th><th></th></tr></thead>
+          <tbody>
+            <tr><td class="primary"><a href="#">Account name</a></td><td><code>name</code></td><td><span class="chip c-blue">text</span></td><td>Yes</td><td class="actions"><a class="btn sm" href="#">Edit</a></td></tr>
+            <tr><td class="primary"><a href="#">Status</a></td><td><code>status</code></td><td><span class="chip c-violet">choice</span></td><td>Yes</td><td class="actions"><a class="btn sm" href="#">Edit</a></td></tr>
+            <tr><td class="primary"><a href="#">MRR</a></td><td><code>mrr</code></td><td><span class="chip c-teal">currency</span></td><td>No</td><td class="actions"><a class="btn sm" href="#">Edit</a></td></tr>
+            <tr><td class="primary"><a href="#">Renewal date</a></td><td><code>renews_on</code></td><td><span class="chip c-amber">date</span></td><td>No</td><td class="actions"><a class="btn sm" href="#">Edit</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      var sel = document.getElementById('theme-select');
+      var saved = null; try { saved = localStorage.getItem('biggy.redesign.theme'); } catch (e) {}
+      if (saved) document.documentElement.setAttribute('data-theme', saved);
+      sel.value = document.documentElement.getAttribute('data-theme') || 'light';
+      sel.addEventListener('change', function () {
+        document.documentElement.setAttribute('data-theme', sel.value);
+        try { localStorage.setItem('biggy.redesign.theme', sel.value); } catch (e) {}
+      });
+    })();
+  </script>
+</body>
+</html>

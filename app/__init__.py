@@ -59,6 +59,16 @@ def create_app(config_object=Config):
         except (ValueError, TypeError):
             return s
 
+    # Deterministic value -> status-chip hue. Mirrors chipHue() in static/inline.js
+    # (char-code sum mod 7) so inline-edited cells re-render the same color.
+    _CHIP_HUES = ["green", "amber", "red", "blue", "violet", "teal", "gray"]
+
+    @app.template_filter("chip_hue")
+    def _chip_hue(value):
+        if value is None or value == "":
+            return "gray"
+        return _CHIP_HUES[sum(ord(c) for c in str(value)) % len(_CHIP_HUES)]
+
     _register_lifecycle(app)
     _register_context(app)
     _register_errors(app)

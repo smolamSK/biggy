@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · Biggy (redesign)</title>
+  <link rel="stylesheet" href="redesign.css">
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand">Biggy</span>
+    <span class="spacer"></span>
+    <select id="theme-select" aria-label="Theme">
+      <option value="light">Light</option><option value="dark">Dark</option>
+      <option value="sepia">Sepia</option><option value="ocean">Ocean</option>
+      <option value="contrast">High contrast</option>
+    </select>
+  </header>
+
+  <main class="content" style="max-width:none; display:block">
+    <div class="center-card">
+      <div class="panel">
+        <h1 style="margin-bottom:.25rem">Sign in</h1>
+        <p class="muted" style="margin-top:0">Welcome back. Enter your credentials to continue.</p>
+        <form>
+          <div class="field">
+            <label>Username</label>
+            <input type="text" value="" placeholder="you@example.com" style="max-width:none" autofocus>
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input type="password" value="" placeholder="••••••••" style="max-width:none">
+          </div>
+          <div class="checkline field">
+            <input type="checkbox" id="remember"><label for="remember" style="margin:0">Keep me signed in</label>
+          </div>
+          <button class="btn primary" type="submit" style="width:100%; justify-content:center">Sign in</button>
+        </form>
+      </div>
+      <p class="muted" style="text-align:center; font-size:var(--fs-sm)">Biggy · metadata-driven database app</p>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      var sel = document.getElementById('theme-select');
+      var saved = null; try { saved = localStorage.getItem('biggy.redesign.theme'); } catch (e) {}
+      if (saved) document.documentElement.setAttribute('data-theme', saved);
+      sel.value = document.documentElement.getAttribute('data-theme') || 'light';
+      sel.addEventListener('change', function () {
+        document.documentElement.setAttribute('data-theme', sel.value);
+        try { localStorage.setItem('biggy.redesign.theme', sel.value); } catch (e) {}
+      });
+    })();
+  </script>
+</body>
+</html>

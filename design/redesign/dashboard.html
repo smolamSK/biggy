@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sales overview · Biggy (redesign)</title>
+  <link rel="stylesheet" href="redesign.css">
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand">Biggy</span>
+    <span class="spacer"></span>
+    <select id="theme-select" aria-label="Theme">
+      <option value="light">Light</option><option value="dark">Dark</option>
+      <option value="sepia">Sepia</option><option value="ocean">Ocean</option>
+      <option value="contrast">High contrast</option>
+    </select>
+    <a href="#">Designer</a><a href="list.html">User mode</a>
+    <a href="#">Help</a><a href="#" class="muted">amelia</a><a href="#">Sign out</a>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar">
+      <a class="active" href="#">Home</a>
+      <h3>Sales</h3>
+      <a href="list.html">Customers</a><a href="#">Deals</a><a href="#">Contacts</a>
+      <h3>Operations</h3>
+      <a href="#">Invoices</a><a href="#">Products</a><a href="#">Support tickets</a>
+    </nav>
+
+    <main class="content">
+      <div class="toolbar">
+        <h1 style="margin:0">Sales overview</h1>
+        <span style="flex:1"></span>
+        <select style="max-width:160px"><option>Last 30 days</option><option>This quarter</option></select>
+        <a class="btn" href="#">Export</a>
+        <a class="btn primary" href="#">Edit dashboard</a>
+      </div>
+
+      <!-- KPI row -->
+      <div class="dash-grid" style="grid-template-columns:repeat(4,1fr)">
+        <div class="card kpi"><div class="kpi-value">$184.2k</div><div class="kpi-label">MRR</div><div style="margin-top:.4rem"><span class="chip c-green">▲ 6.4%</span></div></div>
+        <div class="card kpi"><div class="kpi-value">248</div><div class="kpi-label">Active accounts</div><div style="margin-top:.4rem"><span class="chip c-green">▲ 11</span></div></div>
+        <div class="card kpi"><div class="kpi-value">31</div><div class="kpi-label">Trials open</div><div style="margin-top:.4rem"><span class="chip c-amber">5 expiring</span></div></div>
+        <div class="card kpi"><div class="kpi-value">4.1%</div><div class="kpi-label">Churn (90d)</div><div style="margin-top:.4rem"><span class="chip c-red">▲ 0.3%</span></div></div>
+      </div>
+
+      <!-- chart + list row -->
+      <div class="dash-grid" style="grid-template-columns:1.6fr 1fr; align-items:start">
+        <div class="card">
+          <h2 style="margin:0 0 .75rem">New MRR by month</h2>
+          <svg class="chart-svg js-chart" viewBox="0 0 520 220" width="100%" role="img" aria-label="Bar chart of new MRR by month">
+            <!-- baseline -->
+            <line x1="40" y1="190" x2="510" y2="190" stroke="var(--line-strong)" />
+            <!-- bars -->
+            <g>
+              <rect x="56"  y="120" width="40" height="70"  rx="3" fill="var(--brand)"></rect>
+              <rect x="120" y="96"  width="40" height="94"  rx="3" fill="var(--brand)"></rect>
+              <rect x="184" y="140" width="40" height="50"  rx="3" fill="var(--brand)"></rect>
+              <rect x="248" y="70"  width="40" height="120" rx="3" fill="var(--brand)"></rect>
+              <rect x="312" y="54"  width="40" height="136" rx="3" fill="var(--brand)"></rect>
+              <rect x="376" y="40"  width="40" height="150" rx="3" fill="var(--brand)"></rect>
+              <rect x="440" y="86"  width="40" height="104" rx="3" fill="var(--brand)"></rect>
+            </g>
+            <g class="chart-lbl" text-anchor="middle">
+              <text x="76"  y="206">Jan</text><text x="140" y="206">Feb</text><text x="204" y="206">Mar</text>
+              <text x="268" y="206">Apr</text><text x="332" y="206">May</text><text x="396" y="206">Jun</text><text x="460" y="206">Jul</text>
+            </g>
+          </svg>
+        </div>
+
+        <div class="card" style="padding:0">
+          <h2 style="margin:0; padding:1rem 1rem .5rem">Renewals next 30 days</h2>
+          <table class="grid">
+            <thead><tr><th>Account</th><th>Status</th><th class="num">MRR</th></tr></thead>
+            <tbody>
+              <tr><td class="primary"><a href="record-form.html">Acme Corp</a></td><td><span class="chip c-green">Active</span></td><td class="num">$1,240</td></tr>
+              <tr><td class="primary"><a href="#">Umbrella Health</a></td><td><span class="chip c-red">Churn risk</span></td><td class="num">$2,150</td></tr>
+              <tr><td class="primary"><a href="#">Soylent Co</a></td><td><span class="chip c-violet">Review</span></td><td class="num">$3,910</td></tr>
+              <tr><td class="primary"><a href="#">Stark Labs</a></td><td><span class="chip c-gray">Paused</span></td><td class="num">$540</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="dash-grid" style="grid-template-columns:1fr">
+        <div class="card md">
+          <h2 style="margin-top:0">Notes</h2>
+          <p class="muted" style="margin:0">Q3 focus: convert the 5 expiring trials and de-risk Umbrella Health. Pipeline coverage is 3.1× target.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      var sel = document.getElementById('theme-select');
+      var saved = null; try { saved = localStorage.getItem('biggy.redesign.theme'); } catch (e) {}
+      if (saved) document.documentElement.setAttribute('data-theme', saved);
+      sel.value = document.documentElement.getAttribute('data-theme') || 'light';
+      sel.addEventListener('change', function () {
+        document.documentElement.setAttribute('data-theme', sel.value);
+        try { localStorage.setItem('biggy.redesign.theme', sel.value); } catch (e) {}
+      });
+    })();
+  </script>
+</body>
+</html>

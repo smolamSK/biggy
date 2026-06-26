@@ -18,6 +18,29 @@
     date: "date", datetime: "datetime-local", time: "time"
   };
 
+  // Deterministic value -> status-chip hue. Mirrors chip_hue() in app/__init__.py
+  // (char-code sum mod 7) so an inline-edited enum keeps the same color.
+  var CHIP_HUES = ["green", "amber", "red", "blue", "violet", "teal", "gray"];
+  function chipHue(s) {
+    if (!s) return "gray";
+    var sum = 0;
+    for (var i = 0; i < s.length; i++) sum += s.charCodeAt(i);
+    return CHIP_HUES[sum % CHIP_HUES.length];
+  }
+
+  // Write a returned display value back into a cell — as a chip for enums.
+  function renderCell(cell, display) {
+    if (cell.dataset.type === "enum" && display) {
+      var chip = document.createElement("span");
+      chip.className = "chip c-" + chipHue(display);
+      chip.textContent = display;
+      cell.textContent = "";
+      cell.appendChild(chip);
+    } else {
+      cell.textContent = display;
+    }
+  }
+
   function makeControl(cell) {
     var type = cell.dataset.type, value = cell.dataset.value || "";
     var el;
@@ -71,7 +94,7 @@
       }).then(function (res) {
         if (res.ok && res.data.ok) {
           cell.dataset.value = res.data.value;
-          cell.textContent = res.data.display;
+          renderCell(cell, res.data.display);
         } else {
           cell.innerHTML = original;
           alert((res.data && res.data.error) || "Could not save.");
