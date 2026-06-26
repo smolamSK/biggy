@@ -1,5 +1,6 @@
 {% extends "user/_base.html" %}
 {% from "_macros.html" import record_link, typed_value with context %}
+{% from "user/_related.html" import related_table with context %}
 {% block title %}{{ label }} · Biggy{% endblock %}
 {% block inner %}
 <div class="toolbar">
@@ -17,6 +18,7 @@
   {% if edit_url %}<a class="btn primary" href="{{ edit_url }}">Edit</a>{% endif %}
 </div>
 
+{% set details %}
 <div class="panel" style="max-width:680px">
   <table class="grid">
     {% for it in items %}
@@ -55,4 +57,23 @@
     {% endfor %}
   </table>
 </div>
+{% endset %}
+
+{% if related %}
+  <div class="tabs-wrap" data-tabs>
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab active" data-tab="tab-details">Details</button>
+      {% for r in related %}
+        <button type="button" class="tab" data-tab="tab-rel-{{ loop.index }}">{{ r.label }} ({{ r.total }})</button>
+      {% endfor %}
+    </div>
+    <div class="tab-panel active" id="tab-details">{{ details }}</div>
+    {% for r in related %}
+      <div class="tab-panel" id="tab-rel-{{ loop.index }}">{{ related_table(r) }}</div>
+    {% endfor %}
+  </div>
+  <script src="{{ url_for('static', filename='tabs.js') }}" defer></script>
+{% else %}
+  {{ details }}
+{% endif %}
 {% endblock %}

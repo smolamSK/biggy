@@ -170,6 +170,36 @@ def test_master_detail_related_lists(app, client):
     assert "next=" in html                        # returns to the parent after add
 
 
+def test_view_page_shows_related_tabs(app, client):
+    _setup(client)
+    cust_tid = _make_table(client, app, "customer", "Customer", "name")
+    cust_fid = _make_form(client, app, "customer_form", "Customers", cust_tid)
+    _make_form_p(client, app, "customer_view", "Customer", cust_tid, "view")
+    _make_table(client, app, "order", "Order", "code")
+    with app.app_context():
+        order_tid = SessionLocal().scalar(select(MetaTable).where(MetaTable.phys_name == "order")).id
+    _ok(client.post("/designer/relations/new-m1",
+                    data=dict(name="Order customer", from_table_id=order_tid, to_table_id=cust_tid,
+                              field_name="customer_id", on_delete="SET NULL", nullable="y"),
+                    follow_redirects=True))
+    _make_form(client, app, "order_form", "Orders", order_tid)
+
+    _ok(client.post(f"/u/forms/{cust_fid}/new", data={"name": "Acme"}, follow_redirects=True))
+    with app.app_context():
+        cid = get_engine().connect().execute(text("SELECT id FROM customer LIMIT 1")).scalar()
+        with get_engine().begin() as c:
+            c.execute(text("INSERT INTO `order` (id, code, customer_id) VALUES (10,'O-1',:cid)"),
+                      {"cid": cid})
+
+    page = client.get(f"/u/view/{cust_tid}/{cid}")
+    _ok(page)
+    html = page.get_data(as_text=True)
+    assert "tabs-wrap" in html and 'data-tab="tab-rel-1"' in html  # tabs rendered on the view page
+    assert "Order (1)" in html                                     # related tab labelled with child + count
+    assert "O-1" in html                                           # the child row is listed
+    assert f"/u/view/{cust_tid}/{cid}" in html                     # child actions return to the view page
+
+
 def test_delete_impact_and_soft_dissociation(app, client):
     _setup(client)
     cust_tid = _make_table(client, app, "customer", "Customer", "name")

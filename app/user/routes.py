@@ -1143,9 +1143,11 @@ def record_view(table_id, pk):
             break
 
     send_form_id = view_form.id if _manual_feeds(session, table_id) else None
+    related = _related_lists(session, engine, view_form, pk, user_id, is_designer,
+                             parent_url=url_for("user.record_view", table_id=table_id, pk=pk))
     return render_template("user/view.html", table=table, pk=pk, label=label, items=items,
                            edit_url=edit_url, deleted=bool(row.get("deleted_at")),
-                           send_form_id=send_form_id)
+                           send_form_id=send_form_id, related=related)
 
 
 def _view_items(session, engine, view_form, built, row):
@@ -1184,9 +1186,11 @@ def _view_items(session, engine, view_form, built, row):
 # --------------------------------------------------------------------------- #
 # Related records (master-detail) + history helpers
 # --------------------------------------------------------------------------- #
-def _related_lists(session, engine, mf, pk, user_id, is_designer):
+def _related_lists(session, engine, mf, pk, user_id, is_designer, parent_url=None):
     out = []
-    parent_url = url_for("user.record_edit", form_id=mf.id, pk=pk)
+    # Where child Edit/Add/Delete actions return to. Defaults to this record's
+    # edit form; the read-only view page passes its own URL so users come back here.
+    parent_url = parent_url or url_for("user.record_edit", form_id=mf.id, pk=pk)
     rels = session.scalars(
         select(MetaRelation).where(MetaRelation.kind == "m1",
                                    MetaRelation.to_table_id == mf.table_id)

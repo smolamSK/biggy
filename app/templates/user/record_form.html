@@ -71,32 +71,7 @@
   </div>
 {% endmacro %}
 
-{% macro related_table(r) %}
-  <div class="toolbar">
-    <h2 style="margin:0">{{ r.label }} <span class="muted">({{ r.total }})</span></h2>
-    <span style="flex:1"></span>
-    {% if r.can_edit %}<a class="btn primary" href="{{ r.add_url }}">+ Add {{ r.label }}</a>{% endif %}
-  </div>
-  <table class="grid">
-    <tr>{% for c in r.columns %}<th>{{ c }}</th>{% endfor %}<th></th></tr>
-    {% for row in r.rows %}
-      <tr>
-        {% for c in r.columns %}<td>
-          {%- if loop.first -%}{{ record_link(r.table_id, row.id, (row.get(c) if row.get(c) is not none else '#' ~ row.id)) }}
-          {%- else -%}{{ row.get(c) if row.get(c) is not none else '' }}{%- endif -%}
-        </td>{% endfor %}
-        <td class="actions">
-          {% if r.can_edit %}
-            <a class="btn sm" href="{{ url_for('user.record_edit', form_id=r.form_id, pk=row.id, next=r.next) }}">Edit</a>
-            <a class="btn danger sm" href="{{ url_for('user.record_delete_confirm', form_id=r.form_id, pk=row.id, next=r.next) }}">Delete</a>
-          {% endif %}
-        </td>
-      </tr>
-    {% else %}
-      <tr><td colspan="{{ r.columns|length + 1 }}" class="muted">None yet.</td></tr>
-    {% endfor %}
-  </table>
-{% endmacro %}
+{% from "user/_related.html" import related_table with context %}
 
 {% macro history_table() %}
   <table class="grid">
