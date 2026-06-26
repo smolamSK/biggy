@@ -1,0 +1,145 @@
+{# Shared report builder + results. Included by user/report.html and
+   designer/report.html. Context: table, action, tables (or None), group_options,
+   metric_options, group_col, selected_metrics, filter_meta, filter_order,
+   conditions, result, saved_reports, current_query. #}
+<div class="toolbar">
+  <h1 style="margin:0">Report — {{ table.label }}</h1>
+  <span style="flex:1"></span>
+  <a class="btn" href="{{ action }}?{{ current_query }}{{ '&' if current_query }}export=csv">Export CSV</a>
+</div>
+
+{% if saved_reports %}
+<div class="toolbar" style="flex-wrap:wrap;gap:.4rem">
+  <span class="muted">Saved:</span>
+  {% for r in saved_reports %}
+    <span class="badge" style="display:inline-flex;align-items:center;gap:.3rem">
+      <a href="{{ action }}?{{ r.query }}">{{ r.name }}</a>
+      {% if r.schedule_minutes %}<span title="Emailed every {{ r.schedule_minutes }} min to {{ r.recipients or '—' }}">⏰{{ r.schedule_minutes }}m</span>{% endif %}
+      <details class="inline" style="display:inline">
+        <summary class="btn sm" style="padding:0 .35rem" title="Schedule email digest">⏰</summary>
+        <form method="post" action="{{ url_for('user.report_schedule', report_id=r.id) }}" class="toolbar"
+              style="position:absolute;z-index:10;background:var(--panel,#fff);border:1px solid #ccc;padding:.5rem;border-radius:6px;margin-top:.3rem">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="next" value="{{ action }}?{{ current_query }}">
+          <input type="number" name="schedule_minutes" min="0" value="{{ r.schedule_minutes or '' }}"
+                 placeholder="every N min (0 = off)" style="width:9rem">
+          <input type="text" name="recipients" value="{{ r.recipients or '' }}" placeholder="emails, comma-separated">
+          <button class="btn sm primary" type="submit">Save</button>
+        </form>
+      </details>
+      <form method="post" action="{{ url_for('user.report_pin', report_id=r.id) }}" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="next" value="{{ action }}?{{ current_query }}">
+        <button class="btn sm" title="{{ 'Unpin from dashboard' if r.pinned else 'Pin to dashboard' }}"
+                style="padding:0 .35rem">{{ '📌' if r.pinned else '📍' }}</button>
+      </form>
+      <form method="post" action="{{ url_for('user.report_delete', report_id=r.id) }}" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="next" value="{{ action }}?{{ current_query }}">
+        <button class="btn sm" title="Delete report" style="padding:0 .35rem">×</button>
+      </form>
+    </span>
+  {% endfor %}
+</div>
+{% endif %}
+
+<form method="get" id="filter-form" action="{{ action }}" class="panel">
+  {% if tables %}
+    <div class="field">
+      <label>Table</label>
+      <select name="table_id" onchange="this.form.submit()">
+        {% for t in tables %}<option value="{{ t.id }}" {{ 'selected' if t.id == table.id }}>{{ t.label }}</option>{% endfor %}
+      </select>
+    </div>
+  {% endif %}
+  <div class="field">
+    <label>Group by</label>
+    <select name="group">
+      <option value="">(no grouping — totals only)</option>
+      {% for col, label in group_options %}
+        <option value="{{ col }}" {{ 'selected' if col == group_col }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label>Metrics</label>
+    <div class="pill-row">
+      {% for key, label in metric_options %}
+        <label class="checkline" style="border:1px solid var(--line);border-radius:7px;padding:.2rem .5rem">
+          <input type="checkbox" name="metric" value="{{ key }}" {{ 'checked' if key in selected_metrics }}> {{ label }}
+        </label>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="field">
+    <label>Filters</label>
+    <div id="conditions"></div>
+    <button type="button" class="btn sm" id="add-condition">+ Add condition</button>
+  </div>
+  <button class="btn primary" type="submit">Run report</button>
+  <a class="btn" href="{{ action }}">Reset</a>
+</form>
+
+<script type="application/json" id="filter-meta">{{ filter_meta|tojson }}</script>
+<script type="application/json" id="filter-order">{{ filter_order|tojson }}</script>
+<script type="application/json" id="filter-conditions">{{ conditions|tojson }}</script>
+<script src="{{ url_for('static', filename='filters.js') }}" defer></script>
+
+<div class="toolbar" style="margin-bottom:.4rem">
+  <span class="muted">View:</span>
+  {% for t in ['table', 'bar', 'line', 'pie'] %}
+    <a class="btn sm {{ 'primary' if chart == t }}"
+       href="{{ action }}?{{ query_base }}{{ '&' if query_base }}chart={{ t }}">{{ t|capitalize }}</a>
+  {% endfor %}
+</div>
+
+{% if chart != 'table' %}
+  <div class="panel">
+    <div class="js-chart" data-type="{{ chart }}">
+      <script type="application/json">{{ chart_data|tojson }}</script>
+    </div>
+  </div>
+  <script src="{{ url_for('static', filename='charts.js') }}" defer></script>
+{% endif %}
+
+<div class="panel">
+  <table class="grid">
+    <tr>
+      {% if result.grouped %}<th>{{ result.group_label }}</th>{% endif %}
+      {% for t in result.titles %}<th>{{ t }}</th>{% endfor %}
+    </tr>
+    {% for row in result.rows %}
+      <tr>{% for cell in row %}<td>{{ '' if cell is none else cell }}</td>{% endfor %}</tr>
+    {% else %}
+      <tr><td colspan="{{ result.titles|length + (1 if result.grouped else 0) }}" class="muted">No data.</td></tr>
+    {% endfor %}
+    {% if result.grouped and result.totals %}
+      <tr style="font-weight:600">
+        <td>Total</td>{% for cell in result.totals %}<td>{{ '' if cell is none else cell }}</td>{% endfor %}
+      </tr>
+    {% endif %}
+  </table>
+</div>
+
+<form method="post" action="{{ url_for('user.report_save', table_id=table.id) }}" class="toolbar" style="margin-top:.5rem;flex-wrap:wrap">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="query" value="{{ current_query }}">
+  <input type="hidden" name="next" value="{{ action }}?{{ current_query }}">
+  <input type="text" name="name" placeholder="Save this report as…" required>
+  <input type="number" name="schedule_minutes" min="0" placeholder="email every N min (optional)" style="width:13rem">
+  <input type="text" name="recipients" placeholder="recipients (optional)">
+  <button class="btn sm" type="submit">Save report</button>
+</form>
+
+{% if add_dashboards %}
+<form method="post" action="{{ url_for('user.report_to_dashboard', table_id=add_table_id) }}" class="toolbar" style="margin-top:.4rem;flex-wrap:wrap">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="query" value="{{ current_query }}">
+  <input type="hidden" name="chart" value="{{ chart }}">
+  <span class="muted">Add to dashboard:</span>
+  <select name="dashboard_id">{% for d in add_dashboards %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}</select>
+  <input type="text" name="title" placeholder="Tile title (optional)">
+  <select name="as"><option value="chart">as chart</option><option value="number">as KPI</option></select>
+  <button class="btn sm" type="submit">Add</button>
+</form>
+{% endif %}

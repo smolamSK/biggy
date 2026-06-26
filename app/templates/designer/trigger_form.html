@@ -1,0 +1,57 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}Trigger · {{ table.label }}{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">Trigger — {{ table.label }}</h1>
+  <span style="flex:1"></span>
+  <a class="btn" href="{{ url_for('designer.triggers') }}">Back</a>
+</div>
+
+<div class="panel" style="max-width:680px">
+  <form method="post">
+    {{ form.hidden_tag() }}
+    {{ render_field(form.name) }}
+    <div class="field checkline">{{ form.active() }} <label style="margin:0">{{ form.active.label.text }}</label></div>
+
+    <h3>When</h3>
+    {{ render_field(form.event) }}
+    <p class="help">For <em>Status transition</em>: pick the status field and optionally limit to a
+      specific from/to state. Leave from/to blank to fire on any change of that field.</p>
+    {{ render_field(form.field_id) }}
+    {{ render_field(form.from_state) }}
+    {{ render_field(form.to_state) }}
+    {{ render_field(form.schedule_minutes) }}
+    <p class="help">For <em>Scheduled (time-based)</em>: the actions run over every row matching the
+      condition below, every N minutes (also from <code>flask run-jobs</code>). To avoid acting on a
+      row twice, pair a <em>condition</em> (e.g. <code>reminded&nbsp;≠&nbsp;yes</code>) with a
+      <em>set-a-field</em> action (set <code>reminded&nbsp;=&nbsp;yes</code>) so handled rows stop matching.</p>
+
+    <h3>Only if (optional condition)</h3>
+    {{ render_field(form.cond_field_id) }}
+    {{ render_field(form.cond_op) }}
+    {{ render_field(form.cond_value) }}
+
+    <h3>Do — in-app</h3>
+    <div class="field checkline">{{ form.in_app() }} <label style="margin:0">{{ form.in_app.label.text }}</label></div>
+    {{ render_field(form.notify_target) }}
+    {{ render_field(form.notify_user_id) }}
+    {{ render_field(form.message) }}
+
+    <h3>Do — email</h3>
+    {{ render_field(form.email_to) }}
+    {{ render_field(form.email_subject) }}
+    {{ render_field(form.email_body) }}
+
+    <h3>Do — webhook</h3>
+    {{ render_field(form.webhook_url) }}
+
+    <h3>Do — set a field</h3>
+    {{ render_field(form.set_field_id) }}
+    {{ render_field(form.set_value) }}
+
+    <button class="btn primary" type="submit">Save</button>
+    <a class="btn" href="{{ url_for('designer.triggers') }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

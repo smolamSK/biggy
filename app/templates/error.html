@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ code }} · Biggy{% endblock %}
+{% block content %}
+<div class="center-card">
+  <div class="panel">
+    <h1>{{ code }}</h1>
+    <p>{{ message }}</p>
+    <a class="btn" href="{{ url_for('core.index') }}">Back to start</a>
+  </div>
+</div>
+{% endblock %}

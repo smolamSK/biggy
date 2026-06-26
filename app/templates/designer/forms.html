@@ -1,0 +1,27 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import delete_form, obj_link %}
+{% block title %}Forms · Biggy{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">Forms</h1>
+  <span style="flex:1"></span>
+  <a class="btn primary" href="{{ url_for('designer.form_new') }}">+ New form</a>
+</div>
+<div class="panel">
+  {% if forms %}
+  <table class="grid">
+    <tr><th>Title</th><th>Name</th><th>Table</th><th>Purpose</th><th>Items</th><th></th></tr>
+    {% for f in forms %}
+      <tr>
+        <td><a href="{{ url_for('designer.form_edit', form_id=f.id) }}">{{ f.title }}</a></td>
+        <td><code>{{ f.name }}</code></td>
+        <td>{% if f.table_id in tmap %}{{ obj_link('designer.table_view', 'table_id', f.table_id, tmap[f.table_id].label) }}{% endif %}</td>
+        <td>{% if f.purpose == 'view' %}<span class="badge">view</span>{% else %}data{% endif %}</td>
+        <td>{{ f.items|length }}</td>
+        <td>{{ delete_form(url_for('designer.form_delete', form_id=f.id), confirm='Delete this form?') }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">No forms yet.</p>{% endif %}
+</div>
+{% endblock %}

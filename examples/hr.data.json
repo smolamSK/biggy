@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "tables": {
+    "department": [
+      {
+        "id": 1,
+        "name": "Engineering"
+      },
+      {
+        "id": 2,
+        "name": "Sales"
+      }
+    ],
+    "employee": [
+      {
+        "id": 1,
+        "name": "Grace Hopper",
+        "email": "grace@co.test",
+        "position": "manager",
+        "hired_on": "2018-01-15",
+        "department_id": 1,
+        "manager_id": null
+      },
+      {
+        "id": 2,
+        "name": "Dennis Ritchie",
+        "email": "dennis@co.test",
+        "position": "senior",
+        "hired_on": "2019-03-01",
+        "department_id": 1,
+        "manager_id": 1
+      },
+      {
+        "id": 3,
+        "name": "Radia Perlman",
+        "email": "radia@co.test",
+        "position": "lead",
+        "hired_on": "2020-06-10",
+        "department_id": 2,
+        "manager_id": 1
+      }
+    ]
+  }
+}

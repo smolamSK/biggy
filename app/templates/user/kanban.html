@@ -1,0 +1,45 @@
+{% extends "user/_base.html" %}
+{% from "_macros.html" import record_link with context %}
+{% block title %}{{ mf.title }} · Board{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">{{ mf.title }} <span class="muted">· board</span></h1>
+  <span style="flex:1"></span>
+  <label class="muted">Group by
+    <select onchange="location.href='{{ url_for('user.form_kanban', form_id=mf.id) }}?group=' + this.value">
+      {% for f in enum_fields %}
+        <option value="{{ f.phys_name }}" {{ 'selected' if f.phys_name == group }}>{{ f.label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <a class="btn" href="{{ url_for('user.form_list', form_id=mf.id) }}">List</a>
+  {% if has_dates %}<a class="btn" href="{{ url_for('user.form_calendar', form_id=mf.id) }}">Calendar</a>{% endif %}
+</div>
+
+<input type="hidden" id="kanban-csrf" value="{{ csrf_token() }}">
+<div class="kanban" data-group="{{ group }}">
+  {% for col in columns %}
+    <div class="kcol" data-value="{{ col.value }}">
+      <div class="kcol-head">
+        <span>{{ col.value or '(unset)' }}</span>
+        <span class="badge kcol-count">{{ col.count }}</span>
+        {% if can_edit and col.value %}
+          <a class="kadd" title="Add here"
+             href="{{ url_for('user.record_new', form_id=mf.id, **{group: col.value}) }}">＋</a>
+        {% endif %}
+      </div>
+      <div class="kcards">
+        {% for c in col.cards %}
+          <div class="kcard" data-pk="{{ c.pk }}" data-col="{{ group }}"
+               data-url="{{ url_for('user.cell_update', form_id=mf.id, pk=c.pk) }}"
+               {% if can_edit %}draggable="true"{% endif %}>
+            <div class="kcard-title">{{ record_link(view_table_id, c.pk, c.title) }}</div>
+            {% for e in c.extras %}<div class="muted kcard-x">{{ e }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% if can_edit %}<script src="{{ url_for('static', filename='kanban.js') }}" defer></script>{% endif %}
+{% endblock %}

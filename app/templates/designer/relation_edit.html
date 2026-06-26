@@ -1,0 +1,33 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}Edit relation · Biggy{% endblock %}
+{% block inner %}
+<h1>Edit relation
+  <span class="badge">{{ 'M:1' if rel.kind == 'm1' else 'M:N' }}</span></h1>
+<p class="muted">{{ from_t.label }} → {{ to_t.label }}</p>
+
+<div class="panel" style="max-width:620px">
+  <form method="post">
+    {{ form.hidden_tag() }}
+    {{ render_field(form.name) }}
+
+    <div class="field">
+      <label>Fields shown when choosing a <strong>{{ to_t.label }}</strong> record</label>
+      {{ form.to_display_field_ids(size=6) }}
+      <div class="help">Pick one or more (Ctrl/Cmd-click). Multiple fields are combined into the
+        option label, e.g. <code>Acme — a@acme.test</code>. Leave empty to use the table's default.</div>
+    </div>
+
+    {% if rel.kind == 'mn' %}
+    <div class="field">
+      <label>Fields shown when choosing a <strong>{{ from_t.label }}</strong> record</label>
+      {{ form.from_display_field_ids(size=6) }}
+      <div class="help">Used when this relation appears on a {{ from_t.label }} form.</div>
+    </div>
+    {% endif %}
+
+    <button class="btn primary" type="submit">Save</button>
+    <a class="btn" href="{{ url_for('designer.relations') }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

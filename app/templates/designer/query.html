@@ -1,0 +1,38 @@
+{% extends "designer/_base.html" %}
+{% block title %}SQL · Biggy{% endblock %}
+{% block inner %}
+<h1>SQL query</h1>
+<p class="muted">Read-only — only a single <code>SELECT</code> (or <code>WITH … SELECT</code>) runs.
+  Run to preview (first 500 rows) or export the full result as CSV.</p>
+
+<div class="panel">
+  <form method="post">
+    {{ form.hidden_tag() }}
+    <div class="field">
+      {{ form.sql(rows=8, placeholder="SELECT * FROM customer", style="font-family:monospace; max-width:100%") }}
+      {% for e in form.sql.errors %}<div class="err">{{ e }}</div>{% endfor %}
+    </div>
+    <button class="btn primary" type="submit" name="action" value="run">Run</button>
+    <button class="btn" type="submit" name="action" value="export">Export CSV</button>
+  </form>
+  {% if tables %}
+    <p class="help">Tables: {% for t in tables %}<code>{{ t }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</p>
+  {% endif %}
+</div>
+
+{% if result %}
+<div class="panel">
+  {% if result.truncated %}
+    <p class="muted">Showing the first 500 rows — use <strong>Export CSV</strong> for the full result.</p>
+  {% endif %}
+  <table class="grid">
+    <tr>{% for c in result.columns %}<th>{{ c }}</th>{% endfor %}</tr>
+    {% for row in result.rows %}
+      <tr>{% for v in row %}<td>{% if v is none %}<span class="muted">NULL</span>{% else %}{{ v }}{% endif %}</td>{% endfor %}</tr>
+    {% else %}
+      <tr><td colspan="{{ result.columns|length or 1 }}" class="muted">No rows.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% endblock %}

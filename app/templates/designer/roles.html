@@ -1,0 +1,36 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import delete_form %}
+{% block title %}Roles · Biggy{% endblock %}
+{% block inner %}
+<h1>Roles</h1>
+<p class="muted">Roles drive per-form and per-field <a href="{{ url_for('designer.permissions') }}">permissions</a>.
+  <strong>designer</strong> is the built-in admin (full access).</p>
+
+<div class="panel">
+  <table class="grid">
+    <tr><th>Name</th><th>Label</th><th>Users</th><th></th></tr>
+    {% for r in roles %}
+      <tr>
+        <td><code>{{ r.name }}</code></td>
+        <td>{{ r.label }}{% if r.builtin %} <span class="badge">built-in</span>{% endif %}</td>
+        <td>{{ counts.get(r.name, 0) }}</td>
+        <td class="actions">
+          {% if not r.builtin and not counts.get(r.name, 0) %}
+            {{ delete_form(url_for('designer.role_delete', role_id=r.id), 'Delete', 'Delete this role?') }}
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<h2>New role</h2>
+<div class="panel" style="max-width:480px">
+  <form method="post" class="toolbar" style="margin:0">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="text" name="name" placeholder="name (e.g. viewer)" required>
+    <input type="text" name="label" placeholder="Label (optional)">
+    <button class="btn primary" type="submit">Create role</button>
+  </form>
+</div>
+{% endblock %}

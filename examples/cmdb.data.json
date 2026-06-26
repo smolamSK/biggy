@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "tables": {
+    "team": [
+      {
+        "id": 1,
+        "name": "Platform"
+      },
+      {
+        "id": 2,
+        "name": "Payments"
+      }
+    ],
+    "environment": [
+      {
+        "id": 1,
+        "name": "Production"
+      },
+      {
+        "id": 2,
+        "name": "Staging"
+      },
+      {
+        "id": 3,
+        "name": "Development"
+      }
+    ],
+    "configuration_item": [
+      {
+        "id": 1,
+        "name": "web-01",
+        "hostname": "web-01.prod",
+        "ip_address": "10.0.1.11",
+        "ci_type": "server",
+        "status": "active",
+        "environment_id": 1,
+        "owner_team_id": 1
+      },
+      {
+        "id": 2,
+        "name": "web-02",
+        "hostname": "web-02.prod",
+        "ip_address": "10.0.1.12",
+        "ci_type": "server",
+        "status": "active",
+        "environment_id": 1,
+        "owner_team_id": 1
+      },
+      {
+        "id": 3,
+        "name": "pay-db",
+        "hostname": "pay-db.prod",
+        "ip_address": "10.0.2.20",
+        "ci_type": "database",
+        "status": "active",
+        "environment_id": 1,
+        "owner_team_id": 2
+      },
+      {
+        "id": 4,
+        "name": "stg-web",
+        "hostname": "web.stg",
+        "ip_address": "10.1.1.11",
+        "ci_type": "vm",
+        "status": "maintenance",
+        "environment_id": 2,
+        "owner_team_id": 1
+      }
+    ],
+    "application": [
+      {
+        "id": 1,
+        "name": "Storefront",
+        "criticality": "high",
+        "owner_team_id": 1
+      },
+      {
+        "id": 2,
+        "name": "Checkout",
+        "criticality": "critical",
+        "owner_team_id": 2
+      }
+    ],
+    "j_application_configuration_item": [
+      {
+        "application_id": 1,
+        "configuration_item_id": 1
+      },
+      {
+        "application_id": 1,
+        "configuration_item_id": 2
+      },
+      {
+        "application_id": 2,
+        "configuration_item_id": 3
+      }
+    ]
+  }
+}

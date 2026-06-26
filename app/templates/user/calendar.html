@@ -1,0 +1,44 @@
+{% extends "user/_base.html" %}
+{% from "_macros.html" import record_link with context %}
+{% block title %}{{ mf.title }} · Calendar{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">{{ mf.title }} <span class="muted">· {{ first.strftime('%B %Y') }}</span></h1>
+  <span style="flex:1"></span>
+  <a class="btn sm" href="{{ url_for('user.form_calendar', form_id=mf.id, date=field.phys_name, month='%04d-%02d'|format(prev.year, prev.month)) }}">‹ {{ prev.strftime('%b') }}</a>
+  <a class="btn sm" href="{{ url_for('user.form_calendar', form_id=mf.id, date=field.phys_name, month='%04d-%02d'|format(nxt.year, nxt.month)) }}">{{ nxt.strftime('%b') }} ›</a>
+  <label class="muted">By
+    <select onchange="location.href='{{ url_for('user.form_calendar', form_id=mf.id) }}?date=' + this.value">
+      {% for f in date_fields %}
+        <option value="{{ f.phys_name }}" {{ 'selected' if f.phys_name == field.phys_name }}>{{ f.label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <a class="btn" href="{{ url_for('user.form_list', form_id=mf.id) }}">List</a>
+  {% if has_enum %}<a class="btn" href="{{ url_for('user.form_kanban', form_id=mf.id) }}">Board</a>{% endif %}
+</div>
+
+<div class="panel">
+  <table class="cal">
+    <tr>{% for d in weekdays %}<th>{{ d }}</th>{% endfor %}</tr>
+    {% for week in weeks %}
+      <tr>
+        {% for day in week %}
+          <td class="{{ 'out' if day.month != first.month }} {{ 'today' if day == today }}">
+            <div class="daynum">
+              <span>{{ day.day }}</span>
+              {% if can_edit %}
+                <a class="kadd" title="Add on this day"
+                   href="{{ url_for('user.record_new', form_id=mf.id, **{field.phys_name: day.isoformat()}) }}">＋</a>
+              {% endif %}
+            </div>
+            {% for c in by_day.get(day.isoformat(), []) %}
+              <span class="chip">{{ record_link(view_table_id, c.pk, c.title) }}</span>
+            {% endfor %}
+          </td>
+        {% endfor %}
+      </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

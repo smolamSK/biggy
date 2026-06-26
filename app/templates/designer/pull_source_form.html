@@ -1,0 +1,104 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}Pull source · {{ src.name }}{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">Pull source → {{ table.label }}</h1>
+  <span style="flex:1"></span>
+  <a class="btn" href="{{ url_for('designer.pulls') }}">Back</a>
+</div>
+
+<div class="panel" style="max-width:760px">
+  <form method="post">
+    {{ form.hidden_tag() }}
+    {{ render_field(form.name) }}
+    <div class="field checkline">{{ form.active() }} <label style="margin:0">{{ form.active.label.text }}</label></div>
+    {{ render_field(form.user_id) }}
+
+    <h3>Source</h3>
+    {{ render_field(form.kind) }}
+    <p class="help"><strong>Biggy peer</strong> reads a remote table via a Connection's API.
+      <strong>Generic REST</strong> does a GET to any URL returning JSON.</p>
+    {{ render_field(form.connection_id) }}
+    {{ render_field(form.remote_table) }}
+    {{ render_field(form.url) }}
+    {{ render_field(form.headers) }}
+    {% if has_headers %}<p class="help">Headers are set — leave blank to keep them.</p>{% endif %}
+    {{ render_field(form.records_path) }}
+
+    <h3>Mapping</h3>
+    {{ render_field(form.mode) }}
+    {{ render_field(form.match_field) }}
+    <p class="help">Map each <em>incoming</em> JSON path (dotted, e.g. <code>customer.email</code>)
+      to a local field. Unmapped paths are ignored.</p>
+    <datalist id="src-cols">{% for c in remote_fields %}<option value="{{ c }}">{% endfor %}</datalist>
+    <datalist id="tgt-cols">{% for c in local_columns %}<option value="{{ c }}">{% endfor %}</datalist>
+    <table class="grid">
+      <tr><th>Source (remote JSON path)</th><th>→ Target field (local)</th></tr>
+      {% for m in field_map + [{'source': '', 'target': ''}] * 5 %}
+        <tr>
+          <td><input name="map_source" list="src-cols" value="{{ m.source }}" style="width:100%"></td>
+          <td><input name="map_target" list="tgt-cols" value="{{ m.target }}" style="width:100%"></td>
+        </tr>
+      {% endfor %}
+    </table>
+
+    <h3>Incremental &amp; schedule</h3>
+    <p class="help">A <em>cursor field</em> (e.g. <code>id</code> or <code>updated_at</code>) makes
+      each run fetch only records past the stored watermark; blank pulls everything every time.</p>
+    {{ render_field(form.cursor_field) }}
+    {% if src.watermark %}<p class="help">Current watermark: <code>{{ src.watermark }}</code>.</p>{% endif %}
+    {{ render_field(form.page_size) }}
+    {{ render_field(form.schedule_minutes) }}
+
+    <details style="margin-top:1rem">
+      <summary><strong>Advanced</strong> — auth, pagination, request templating, filter &amp; transforms</summary>
+      <p class="help">These apply mainly to the <em>Generic REST</em> kind. Placeholders
+        <code>{watermark}</code>, <code>{page}</code>, <code>{page_size}</code>, <code>{cursor}</code>
+        are substituted into the URL, params, headers and body.</p>
+
+      <h4>Auth</h4>
+      {{ render_field(form.auth_type) }}
+      {{ render_field(form.auth_secret) }}
+      <div class="pill-row">
+        <div style="flex:1">{{ render_field(form.auth_header) }}</div>
+        <div style="flex:1">{{ render_field(form.auth_username) }}</div>
+        <div style="flex:1">{{ render_field(form.auth_param) }}</div>
+      </div>
+
+      <h4>Request</h4>
+      {{ render_field(form.http_method) }}
+      {{ render_field(form.request_body) }}
+
+      <h4>Pagination</h4>
+      {{ render_field(form.pagination_style) }}
+      <div class="pill-row">
+        <div style="flex:1">{{ render_field(form.page_param) }}</div>
+        <div style="flex:1">{{ render_field(form.size_param) }}</div>
+        <div style="flex:1">{{ render_field(form.page_start) }}</div>
+      </div>
+      <div class="pill-row">
+        <div style="flex:2">{{ render_field(form.next_path) }}</div>
+        <div style="flex:1">{{ render_field(form.max_pages) }}</div>
+      </div>
+      {{ render_field(form.cursor_type) }}
+
+      <h4>Only import where (filter)</h4>
+      <div class="pill-row">
+        <div style="flex:2">{{ render_field(form.filter_field) }}</div>
+        <div style="flex:1">{{ render_field(form.filter_op) }}</div>
+        <div style="flex:2">{{ render_field(form.filter_value) }}</div>
+      </div>
+
+      <h4>Raw config (escape hatch)</h4>
+      <p class="help">JSON for anything the fields above don't cover — e.g.
+        <code>{"request":{"params":{"since":"{watermark}"}},"transforms":{"status":{"map":{"A":"Active"},"default":"new"}}}</code>.
+        Structured fields above override the keys they manage.</p>
+      {{ render_field(form.config_raw) }}
+    </details>
+
+    <button class="btn primary" type="submit">Save</button>
+    <a class="btn" href="{{ url_for('designer.pulls') }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

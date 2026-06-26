@@ -1,0 +1,160 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import render_field, delete_form, move_form, obj_link %}
+{% block title %}{{ table.label }} · Biggy{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">{{ table.label }} <span class="muted">({{ table.phys_name }})</span>
+    {% if not table.managed %}<span class="badge">external</span>{% endif %}
+    {% if source %}<span class="badge" title="Data source">⛁ {{ source.name }}</span>{% endif %}</h1>
+  <span style="flex:1"></span>
+  <a class="btn" href="{{ url_for('designer.field_permissions', table_id=table.id) }}">Field permissions</a>
+  {{ delete_form(url_for('designer.table_delete', table_id=table.id),
+                 label=('Unmap table' if not table.managed else 'Delete table'),
+                 confirm=('Unmap this external table? The real table is kept.' if not table.managed
+                          else 'Delete this table and all its data?')) }}
+</div>
+{% if table.description %}<p class="muted">{{ table.description }}</p>{% endif %}
+{% if not table.managed %}
+  <p class="help">This is an <strong>external</strong> table — Biggy maps it but never changes its
+    schema. You can build forms, views, relations, workflows and permissions on it; column add/edit/delete
+    is disabled.</p>
+{% endif %}
+
+<h2>Behaviour</h2>
+<div class="panel" style="max-width:620px">
+  <form method="post" action="{{ url_for('designer.table_flags', table_id=table.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field checkline"><input type="checkbox" name="track_audit" {{ 'checked' if table.track_audit }}>
+      <label style="margin:0">Track changes (created/updated by &amp; at, change history)</label></div>
+    <div class="field checkline"><input type="checkbox" name="soft_delete" {{ 'checked' if table.soft_delete }}>
+      <label style="margin:0">Soft delete (Trash &amp; restore instead of permanent delete)</label></div>
+    <div class="field checkline"><input type="checkbox" name="row_owned" {{ 'checked' if table.row_owned }}>
+      <label style="margin:0">Row ownership (users see &amp; edit only rows they created)</label></div>
+    <button class="btn primary" type="submit">Save options</button>
+  </form>
+  <p class="help">Enabling these adds managed columns to the table; existing rows keep NULL audit values.</p>
+</div>
+
+<h2>Fields</h2>
+<div class="panel">
+  <table class="grid">
+    <tr><th>Label</th><th>Column</th><th>Type</th><th>Null</th><th>Unique</th><th>Display</th><th>Order</th><th>Actions</th></tr>
+    <tr><td>ID</td><td>id</td><td>integer (PK)</td><td>no</td><td></td><td></td><td></td><td></td></tr>
+    {% for f in table.fields %}
+      <tr>
+        <td>{{ f.label }}</td>
+        <td><code>{{ f.phys_name }}</code></td>
+        <td>{{ type_label(f.data_type) }}{% if f.data_type == 'relation' %}
+          {% set rel_t = designer_tables | selectattr('id','equalto',f.related_table_id) | first %}
+          → {% if rel_t %}{{ obj_link('designer.table_view', 'table_id', rel_t.id, rel_t.phys_name) }}{% endif %}{% endif %}</td>
+        <td>{{ 'yes' if f.nullable else 'no' }}</td>
+        <td>{{ 'yes' if f.is_unique else '' }}</td>
+        <td>
+          {% if table.display_field_id == f.id %}<span class="badge">display</span>
+          {% else %}
+            <form class="inline" method="post" action="{{ url_for('designer.set_display_field', table_id=table.id, field_id=f.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn sm" type="submit">set</button>
+            </form>
+          {% endif %}
+        </td>
+        <td class="actions">
+          {{ move_form(url_for('designer.field_move', table_id=table.id, field_id=f.id, direction='up'), '↑') }}
+          {{ move_form(url_for('designer.field_move', table_id=table.id, field_id=f.id, direction='down'), '↓') }}
+        </td>
+        <td class="actions">
+          {% if table.managed %}
+            {% if f.data_type != 'relation' %}
+              <a class="btn sm" href="{{ url_for('designer.field_edit', table_id=table.id, field_id=f.id) }}">Edit</a>
+            {% endif %}
+            {{ delete_form(url_for('designer.field_delete', table_id=table.id, field_id=f.id),
+                           confirm='Drop column ' + f.phys_name + ' and its data?') }}
+          {% else %}<span class="muted">—</span>{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<h2>Unique constraints</h2>
+<div class="panel">
+  <table class="grid">
+    <tr><th>Columns</th><th></th></tr>
+    {% for u in uniques %}
+      <tr>
+        <td>{{ u.labels|join(' + ') }}</td>
+        <td class="actions">
+          {{ delete_form(url_for('designer.unique_delete', uid=u.u.id), 'Remove', 'Remove this constraint?') }}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="2" class="muted">None.</td></tr>
+    {% endfor %}
+  </table>
+  {% if table.managed %}
+  <form method="post" action="{{ url_for('designer.unique_add', table_id=table.id) }}" style="margin-top:.75rem">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <p class="help" style="margin:0 0 .4rem">Tick two or more columns that together must be unique:</p>
+    <div class="pill-row">
+      {% for f in table.fields if f.data_type not in ('relation','file','image','tags','json') %}
+        <label class="checkline" style="border:1px solid var(--line);border-radius:7px;padding:.2rem .5rem">
+          <input type="checkbox" name="field_ids" value="{{ f.id }}"> {{ f.label }}
+        </label>
+      {% endfor %}
+    </div>
+    <button class="btn primary" type="submit" style="margin-top:.5rem">Add constraint</button>
+  </form>
+  {% endif %}
+</div>
+
+{% if table.managed %}
+<h2>Add field</h2>
+<div class="panel" style="max-width:620px">
+  <form method="post" action="{{ url_for('designer.field_add', table_id=table.id) }}">
+    {{ field_form.hidden_tag() }}
+    {{ render_field(field_form.phys_name) }}
+    {{ render_field(field_form.label) }}
+    {{ render_field(field_form.data_type) }}
+    <div class="pill-row">
+      <div style="flex:1">{{ render_field(field_form.length) }}</div>
+      <div style="flex:1">{{ render_field(field_form.precision) }}</div>
+      <div style="flex:1">{{ render_field(field_form.scale) }}</div>
+    </div>
+    {{ render_field(field_form.enum_options) }}
+    {{ render_field(field_form.formula) }}
+    {{ render_field(field_form.result_type) }}
+    {{ render_field(field_form.default_value) }}
+    {{ render_field(field_form.nullable) }}
+    {{ render_field(field_form.is_unique) }}
+    <h3>Validation (optional)</h3>
+    <div class="pill-row">
+      <div style="flex:1">{{ render_field(field_form.min_length) }}</div>
+      <div style="flex:1">{{ render_field(field_form.max_length) }}</div>
+    </div>
+    <div class="pill-row">
+      <div style="flex:1">{{ render_field(field_form.min_value) }}</div>
+      <div style="flex:1">{{ render_field(field_form.max_value) }}</div>
+    </div>
+    {{ render_field(field_form.pattern) }}
+    <button class="btn primary" type="submit">Add field</button>
+  </form>
+  <p class="help">Length applies to short text; precision/scale to decimals; choices to enum (one per line).
+  Validation rules apply in user forms and CSV import. To link another table, use
+  <a href="{{ url_for('designer.relations') }}">Relations</a>. A <strong>Formula</strong> field is
+  read-only and computed from this record (e.g. <code>qty * price</code>) or related tables
+  (<code>lookup('customer_id','region')</code>, <code>rollup('orders','total','sum')</code>).</p>
+</div>
+{% endif %}
+
+<h2>Relations</h2>
+<div class="panel">
+  {% if relations %}
+    <ul>
+      {% for r in relations %}
+        <li>{{ obj_link('designer.relation_edit', 'relation_id', r.id, r.name) }} <span class="badge">{{ 'M:1' if r.kind == 'm1' else 'M:N' }}</span></li>
+      {% endfor %}
+    </ul>
+  {% else %}<p class="muted">No relations involve this table.</p>{% endif %}
+  <a class="btn" href="{{ url_for('designer.relations') }}">Manage relations</a>
+</div>
+{% endblock %}

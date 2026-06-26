@@ -1,0 +1,18 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}{{ title }} · Biggy{% endblock %}
+{% block inner %}
+<h1>{{ title }}</h1>
+<div class="panel" style="max-width:560px">
+  <form method="post">
+    {{ form.hidden_tag() }}
+    {{ render_field(form.name) }}
+    {{ render_field(form.title) }}
+    {{ render_field(form.table_id) }}
+    {{ render_field(form.purpose) }}
+    {{ render_field(form.description) }}
+    <button class="btn primary" type="submit">Save</button>
+    <a class="btn" href="{{ url_for('designer.forms') }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

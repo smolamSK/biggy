@@ -1,0 +1,143 @@
+{% extends "user/_base.html" %}
+{% from "_macros.html" import render_field, delete_form, record_link with context %}
+{% block title %}{{ mode }} · {{ mf.title }}{% endblock %}
+{% block inner %}
+<h1>{{ mode }} — {{ mf.title }}</h1>
+{% if mf.description %}<p class="muted">{{ mf.description }}</p>{% endif %}
+
+{% macro render_item(item) %}
+  {% if item.kind == 'section' %}{# section breaks are turned into sub-tabs #}
+  {% elif item.kind == 'file' %}
+    {{ file_field(item) }}
+  {% else %}
+    {% set field = form[item.name] %}
+    {{ render_field(field) }}
+    {% if item.help_text %}<div class="help" style="margin-top:-.6rem">{{ item.help_text }}</div>{% endif %}
+  {% endif %}
+{% endmacro %}
+
+{% macro details_form() %}
+  <div class="panel" style="max-width:620px">
+    <form method="post" enctype="multipart/form-data">
+      {{ form.hidden_tag() }}
+      {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+      {% if sections %}
+        <div class="tabs-wrap" data-tabs>
+          <div class="tabs" role="tablist">
+            {% for g in sections %}
+              <button type="button" class="tab {{ 'active' if loop.first }}" data-tab="sec-{{ loop.index }}">{{ g.label }}</button>
+            {% endfor %}
+          </div>
+          {% for g in sections %}
+            <div class="tab-panel {{ 'active' if loop.first }}" id="sec-{{ loop.index }}">
+              {% for item in g.fields %}{{ render_item(item) }}{% endfor %}
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        {% for item in items %}{{ render_item(item) }}{% endfor %}
+        {% if not items %}<p class="muted">This form has no items. Add some in Designer mode.</p>{% endif %}
+      {% endif %}
+      <button class="btn primary" type="submit">Save</button>
+      <a class="btn" href="{{ next or url_for('user.form_list', form_id=mf.id) }}">Cancel</a>
+    </form>
+  </div>
+{% endmacro %}
+
+{% macro file_field(item) %}
+  {% set atts = attachments.get(item.meta.id, []) %}
+  {% set is_image = item.meta.data_type == 'image' %}
+  <div class="field">
+    <label>{{ item.label }}</label>
+    {% if atts %}
+      <div class="attach-list">
+        {% for a in atts %}
+          <div class="attach">
+            {% if is_image %}
+              <a href="{{ url_for('user.attachment', att_id=a.id) }}" target="_blank">
+                <img class="thumb" src="{{ url_for('user.attachment', att_id=a.id) }}" alt="{{ a.original_name }}"></a>
+            {% else %}
+              <a href="{{ url_for('user.attachment', att_id=a.id) }}" target="_blank">{{ a.original_name }}</a>
+            {% endif %}
+            <label class="muted rm"><input type="checkbox" name="rm_{{ item.meta.id }}" value="{{ a.id }}"> remove</label>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    <input type="file" name="file_{{ item.meta.id }}" multiple
+           {% if is_image %}accept="image/*"{% endif %}>
+    {% if not pk %}<div class="help">Files are saved together with the record.</div>{% endif %}
+    {% if item.help_text %}<div class="help">{{ item.help_text }}</div>{% endif %}
+  </div>
+{% endmacro %}
+
+{% macro related_table(r) %}
+  <div class="toolbar">
+    <h2 style="margin:0">{{ r.label }} <span class="muted">({{ r.total }})</span></h2>
+    <span style="flex:1"></span>
+    {% if r.can_edit %}<a class="btn primary" href="{{ r.add_url }}">+ Add {{ r.label }}</a>{% endif %}
+  </div>
+  <table class="grid">
+    <tr>{% for c in r.columns %}<th>{{ c }}</th>{% endfor %}<th></th></tr>
+    {% for row in r.rows %}
+      <tr>
+        {% for c in r.columns %}<td>
+          {%- if loop.first -%}{{ record_link(r.table_id, row.id, (row.get(c) if row.get(c) is not none else '#' ~ row.id)) }}
+          {%- else -%}{{ row.get(c) if row.get(c) is not none else '' }}{%- endif -%}
+        </td>{% endfor %}
+        <td class="actions">
+          {% if r.can_edit %}
+            <a class="btn sm" href="{{ url_for('user.record_edit', form_id=r.form_id, pk=row.id, next=r.next) }}">Edit</a>
+            <a class="btn danger sm" href="{{ url_for('user.record_delete_confirm', form_id=r.form_id, pk=row.id, next=r.next) }}">Delete</a>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="{{ r.columns|length + 1 }}" class="muted">None yet.</td></tr>
+    {% endfor %}
+  </table>
+{% endmacro %}
+
+{% macro history_table() %}
+  <table class="grid">
+    <tr><th>When</th><th>Action</th><th>By</th><th>Changes</th></tr>
+    {% for h in history %}
+      <tr>
+        <td class="muted">{{ h.at }}</td>
+        <td><span class="badge">{{ h.action }}</span></td>
+        <td>{{ h.user }}</td>
+        <td>{% if h.changes %}{% for col, pair in h.changes.items() %}
+          <div><code>{{ col }}</code>: {{ pair[0] if pair[0] is not none else '∅' }} → {{ pair[1] if pair[1] is not none else '∅' }}</div>
+        {% endfor %}{% endif %}</td>
+      </tr>
+    {% endfor %}
+  </table>
+{% endmacro %}
+
+{% if related or history %}
+  <div class="tabs-wrap" data-tabs>
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab active" data-tab="tab-details">Details</button>
+      {% for r in related %}
+        <button type="button" class="tab" data-tab="tab-rel-{{ loop.index }}">{{ r.label }} ({{ r.total }})</button>
+      {% endfor %}
+      {% if history %}
+        <button type="button" class="tab" data-tab="tab-history">History ({{ history|length }})</button>
+      {% endif %}
+    </div>
+
+    <div class="tab-panel active" id="tab-details">{{ details_form() }}</div>
+    {% for r in related %}
+      <div class="tab-panel" id="tab-rel-{{ loop.index }}">{{ related_table(r) }}</div>
+    {% endfor %}
+    {% if history %}
+      <div class="tab-panel" id="tab-history">{{ history_table() }}</div>
+    {% endif %}
+  </div>
+{% else %}
+  {{ details_form() }}
+{% endif %}
+
+<script src="{{ url_for('static', filename='dependent.js') }}" defer></script>
+<script src="{{ url_for('static', filename='tabs.js') }}" defer></script>
+{% endblock %}

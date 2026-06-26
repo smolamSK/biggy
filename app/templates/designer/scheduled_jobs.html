@@ -1,0 +1,39 @@
+{% extends "designer/_base.html" %}
+{% block title %}Scheduled jobs · Biggy{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">Scheduled jobs</h1>
+  <span style="flex:1"></span>
+  <form method="post" action="{{ url_for('designer.scheduled_run_all') }}" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn primary" type="submit">Run all due now</button>
+  </form>
+</div>
+<p class="muted">Every time-driven job — scheduled triggers (reminders/escalations), scheduled
+  feeds, and report email digests. These run from <code>flask run-jobs</code> (cron) or the
+  in-process ticker (<code>SCHEDULER_ENABLED</code>). Edit a job from its own page.</p>
+
+<div class="panel">
+  <table class="grid">
+    <tr><th>Kind</th><th>Name</th><th>On</th><th>Every</th><th>Active</th><th>Last run</th><th></th></tr>
+    {% for j in jobs %}
+      <tr>
+        <td><span class="badge">{{ j.kind }}</span></td>
+        <td><a href="{{ j.edit_url }}">{{ j.name }}</a></td>
+        <td class="muted">{{ j.where }}</td>
+        <td>{{ j.every }} min</td>
+        <td>{{ 'yes' if j.active else 'no' }}</td>
+        <td class="muted">{{ j.last.strftime('%Y-%m-%d %H:%M') if j.last else '— never —' }}</td>
+        <td class="actions">
+          <form method="post" action="{{ j.run_url }}" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn sm" type="submit">Run now</button>
+          </form>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="muted">No scheduled jobs yet. Add a schedule to a trigger, feed or report.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

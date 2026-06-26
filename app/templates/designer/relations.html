@@ -1,0 +1,32 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import delete_form, obj_link %}
+{% block title %}Relations · Biggy{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">Relations</h1>
+  <span style="flex:1"></span>
+  <a class="btn primary" href="{{ url_for('designer.relation_new_m1') }}">+ Many-to-one</a>
+  <a class="btn primary" href="{{ url_for('designer.relation_new_mn') }}">+ Many-to-many</a>
+</div>
+<div class="panel">
+  {% if relations %}
+  <table class="grid">
+    <tr><th>Name</th><th>Type</th><th>From</th><th>To</th><th>Physical</th><th></th></tr>
+    {% for r in relations %}
+      <tr>
+        <td>{{ r.name }}</td>
+        <td><span class="badge">{{ 'M:1' if r.kind == 'm1' else 'M:N' }}</span></td>
+        <td>{% if r.from_table_id in tmap %}{{ obj_link('designer.table_view', 'table_id', r.from_table_id, tmap[r.from_table_id].label) }}{% endif %}</td>
+        <td>{% if r.to_table_id in tmap %}{{ obj_link('designer.table_view', 'table_id', r.to_table_id, tmap[r.to_table_id].label) }}{% endif %}</td>
+        <td><code>{{ r.junction_phys_name or ('FK column') }}</code></td>
+        <td class="actions">
+          <a class="btn sm" href="{{ url_for('designer.relation_edit', relation_id=r.id) }}">Edit</a>
+          {{ delete_form(url_for('designer.relation_delete', relation_id=r.id),
+                        confirm='Delete this relation?') }}
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">No relations yet.</p>{% endif %}
+</div>
+{% endblock %}

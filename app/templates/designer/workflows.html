@@ -1,0 +1,48 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import delete_form, obj_link %}
+{% block title %}Workflows · Biggy{% endblock %}
+{% block inner %}
+<h1>Status workflows</h1>
+<p class="muted">A workflow defines the allowed transitions between the states of an enum field.</p>
+
+<div class="panel">
+  <table class="grid">
+    <tr><th>Table</th><th>Field</th><th>States</th><th>Transitions</th><th>Initial</th><th></th></tr>
+    {% for it in items %}
+      <tr>
+        <td>{% if it.table %}{{ obj_link('designer.table_view', 'table_id', it.table.id, it.table.label) }}{% else %}—{% endif %}</td>
+        <td>{% if it.field %}{{ obj_link('designer.table_view', 'table_id', it.table.id if it.table, it.field.label) }} <code>{{ it.field.phys_name }}</code>{% endif %}</td>
+        <td class="muted">{{ it.states|join(', ') }}</td>
+        <td>{{ it.n_transitions }}</td>
+        <td>{{ it.wf.initial_state or '—' }}</td>
+        <td class="actions">
+          <a class="btn sm" href="{{ url_for('designer.workflow_edit', wf_id=it.wf.id) }}">Edit</a>
+          {{ delete_form(url_for('designer.workflow_delete', wf_id=it.wf.id), 'Delete', 'Delete this workflow?') }}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="muted">No workflows yet.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<h2>Create a workflow</h2>
+<div class="panel">
+  {% if candidates %}
+    {% for c in candidates %}
+      <div style="margin:.25rem 0">
+        <strong>{{ c.table.label }}</strong>
+        {% for f in c.fields %}
+          <form method="post" class="inline" style="margin-left:.4rem">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="field_id" value="{{ f.id }}">
+            <button class="btn sm" type="submit">+ {{ f.label }}</button>
+          </form>
+        {% endfor %}
+      </div>
+    {% endfor %}
+  {% else %}
+    <p class="muted">No enum fields available. Add an enum field to a table first — each can have one workflow.</p>
+  {% endif %}
+</div>
+{% endblock %}

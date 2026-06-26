@@ -1,0 +1,33 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import obj_link %}
+{% block title %}Permissions · Biggy{% endblock %}
+{% block inner %}
+<h1>Permissions</h1>
+<p class="muted">Access to each form per role (designers always have full access). Default is
+  <em>write</em>, so existing apps are unaffected until you change it. Manage roles under
+  <a href="{{ url_for('designer.roles') }}">Roles</a>.</p>
+<div class="panel">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <table class="grid">
+      <tr><th>Form</th><th>Table</th>{% for role in roles %}<th>{{ role.label }}</th>{% endfor %}</tr>
+      {% for r in rows %}
+        <tr>
+          <td>{{ obj_link('designer.form_edit', 'form_id', r.form.id, r.form.title) }}</td>
+          <td class="muted">{{ obj_link('designer.table_view', 'table_id', r.form.table.id, r.form.table.phys_name) }}</td>
+          {% for role in roles %}
+            <td>
+              <select name="access_{{ role.name }}_{{ r.form.id }}">
+                {% for lv in levels %}<option value="{{ lv }}" {{ 'selected' if r.access[role.name] == lv }}>{{ lv }}</option>{% endfor %}
+              </select>
+            </td>
+          {% endfor %}
+        </tr>
+      {% else %}
+        <tr><td colspan="{{ roles|length + 2 }}" class="muted">No forms yet.</td></tr>
+      {% endfor %}
+    </table>
+    {% if rows and roles %}<button class="btn primary" type="submit" style="margin-top:1rem">Save permissions</button>{% endif %}
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import delete_form, move_form, obj_link %}
+{% block title %}Menus · Biggy{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">Menus</h1>
+  <span style="flex:1"></span>
+  <a class="btn primary" href="{{ url_for('designer.menu_new') }}">+ New item</a>
+</div>
+<div class="panel">
+  {% macro render_node(node) %}
+    <li>
+      <strong>
+        {%- if node.kind == 'form' -%}{{ obj_link('designer.form_edit', 'form_id', node.target_form_id, node.label) }}
+        {%- elif node.kind == 'list' -%}{{ obj_link('designer.table_view', 'table_id', node.target_table_id, node.label) }}
+        {%- else -%}{{ node.label }}{%- endif -%}
+      </strong>
+      <span class="badge">{{ node.kind }}</span>
+      {{ move_form(url_for('designer.menu_move', menu_id=node.id, direction='up'), '↑') }}
+      {{ move_form(url_for('designer.menu_move', menu_id=node.id, direction='down'), '↓') }}
+      <a class="btn sm" href="{{ url_for('designer.menu_edit', menu_id=node.id) }}">Edit</a>
+      {{ delete_form(url_for('designer.menu_delete', menu_id=node.id), confirm='Delete this menu item?') }}
+      {% if node.children %}
+        <ul>{% for c in node.children %}{{ render_node(c) }}{% endfor %}</ul>
+      {% endif %}
+    </li>
+  {% endmacro %}
+  {% if roots %}
+    <ul>{% for r in roots %}{{ render_node(r) }}{% endfor %}</ul>
+  {% else %}<p class="muted">No menu items yet.</p>{% endif %}
+</div>
+{% endblock %}

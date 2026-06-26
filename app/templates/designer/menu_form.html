@@ -1,0 +1,23 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}{{ title }} · Biggy{% endblock %}
+{% block inner %}
+<h1>{{ title }}</h1>
+<div class="panel" style="max-width:560px">
+  <form method="post">
+    {{ form.hidden_tag() }}
+    {{ render_field(form.label) }}
+    {{ render_field(form.kind) }}
+    {{ render_field(form.parent_id) }}
+    {{ render_field(form.target_form_id) }}
+    {{ render_field(form.target_table_id) }}
+    {{ render_field(form.target_dashboard_id) }}
+    {{ render_field(form.position) }}
+    {{ render_field(form.icon) }}
+    <button class="btn primary" type="submit">Save</button>
+    <a class="btn" href="{{ url_for('designer.menus') }}">Cancel</a>
+  </form>
+  <p class="help">Kind <em>Group</em> is a heading; <em>Form</em> links to a form; <em>List view</em>
+    opens a table's records; <em>Dashboard</em> opens a shared dashboard.</p>
+</div>
+{% endblock %}

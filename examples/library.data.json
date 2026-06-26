@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "tables": {
+    "author": [
+      {
+        "id": 1,
+        "name": "Ursula K. Le Guin"
+      },
+      {
+        "id": 2,
+        "name": "Carl Sagan"
+      },
+      {
+        "id": 3,
+        "name": "Mary Shelley"
+      }
+    ],
+    "book": [
+      {
+        "id": 1,
+        "title": "A Wizard of Earthsea",
+        "isbn": "9780553262506",
+        "genre": "fiction",
+        "copies": 3,
+        "author_id": 1
+      },
+      {
+        "id": 2,
+        "title": "Cosmos",
+        "isbn": "9780345539434",
+        "genre": "science",
+        "copies": 2,
+        "author_id": 2
+      },
+      {
+        "id": 3,
+        "title": "Frankenstein",
+        "isbn": "9780486282114",
+        "genre": "fiction",
+        "copies": 4,
+        "author_id": 3
+      }
+    ],
+    "member": [
+      {
+        "id": 1,
+        "name": "Ada Lovelace",
+        "email": "ada@example.com",
+        "joined": "2023-02-01"
+      },
+      {
+        "id": 2,
+        "name": "Alan Turing",
+        "email": "alan@example.com",
+        "joined": "2023-05-20"
+      }
+    ],
+    "loan": [
+      {
+        "id": 1,
+        "loaned_on": "2024-01-10",
+        "due_on": "2024-01-24",
+        "returned_on": "2024-01-20",
+        "book_id": 1,
+        "member_id": 1
+      },
+      {
+        "id": 2,
+        "loaned_on": "2024-02-05",
+        "due_on": "2024-02-19",
+        "returned_on": null,
+        "book_id": 2,
+        "member_id": 2
+      }
+    ]
+  }
+}

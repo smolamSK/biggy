@@ -1,0 +1,23 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}Connection · {{ conn.name }}{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">Connection — {{ conn.name }}</h1>
+  <span style="flex:1"></span>
+  <a class="btn" href="{{ url_for('designer.connections') }}">Back</a>
+</div>
+
+<div class="panel" style="max-width:620px">
+  <form method="post">
+    {{ form.hidden_tag() }}
+    {{ render_field(form.name) }}
+    {{ render_field(form.base_url) }}
+    {{ render_field(form.token) }}
+    <p class="help">Leave the token blank to keep the current one.</p>
+    <div class="field checkline">{{ form.active() }} <label style="margin:0">{{ form.active.label.text }}</label></div>
+    <button class="btn primary" type="submit">Save</button>
+    <a class="btn" href="{{ url_for('designer.connections') }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

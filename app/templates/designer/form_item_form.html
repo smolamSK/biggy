@@ -1,0 +1,26 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}Edit item · Biggy{% endblock %}
+{% block inner %}
+<h1>Edit form item</h1>
+<p class="muted">{{ mf.title }}</p>
+<div class="panel" style="max-width:560px">
+  <form method="post">
+    {{ form.hidden_tag() }}
+    {{ render_field(form.label_override) }}
+    {{ render_field(form.help_text) }}
+    {{ render_field(form.required) }}
+    {{ render_field(form.readonly) }}
+    {% if is_relation %}
+      <h3>Dependent dropdown (optional)</h3>
+      <p class="help">Filter this picker by another field on the form. e.g. set
+        <em>Filter by = Company</em> so only that company's records show. <em>Match on</em> is
+        auto-detected; set it only if the target table links to the filter table more than once.</p>
+      {{ render_field(form.parent_field_id) }}
+      {{ render_field(form.filter_field_id) }}
+    {% endif %}
+    <button class="btn primary" type="submit">Save</button>
+    <a class="btn" href="{{ url_for('designer.form_edit', form_id=mf.id) }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

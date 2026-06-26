@@ -1,0 +1,53 @@
+{% extends "user/_base.html" %}
+{% block title %}Home · Biggy{% endblock %}
+{% block inner %}
+<h1>Welcome</h1>
+<div class="panel">
+  {% if has_forms %}
+    <p>Choose an item from the menu on the left to view and manage your data.</p>
+  {% else %}
+    <p class="muted">No forms have been defined yet.</p>
+    {% if current_user.is_designer %}
+      <p><a class="btn primary" href="{{ url_for('designer.dashboard') }}">Go to Designer mode</a> to create tables and forms.</p>
+    {% else %}
+      <p>Ask a designer to set up forms and menus.</p>
+    {% endif %}
+  {% endif %}
+</div>
+
+{% if shared or personal %}
+<div class="panel">
+  {% if shared %}<p><strong>Dashboards:</strong>
+    {% for d in shared %}<a class="btn sm" href="{{ url_for('user.dashboard_view', dash_id=d.id) }}">{{ d.name }}</a> {% endfor %}</p>{% endif %}
+  {% if personal %}<p><strong>Mine:</strong>
+    {% for d in personal %}<a class="btn sm" href="{{ url_for('user.dashboard_view', dash_id=d.id) }}">{{ d.name }}</a> {% endfor %}
+    <a class="btn sm" href="{{ url_for('user.my_dashboards') }}">Manage…</a></p>{% endif %}
+</div>
+{% endif %}
+
+{% if tiles %}
+<h2>Pinned reports</h2>
+<div class="cards">
+  {% for t in tiles %}
+    <div class="card">
+      <div class="toolbar" style="margin:0 0 .4rem">
+        <strong><a href="{{ url_for('user.report', table_id=t.table.id) }}?{{ t.report.query }}">{{ t.report.name }}</a></strong>
+        <span style="flex:1"></span>
+        <form method="post" action="{{ url_for('user.report_pin', report_id=t.report.id) }}" class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn sm" title="Unpin from dashboard" style="padding:0 .35rem">📌</button>
+        </form>
+      </div>
+      {% if t.chart != 'table' %}
+        <div class="js-chart" data-type="{{ t.chart }}">
+          <script type="application/json">{{ t.chart_data|tojson }}</script>
+        </div>
+      {% else %}
+        <p class="muted">Open to view the table.</p>
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>
+<script src="{{ url_for('static', filename='charts.js') }}" defer></script>
+{% endif %}
+{% endblock %}

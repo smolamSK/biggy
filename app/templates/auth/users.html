@@ -1,0 +1,26 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import delete_form %}
+{% block title %}Users · Biggy{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">Users</h1>
+  <span class="spacer" style="flex:1"></span>
+  <a class="btn primary" href="{{ url_for('auth.user_new') }}">+ New user</a>
+</div>
+<div class="panel">
+  <table class="grid">
+    <tr><th>Username</th><th>Role</th><th>Active</th><th></th></tr>
+    {% for u in users %}
+      <tr>
+        <td>{{ u.username }}</td>
+        <td><span class="badge">{{ u.role }}</span></td>
+        <td>{{ 'yes' if u.is_active_flag else 'no' }}</td>
+        <td class="actions">
+          <a class="btn sm" href="{{ url_for('auth.user_edit', user_id=u.id) }}">Edit</a>
+          {{ delete_form(url_for('auth.user_delete', user_id=u.id), confirm='Delete this user?') }}
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

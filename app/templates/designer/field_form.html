@@ -1,0 +1,49 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}Edit field · Biggy{% endblock %}
+{% block inner %}
+<h1>Edit field <span class="muted">{{ table.label }}.{{ field.phys_name }}</span></h1>
+<div class="panel" style="max-width:640px">
+  <form method="post">
+    {{ form.hidden_tag() }}
+    <input type="hidden" name="data_type" value="{{ field.data_type }}">
+    <div class="field">
+      <label>Type</label>
+      <div class="muted"><code>{{ field.data_type }}</code> — the data type can't be changed here.</div>
+    </div>
+    {{ render_field(form.phys_name) }}
+    {{ render_field(form.label) }}
+    <div class="pill-row">
+      <div style="flex:1">{{ render_field(form.length) }}</div>
+      <div style="flex:1">{{ render_field(form.precision) }}</div>
+      <div style="flex:1">{{ render_field(form.scale) }}</div>
+    </div>
+    {% if field.data_type in ('enum', 'tags') %}{{ render_field(form.enum_options) }}{% endif %}
+    {% if field.data_type == 'formula' %}
+      {{ render_field(form.formula) }}
+      {{ render_field(form.result_type) }}
+      <p class="help">Reference this table's columns by name, e.g. <code>qty * price</code>,
+        <code>first &amp; ' ' &amp; last</code>, <code>today() - created</code>. Related tables:
+        <code>lookup('customer_id', 'region')</code> (parent field) and
+        <code>rollup('orders', 'total', 'sum')</code> (count/sum/avg/min/max of linked records).</p>
+    {% endif %}
+    {{ render_field(form.default_value) }}
+    {{ render_field(form.nullable) }}
+    {{ render_field(form.is_unique) }}
+    <h3>Validation (optional)</h3>
+    <div class="pill-row">
+      <div style="flex:1">{{ render_field(form.min_length) }}</div>
+      <div style="flex:1">{{ render_field(form.max_length) }}</div>
+    </div>
+    <div class="pill-row">
+      <div style="flex:1">{{ render_field(form.min_value) }}</div>
+      <div style="flex:1">{{ render_field(form.max_value) }}</div>
+    </div>
+    {{ render_field(form.pattern) }}
+    <button class="btn primary" type="submit">Save</button>
+    <a class="btn" href="{{ url_for('designer.table_view', table_id=table.id) }}">Cancel</a>
+  </form>
+  <p class="help">Renaming the column or changing length/nullable/unique alters the real column —
+    existing data may be truncated or rejected by the database.</p>
+</div>
+{% endblock %}

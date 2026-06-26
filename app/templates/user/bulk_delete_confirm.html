@@ -1,0 +1,22 @@
+{% extends "user/_base.html" %}
+{% block title %}Delete selected · Biggy{% endblock %}
+{% block inner %}
+<h1>Delete {{ ids|length }} {{ mf.table.label }} record(s)?</h1>
+
+<div class="panel" style="max-width:680px">
+  {% if hard %}
+    <p>This <strong>permanently deletes</strong> the selected record(s). This cannot be undone.</p>
+  {% else %}
+    <p>This moves the selected record(s) to <strong>Trash</strong> (restorable). Each is
+      <strong>removed from all related objects</strong>: links are dropped and references are cleared.</p>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('user.bulk_delete_run', form_id=mf.id) }}" style="margin-top:1rem">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+    {% for i in ids %}<input type="hidden" name="ids" value="{{ i }}">{% endfor %}
+    <button class="btn danger" type="submit">{{ 'Delete permanently' if hard else 'Delete' }}</button>
+    <a class="btn" href="{{ next or url_for('user.form_list', form_id=mf.id) }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

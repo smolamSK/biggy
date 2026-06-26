@@ -1,0 +1,32 @@
+{% extends "user/_base.html" %}
+{% from "_macros.html" import delete_form %}
+{% block title %}Trash · {{ mf.title }}{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">{{ mf.title }} — Trash <span class="muted">({{ total }})</span></h1>
+  <span style="flex:1"></span>
+  <a class="btn" href="{{ url_for('user.form_list', form_id=mf.id) }}">Back to list</a>
+</div>
+<div class="panel">
+  <table class="grid">
+    <tr>{% for c in columns %}<th>{{ c.label }}</th>{% endfor %}<th>Actions</th></tr>
+    {% for row in rows %}
+      <tr>
+        {% for c in columns %}<td>{% set v = row.get(c.column) %}{{ v if v is not none else '' }}</td>{% endfor %}
+        <td class="actions">
+          {% if can_view(mf.table.id) %}
+            <a class="btn sm" href="{{ url_for('user.record_view', table_id=mf.table.id, pk=row.id) }}">View</a>
+          {% endif %}
+          <form method="post" action="{{ url_for('user.record_restore', form_id=mf.id, pk=row.id) }}" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn sm" type="submit">Restore</button>
+          </form>
+          <a class="btn danger sm" href="{{ url_for('user.record_destroy_confirm', form_id=mf.id, pk=row.id) }}">Delete forever</a>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="{{ columns|length + 1 }}" class="muted">Trash is empty.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

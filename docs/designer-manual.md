@@ -1,0 +1,151 @@
+# Biggy — Designer Manual
+
+A quickstart for **Designer mode**: building the data model, forms, and menus that
+power **User mode**. Everything you define is stored as metadata **and** turned
+into real database tables, so your data lives in genuine, query-able tables with
+real foreign keys.
+
+## The two modes
+
+The top bar links switch between **Designer** (build) and **User mode** (use what
+you built). Designer mode is available to accounts with the **designer** role;
+manage accounts under **Users**. The left sidebar groups the designer tools:
+**Model**, **Interface**, **Data**, **Integrations**, **Admin**, and your
+**Tables**.
+
+## Quickstart: from nothing to a working screen
+
+Four steps take you from an empty app to a usable form:
+
+1. **Create a table** — *Tables → ＋ New table*. Give it an identifier
+   (`lowercase_with_underscores`) and a label, then **add fields**. By default a
+   table gets an auto-increment `id` key; use the **primary-key chooser** if you
+   need a natural key (e.g. a `code` column you enter yourself) instead.
+2. **Add fields** — choose a type and options for each column (see below).
+3. **Build a form** — *Interface → Forms → New*, bind it to your table, and add
+   the fields to show.
+4. **Add it to a menu** — *Interface → Menus*, add your form (or a table's list
+   view) so it appears in User mode.
+
+Switch to **User mode** and your screen is live.
+
+## Tables & fields
+
+Open a table to add, edit, reorder (▲▼), or drop fields. Each field has a **type**:
+
+- **Text (short / long)**, **Integer / Big integer**, **Decimal / Float**,
+  **Boolean**, **Date / Date & time / Time**.
+- **Choice list (enum)** and **Tags (multi-select)** — supply the options, one per
+  line.
+- **Email**, **URL**, **Phone** — validated and rendered as clickable links.
+- **Currency**, **Percent** — numeric with formatted display.
+- **JSON** — stores/validates a JSON value.
+- **Auto-number** — a generated sequence (e.g. `INV-0001`); read-only on forms.
+- **Formula** — a value computed from this row (and **related tables** via
+  `lookup()` / `rollup()`); recalculated automatically on save. Read-only.
+- **Image / File** — uploads, shown as a thumbnail or download link.
+
+Per-field options include **length / precision / scale**, **nullable**,
+**unique**, a **default value**, and **validation rules** (min/max length,
+number range, regex pattern). Defaults can use tokens — `now`, `today`,
+`current_user` — filled in automatically when a record is created.
+
+Other table-level controls:
+
+- **Display field** — the column used to label this table's records in pickers.
+- **Behaviour flags** — turn on **audit** (change history), **soft delete**
+  (Trash + restore), and **row ownership** (users see only their own rows).
+- **Unique constraints** — add a **composite** (multi-column) unique rule.
+
+## Relations
+
+*Model → Relations*:
+
+- **Many-to-one** — adds a foreign-key column on the "from" table (e.g. an order's
+  *customer*). Set the on-delete behaviour.
+- **Many-to-many** — creates a junction table linking two tables.
+
+For each relation you can choose which fields **label** the related record in
+pickers. See the whole model visually under *Model → Diagram* (an ER diagram).
+
+## Forms
+
+*Interface → Forms*. A form is bound to one table and has a **purpose**:
+
+- **Data entry** — the add/edit form used in User mode.
+- **View** — the read-only record page.
+
+Add **items** to a form: **fields**, **many-to-many** pickers, and **section
+headings** to group the layout. Per item you can set a label override, help text,
+**required**, **read-only**, and — for relation items — a **dependent picker**
+(filter this drop-down by the value of another field). Reorder items with ▲▼.
+
+## Menus
+
+*Interface → Menus*. Build the User-mode sidebar from **groups** (headings) and
+links to a **form** or a **list view** of a table. Order them, nest them under
+groups, and add an optional icon.
+
+## Existing databases & multiple sources
+
+- **Data sources** (*Data → Data sources*) — register another database (MariaDB,
+  SQLite, …). New tables can be created in it, and its existing tables can be
+  mapped (below).
+- **Adopt tables** (*Model → Adopt tables*) — map a table that already exists in a
+  database (yours or a registered source) into Biggy without recreating it. Adopted
+  tables are **read-only structurally** (Biggy never alters them) but get forms,
+  views, and workflows like any other.
+
+## Going further
+
+These features are optional — add them as your app grows.
+
+- **Workflows** (*Model → Workflows*) — attach a status graph to an enum field:
+  allowed transitions (optionally limited by role), an initial state, and a
+  visual editor. User-mode edits and the API are held to the graph.
+- **Triggers & notifications** (*Admin → Triggers*) — when a record is created,
+  updated, transitions, is deleted, or on a **schedule** (with an optional
+  condition), run actions: an in-app notification, an email, a webhook, or **set a
+  field**. Messages use `{field}` placeholders. *Scheduled* triggers run over every
+  matching row — pair a condition with a *set-field* so a row isn't actioned twice.
+- **Scheduled jobs** (*Admin → Scheduled jobs*) — one view of every time-driven job
+  (scheduled triggers, feeds, and report digests) with last-run status and **Run
+  now**. They run from `flask run-jobs` (cron) or the in-process ticker — see the
+  [Setup & operations](setup-and-operations.md) guide.
+- **Reports** (*Data → Reports*) — group-by + count/sum/avg with an optional chart;
+  **save**, **pin** to home, **email on a schedule**, or **add to a dashboard**.
+- **Dashboards** (*Interface → Dashboards*) — build shared pages of **chart**, **KPI
+  number**, **list**, and **text/markdown** tiles (set the column count). Link one
+  into the nav with a **dashboard** menu item. (Users also build personal dashboards
+  in User mode.)
+- **Access control** (*Admin → Roles*, *Permissions*) — define roles, set
+  per-form access (none / read / write), and set **per-field** permissions.
+- **Integrations** (*Integrations*):
+  - **Connections + Feeds** — chain Biggy apps: define a **connection** to a remote
+    app (base URL + API token), then a **feed** mapping a local table to a remote
+    table, pushing on an event / schedule / on demand (create or upsert; can drive
+    the remote workflow).
+  - **Webhooks** — receive events *in*: each webhook gives a secret URL that turns a
+    posted JSON body into a record (create/upsert), with an optional HMAC signature
+    and per-webhook size/rate limits.
+  - **Pull sources** — poll *in*: fetch from a Biggy peer or any REST API on a
+    schedule and upsert locally, with cursor (incremental) pulls and customizable
+    auth, pagination, field-mapping and transforms.
+- **REST API** — every table is at `/api/v1/<table>` (list/get/create/update/delete
+  + **bulk**), authenticated by per-user **API tokens**. A self-describing
+  **OpenAPI** spec + docs live at `/api/v1/docs`.
+- **Backup** (*Admin → Backup*) — export/import the **schema** (the whole model)
+  and the **data** as JSON, to copy an app between databases. You can also author a
+  model by hand — see **[Schema JSON format](schema-json-format.md)** for the full
+  format and a complete template.
+- **Examples** (*Admin → Examples*) — load a ready-made demo model to explore.
+- **SQL console** (*Data → SQL*) — run read-only queries against your data.
+- **Audit log** (*Admin → Audit log*) — review changes on audited tables.
+- **Connection** (top bar) — see the current database target and a live
+  connection test. Change connection settings in `.env` and restart the app.
+
+---
+
+Looking to *use* the screens you built? See the **User manual**. Deploying or
+extending Biggy? See the [Setup & operations](setup-and-operations.md) and
+[Developer](developer-guide.md) guides.

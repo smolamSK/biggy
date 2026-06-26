@@ -1,0 +1,91 @@
+{% extends "designer/_base.html" %}
+{% block title %}Backup · Biggy{% endblock %}
+{% block inner %}
+<h1>Backup (schema &amp; data)</h1>
+
+<div class="cards">
+  <div class="card"><div class="num">{{ stats.tables }}</div>Tables</div>
+  <div class="card"><div class="num">{{ stats.relations }}</div>Relations</div>
+  <div class="card"><div class="num">{{ stats.forms }}</div>Forms</div>
+  <div class="card"><div class="num">{{ stats.menus }}</div>Menu items</div>
+</div>
+
+<div class="panel">
+  <h3>Export</h3>
+  <p class="muted">Download the whole configuration as JSON — tables, fields, relations, forms,
+    menus, shared dashboards, workflows, triggers, roles &amp; permissions, integrations
+    (connections, feeds, webhooks &amp; pull sources) and auto-number counters.
+    Schema only — not the data rows.</p>
+  <p class="help">An import does <strong>not</strong> restore connection <strong>tokens</strong>,
+    webhook <strong>tokens/secrets</strong> (rotate a webhook to get a fresh receive URL),
+    pull-source <strong>headers/auth secrets</strong> (re-enter them) or
+    uploaded <strong>files</strong> (those are data, not schema).
+    It <strong>does</strong> include <strong>data-source passwords</strong> (needed to recreate
+    tables in other databases) — treat the export file as a secret.</p>
+  <a class="btn primary" href="{{ url_for('designer.schema_export') }}">⬇ Export schema (JSON)</a>
+</div>
+
+<div class="panel">
+  <h3>Import</h3>
+  <p class="muted">Recreate a model from a previously exported JSON file — or one you authored by
+    hand. Importing creates the real tables and relations. See
+    <code>docs/schema-json-format.md</code> for the format (and an LLM authoring guide).</p>
+  <form method="post" action="{{ url_for('designer.schema_import') }}" enctype="multipart/form-data">
+    {{ form.hidden_tag() }}
+    <div class="field">{{ form.file() }}
+      {% for e in form.file.errors %}<div class="err">{{ e }}</div>{% endfor %}
+    </div>
+    <div class="field checkline">{{ form.replace_existing() }}
+      <label style="margin:0">{{ form.replace_existing.label.text }}</label>
+    </div>
+    <p class="help">Without <em>Replace</em>, import only works on an empty model. With it, the
+      current model and all its data are <strong>permanently dropped</strong> first.</p>
+    <button class="btn primary" type="submit"
+            onclick="return confirm('Import schema now? If Replace is ticked this drops all current tables and data.');">
+      Import schema
+    </button>
+  </form>
+
+  {% if result %}
+    <div class="flash success" style="margin-top:1rem">
+      Imported {{ result.tables }} table(s), {{ result.fields }} field(s),
+      {{ result.relations }} relation(s), {{ result.forms }} form(s), {{ result.menus }} menu item(s).
+    </div>
+  {% endif %}
+</div>
+
+<h2>Data</h2>
+<div class="panel">
+  <h3>Export data</h3>
+  <p class="muted">Download all rows of every table (and M:N junctions) as JSON — a full data backup.
+    Restore it on a database that already has the matching schema.</p>
+  <a class="btn primary" href="{{ url_for('designer.data_export') }}">⬇ Export data (JSON)</a>
+</div>
+
+<div class="panel">
+  <h3>Import data</h3>
+  <p class="muted">Restore rows from a data backup. Row ids are preserved so relations stay valid.</p>
+  <form method="post" action="{{ url_for('designer.data_import') }}" enctype="multipart/form-data">
+    {{ data_form.hidden_tag() }}
+    <div class="field">{{ data_form.file() }}
+      {% for e in data_form.file.errors %}<div class="err">{{ e }}</div>{% endfor %}
+    </div>
+    <div class="field checkline">{{ data_form.replace_existing() }}
+      <label style="margin:0">{{ data_form.replace_existing.label.text }}</label>
+    </div>
+    <p class="help">With <em>Replace</em>, all current rows are <strong>deleted</strong> before the
+      backup is loaded. The tables must already exist (import the schema first if needed).</p>
+    <button class="btn primary" type="submit"
+            onclick="return confirm('Import data now? If Replace is ticked this clears all existing rows first.');">
+      Import data
+    </button>
+  </form>
+
+  {% if data_result %}
+    <div class="flash success" style="margin-top:1rem">
+      Restored {{ data_result.rows }} row(s) into {{ data_result.tables }} table(s).
+      {% if data_result.skipped %}Skipped unknown tables: {{ data_result.skipped|join(', ') }}.{% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

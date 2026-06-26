@@ -1,0 +1,30 @@
+{% extends "user/_base.html" %}
+{% from "_macros.html" import record_link with context %}
+{% block title %}Notifications · Biggy{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">Notifications</h1>
+  <span style="flex:1"></span>
+  <form method="post" action="{{ url_for('user.notifications_read') }}" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn sm" type="submit">Mark all read</button>
+  </form>
+</div>
+
+<div class="panel">
+  <table class="grid">
+    <tr><th></th><th>Message</th><th>When</th></tr>
+    {% for n in items %}
+      <tr>
+        <td>{% if n.status == 'unread' %}<span class="badge">new</span>{% endif %}</td>
+        <td>{{ n.body }}
+          {%- set tid = table_ids.get(n.table_phys) %}
+          {%- if tid and n.row_pk %} · {{ record_link(tid, n.row_pk, 'open record') }}{% endif %}</td>
+        <td class="muted">{{ n.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="3" class="muted">No notifications.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

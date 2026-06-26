@@ -1,0 +1,4931 @@
+{
+  "version": 1,
+  "tables": {
+    "organization": [
+      {
+        "id": 1,
+        "name": "Org 01",
+        "industry": "finance",
+        "tier": "silver"
+      },
+      {
+        "id": 2,
+        "name": "Org 02",
+        "industry": "retail",
+        "tier": "gold"
+      },
+      {
+        "id": 3,
+        "name": "Org 03",
+        "industry": "healthcare",
+        "tier": "platinum"
+      },
+      {
+        "id": 4,
+        "name": "Org 04",
+        "industry": "government",
+        "tier": "bronze"
+      },
+      {
+        "id": 5,
+        "name": "Org 05",
+        "industry": "telecom",
+        "tier": "silver"
+      },
+      {
+        "id": 6,
+        "name": "Org 06",
+        "industry": "finance",
+        "tier": "gold"
+      },
+      {
+        "id": 7,
+        "name": "Org 07",
+        "industry": "retail",
+        "tier": "platinum"
+      },
+      {
+        "id": 8,
+        "name": "Org 08",
+        "industry": "healthcare",
+        "tier": "bronze"
+      },
+      {
+        "id": 9,
+        "name": "Org 09",
+        "industry": "government",
+        "tier": "silver"
+      },
+      {
+        "id": 10,
+        "name": "Org 10",
+        "industry": "telecom",
+        "tier": "gold"
+      },
+      {
+        "id": 11,
+        "name": "Org 11",
+        "industry": "finance",
+        "tier": "platinum"
+      },
+      {
+        "id": 12,
+        "name": "Org 12",
+        "industry": "retail",
+        "tier": "bronze"
+      },
+      {
+        "id": 13,
+        "name": "Org 13",
+        "industry": "healthcare",
+        "tier": "silver"
+      },
+      {
+        "id": 14,
+        "name": "Org 14",
+        "industry": "government",
+        "tier": "gold"
+      },
+      {
+        "id": 15,
+        "name": "Org 15",
+        "industry": "telecom",
+        "tier": "platinum"
+      },
+      {
+        "id": 16,
+        "name": "Org 16",
+        "industry": "finance",
+        "tier": "bronze"
+      },
+      {
+        "id": 17,
+        "name": "Org 17",
+        "industry": "retail",
+        "tier": "silver"
+      },
+      {
+        "id": 18,
+        "name": "Org 18",
+        "industry": "healthcare",
+        "tier": "gold"
+      },
+      {
+        "id": 19,
+        "name": "Org 19",
+        "industry": "government",
+        "tier": "platinum"
+      },
+      {
+        "id": 20,
+        "name": "Org 20",
+        "industry": "telecom",
+        "tier": "bronze"
+      },
+      {
+        "id": 21,
+        "name": "Org 21",
+        "industry": "finance",
+        "tier": "silver"
+      },
+      {
+        "id": 22,
+        "name": "Org 22",
+        "industry": "retail",
+        "tier": "gold"
+      },
+      {
+        "id": 23,
+        "name": "Org 23",
+        "industry": "healthcare",
+        "tier": "platinum"
+      },
+      {
+        "id": 24,
+        "name": "Org 24",
+        "industry": "government",
+        "tier": "bronze"
+      },
+      {
+        "id": 25,
+        "name": "Org 25",
+        "industry": "telecom",
+        "tier": "silver"
+      },
+      {
+        "id": 26,
+        "name": "Org 26",
+        "industry": "finance",
+        "tier": "gold"
+      },
+      {
+        "id": 27,
+        "name": "Org 27",
+        "industry": "retail",
+        "tier": "platinum"
+      },
+      {
+        "id": 28,
+        "name": "Org 28",
+        "industry": "healthcare",
+        "tier": "bronze"
+      },
+      {
+        "id": 29,
+        "name": "Org 29",
+        "industry": "government",
+        "tier": "silver"
+      },
+      {
+        "id": 30,
+        "name": "Org 30",
+        "industry": "telecom",
+        "tier": "gold"
+      },
+      {
+        "id": 31,
+        "name": "Org 31",
+        "industry": "finance",
+        "tier": "platinum"
+      },
+      {
+        "id": 32,
+        "name": "Org 32",
+        "industry": "retail",
+        "tier": "bronze"
+      },
+      {
+        "id": 33,
+        "name": "Org 33",
+        "industry": "healthcare",
+        "tier": "silver"
+      },
+      {
+        "id": 34,
+        "name": "Org 34",
+        "industry": "government",
+        "tier": "gold"
+      },
+      {
+        "id": 35,
+        "name": "Org 35",
+        "industry": "telecom",
+        "tier": "platinum"
+      },
+      {
+        "id": 36,
+        "name": "Org 36",
+        "industry": "finance",
+        "tier": "bronze"
+      },
+      {
+        "id": 37,
+        "name": "Org 37",
+        "industry": "retail",
+        "tier": "silver"
+      },
+      {
+        "id": 38,
+        "name": "Org 38",
+        "industry": "healthcare",
+        "tier": "gold"
+      },
+      {
+        "id": 39,
+        "name": "Org 39",
+        "industry": "government",
+        "tier": "platinum"
+      },
+      {
+        "id": 40,
+        "name": "Org 40",
+        "industry": "telecom",
+        "tier": "bronze"
+      },
+      {
+        "id": 41,
+        "name": "Org 41",
+        "industry": "finance",
+        "tier": "silver"
+      },
+      {
+        "id": 42,
+        "name": "Org 42",
+        "industry": "retail",
+        "tier": "gold"
+      },
+      {
+        "id": 43,
+        "name": "Org 43",
+        "industry": "healthcare",
+        "tier": "platinum"
+      },
+      {
+        "id": 44,
+        "name": "Org 44",
+        "industry": "government",
+        "tier": "bronze"
+      },
+      {
+        "id": 45,
+        "name": "Org 45",
+        "industry": "telecom",
+        "tier": "silver"
+      },
+      {
+        "id": 46,
+        "name": "Org 46",
+        "industry": "finance",
+        "tier": "gold"
+      },
+      {
+        "id": 47,
+        "name": "Org 47",
+        "industry": "retail",
+        "tier": "platinum"
+      },
+      {
+        "id": 48,
+        "name": "Org 48",
+        "industry": "healthcare",
+        "tier": "bronze"
+      },
+      {
+        "id": 49,
+        "name": "Org 49",
+        "industry": "government",
+        "tier": "silver"
+      },
+      {
+        "id": 50,
+        "name": "Org 50",
+        "industry": "telecom",
+        "tier": "gold"
+      }
+    ],
+    "vendor": [
+      {
+        "id": 1,
+        "name": "Vendor 01",
+        "category": "server"
+      },
+      {
+        "id": 2,
+        "name": "Vendor 02",
+        "category": "cloud"
+      },
+      {
+        "id": 3,
+        "name": "Vendor 03",
+        "category": "telco"
+      },
+      {
+        "id": 4,
+        "name": "Vendor 04",
+        "category": "network"
+      },
+      {
+        "id": 5,
+        "name": "Vendor 05",
+        "category": "server"
+      },
+      {
+        "id": 6,
+        "name": "Vendor 06",
+        "category": "cloud"
+      },
+      {
+        "id": 7,
+        "name": "Vendor 07",
+        "category": "telco"
+      },
+      {
+        "id": 8,
+        "name": "Vendor 08",
+        "category": "network"
+      },
+      {
+        "id": 9,
+        "name": "Vendor 09",
+        "category": "server"
+      },
+      {
+        "id": 10,
+        "name": "Vendor 10",
+        "category": "cloud"
+      },
+      {
+        "id": 11,
+        "name": "Vendor 11",
+        "category": "telco"
+      },
+      {
+        "id": 12,
+        "name": "Vendor 12",
+        "category": "network"
+      },
+      {
+        "id": 13,
+        "name": "Vendor 13",
+        "category": "server"
+      },
+      {
+        "id": 14,
+        "name": "Vendor 14",
+        "category": "cloud"
+      },
+      {
+        "id": 15,
+        "name": "Vendor 15",
+        "category": "telco"
+      },
+      {
+        "id": 16,
+        "name": "Vendor 16",
+        "category": "network"
+      },
+      {
+        "id": 17,
+        "name": "Vendor 17",
+        "category": "server"
+      },
+      {
+        "id": 18,
+        "name": "Vendor 18",
+        "category": "cloud"
+      },
+      {
+        "id": 19,
+        "name": "Vendor 19",
+        "category": "telco"
+      },
+      {
+        "id": 20,
+        "name": "Vendor 20",
+        "category": "network"
+      },
+      {
+        "id": 21,
+        "name": "Vendor 21",
+        "category": "server"
+      },
+      {
+        "id": 22,
+        "name": "Vendor 22",
+        "category": "cloud"
+      },
+      {
+        "id": 23,
+        "name": "Vendor 23",
+        "category": "telco"
+      },
+      {
+        "id": 24,
+        "name": "Vendor 24",
+        "category": "network"
+      },
+      {
+        "id": 25,
+        "name": "Vendor 25",
+        "category": "server"
+      },
+      {
+        "id": 26,
+        "name": "Vendor 26",
+        "category": "cloud"
+      },
+      {
+        "id": 27,
+        "name": "Vendor 27",
+        "category": "telco"
+      },
+      {
+        "id": 28,
+        "name": "Vendor 28",
+        "category": "network"
+      },
+      {
+        "id": 29,
+        "name": "Vendor 29",
+        "category": "server"
+      },
+      {
+        "id": 30,
+        "name": "Vendor 30",
+        "category": "cloud"
+      },
+      {
+        "id": 31,
+        "name": "Vendor 31",
+        "category": "telco"
+      },
+      {
+        "id": 32,
+        "name": "Vendor 32",
+        "category": "network"
+      },
+      {
+        "id": 33,
+        "name": "Vendor 33",
+        "category": "server"
+      },
+      {
+        "id": 34,
+        "name": "Vendor 34",
+        "category": "cloud"
+      },
+      {
+        "id": 35,
+        "name": "Vendor 35",
+        "category": "telco"
+      },
+      {
+        "id": 36,
+        "name": "Vendor 36",
+        "category": "network"
+      },
+      {
+        "id": 37,
+        "name": "Vendor 37",
+        "category": "server"
+      },
+      {
+        "id": 38,
+        "name": "Vendor 38",
+        "category": "cloud"
+      },
+      {
+        "id": 39,
+        "name": "Vendor 39",
+        "category": "telco"
+      },
+      {
+        "id": 40,
+        "name": "Vendor 40",
+        "category": "network"
+      },
+      {
+        "id": 41,
+        "name": "Vendor 41",
+        "category": "server"
+      },
+      {
+        "id": 42,
+        "name": "Vendor 42",
+        "category": "cloud"
+      },
+      {
+        "id": 43,
+        "name": "Vendor 43",
+        "category": "telco"
+      },
+      {
+        "id": 44,
+        "name": "Vendor 44",
+        "category": "network"
+      },
+      {
+        "id": 45,
+        "name": "Vendor 45",
+        "category": "server"
+      },
+      {
+        "id": 46,
+        "name": "Vendor 46",
+        "category": "cloud"
+      },
+      {
+        "id": 47,
+        "name": "Vendor 47",
+        "category": "telco"
+      },
+      {
+        "id": 48,
+        "name": "Vendor 48",
+        "category": "network"
+      },
+      {
+        "id": 49,
+        "name": "Vendor 49",
+        "category": "server"
+      },
+      {
+        "id": 50,
+        "name": "Vendor 50",
+        "category": "cloud"
+      }
+    ],
+    "site": [
+      {
+        "id": 1,
+        "name": "Site 01",
+        "code": "S001",
+        "city": "Paris",
+        "country": "FR",
+        "status": "building",
+        "organization_id": 2
+      },
+      {
+        "id": 2,
+        "name": "Site 02",
+        "code": "S002",
+        "city": "Madrid",
+        "country": "ES",
+        "status": "live",
+        "organization_id": 3
+      },
+      {
+        "id": 3,
+        "name": "Site 03",
+        "code": "S003",
+        "city": "Rome",
+        "country": "IT",
+        "status": "closed",
+        "organization_id": 4
+      },
+      {
+        "id": 4,
+        "name": "Site 04",
+        "code": "S004",
+        "city": "Oslo",
+        "country": "NO",
+        "status": "planned",
+        "organization_id": 5
+      },
+      {
+        "id": 5,
+        "name": "Site 05",
+        "code": "S005",
+        "city": "Lisbon",
+        "country": "PT",
+        "status": "building",
+        "organization_id": 6
+      },
+      {
+        "id": 6,
+        "name": "Site 06",
+        "code": "S006",
+        "city": "Vienna",
+        "country": "AT",
+        "status": "live",
+        "organization_id": 7
+      },
+      {
+        "id": 7,
+        "name": "Site 07",
+        "code": "S007",
+        "city": "Dublin",
+        "country": "IE",
+        "status": "closed",
+        "organization_id": 8
+      },
+      {
+        "id": 8,
+        "name": "Site 08",
+        "code": "S008",
+        "city": "Berlin",
+        "country": "DE",
+        "status": "planned",
+        "organization_id": 9
+      },
+      {
+        "id": 9,
+        "name": "Site 09",
+        "code": "S009",
+        "city": "Paris",
+        "country": "FR",
+        "status": "building",
+        "organization_id": 10
+      },
+      {
+        "id": 10,
+        "name": "Site 10",
+        "code": "S010",
+        "city": "Madrid",
+        "country": "ES",
+        "status": "live",
+        "organization_id": 11
+      },
+      {
+        "id": 11,
+        "name": "Site 11",
+        "code": "S011",
+        "city": "Rome",
+        "country": "IT",
+        "status": "closed",
+        "organization_id": 12
+      },
+      {
+        "id": 12,
+        "name": "Site 12",
+        "code": "S012",
+        "city": "Oslo",
+        "country": "NO",
+        "status": "planned",
+        "organization_id": 13
+      },
+      {
+        "id": 13,
+        "name": "Site 13",
+        "code": "S013",
+        "city": "Lisbon",
+        "country": "PT",
+        "status": "building",
+        "organization_id": 14
+      },
+      {
+        "id": 14,
+        "name": "Site 14",
+        "code": "S014",
+        "city": "Vienna",
+        "country": "AT",
+        "status": "live",
+        "organization_id": 15
+      },
+      {
+        "id": 15,
+        "name": "Site 15",
+        "code": "S015",
+        "city": "Dublin",
+        "country": "IE",
+        "status": "closed",
+        "organization_id": 16
+      },
+      {
+        "id": 16,
+        "name": "Site 16",
+        "code": "S016",
+        "city": "Berlin",
+        "country": "DE",
+        "status": "planned",
+        "organization_id": 17
+      },
+      {
+        "id": 17,
+        "name": "Site 17",
+        "code": "S017",
+        "city": "Paris",
+        "country": "FR",
+        "status": "building",
+        "organization_id": 18
+      },
+      {
+        "id": 18,
+        "name": "Site 18",
+        "code": "S018",
+        "city": "Madrid",
+        "country": "ES",
+        "status": "live",
+        "organization_id": 19
+      },
+      {
+        "id": 19,
+        "name": "Site 19",
+        "code": "S019",
+        "city": "Rome",
+        "country": "IT",
+        "status": "closed",
+        "organization_id": 20
+      },
+      {
+        "id": 20,
+        "name": "Site 20",
+        "code": "S020",
+        "city": "Oslo",
+        "country": "NO",
+        "status": "planned",
+        "organization_id": 21
+      },
+      {
+        "id": 21,
+        "name": "Site 21",
+        "code": "S021",
+        "city": "Lisbon",
+        "country": "PT",
+        "status": "building",
+        "organization_id": 22
+      },
+      {
+        "id": 22,
+        "name": "Site 22",
+        "code": "S022",
+        "city": "Vienna",
+        "country": "AT",
+        "status": "live",
+        "organization_id": 23
+      },
+      {
+        "id": 23,
+        "name": "Site 23",
+        "code": "S023",
+        "city": "Dublin",
+        "country": "IE",
+        "status": "closed",
+        "organization_id": 24
+      },
+      {
+        "id": 24,
+        "name": "Site 24",
+        "code": "S024",
+        "city": "Berlin",
+        "country": "DE",
+        "status": "planned",
+        "organization_id": 25
+      },
+      {
+        "id": 25,
+        "name": "Site 25",
+        "code": "S025",
+        "city": "Paris",
+        "country": "FR",
+        "status": "building",
+        "organization_id": 26
+      },
+      {
+        "id": 26,
+        "name": "Site 26",
+        "code": "S026",
+        "city": "Madrid",
+        "country": "ES",
+        "status": "live",
+        "organization_id": 27
+      },
+      {
+        "id": 27,
+        "name": "Site 27",
+        "code": "S027",
+        "city": "Rome",
+        "country": "IT",
+        "status": "closed",
+        "organization_id": 28
+      },
+      {
+        "id": 28,
+        "name": "Site 28",
+        "code": "S028",
+        "city": "Oslo",
+        "country": "NO",
+        "status": "planned",
+        "organization_id": 29
+      },
+      {
+        "id": 29,
+        "name": "Site 29",
+        "code": "S029",
+        "city": "Lisbon",
+        "country": "PT",
+        "status": "building",
+        "organization_id": 30
+      },
+      {
+        "id": 30,
+        "name": "Site 30",
+        "code": "S030",
+        "city": "Vienna",
+        "country": "AT",
+        "status": "live",
+        "organization_id": 31
+      },
+      {
+        "id": 31,
+        "name": "Site 31",
+        "code": "S031",
+        "city": "Dublin",
+        "country": "IE",
+        "status": "closed",
+        "organization_id": 32
+      },
+      {
+        "id": 32,
+        "name": "Site 32",
+        "code": "S032",
+        "city": "Berlin",
+        "country": "DE",
+        "status": "planned",
+        "organization_id": 33
+      },
+      {
+        "id": 33,
+        "name": "Site 33",
+        "code": "S033",
+        "city": "Paris",
+        "country": "FR",
+        "status": "building",
+        "organization_id": 34
+      },
+      {
+        "id": 34,
+        "name": "Site 34",
+        "code": "S034",
+        "city": "Madrid",
+        "country": "ES",
+        "status": "live",
+        "organization_id": 35
+      },
+      {
+        "id": 35,
+        "name": "Site 35",
+        "code": "S035",
+        "city": "Rome",
+        "country": "IT",
+        "status": "closed",
+        "organization_id": 36
+      },
+      {
+        "id": 36,
+        "name": "Site 36",
+        "code": "S036",
+        "city": "Oslo",
+        "country": "NO",
+        "status": "planned",
+        "organization_id": 37
+      },
+      {
+        "id": 37,
+        "name": "Site 37",
+        "code": "S037",
+        "city": "Lisbon",
+        "country": "PT",
+        "status": "building",
+        "organization_id": 38
+      },
+      {
+        "id": 38,
+        "name": "Site 38",
+        "code": "S038",
+        "city": "Vienna",
+        "country": "AT",
+        "status": "live",
+        "organization_id": 39
+      },
+      {
+        "id": 39,
+        "name": "Site 39",
+        "code": "S039",
+        "city": "Dublin",
+        "country": "IE",
+        "status": "closed",
+        "organization_id": 40
+      },
+      {
+        "id": 40,
+        "name": "Site 40",
+        "code": "S040",
+        "city": "Berlin",
+        "country": "DE",
+        "status": "planned",
+        "organization_id": 41
+      },
+      {
+        "id": 41,
+        "name": "Site 41",
+        "code": "S041",
+        "city": "Paris",
+        "country": "FR",
+        "status": "building",
+        "organization_id": 42
+      },
+      {
+        "id": 42,
+        "name": "Site 42",
+        "code": "S042",
+        "city": "Madrid",
+        "country": "ES",
+        "status": "live",
+        "organization_id": 43
+      },
+      {
+        "id": 43,
+        "name": "Site 43",
+        "code": "S043",
+        "city": "Rome",
+        "country": "IT",
+        "status": "closed",
+        "organization_id": 44
+      },
+      {
+        "id": 44,
+        "name": "Site 44",
+        "code": "S044",
+        "city": "Oslo",
+        "country": "NO",
+        "status": "planned",
+        "organization_id": 45
+      },
+      {
+        "id": 45,
+        "name": "Site 45",
+        "code": "S045",
+        "city": "Lisbon",
+        "country": "PT",
+        "status": "building",
+        "organization_id": 46
+      },
+      {
+        "id": 46,
+        "name": "Site 46",
+        "code": "S046",
+        "city": "Vienna",
+        "country": "AT",
+        "status": "live",
+        "organization_id": 47
+      },
+      {
+        "id": 47,
+        "name": "Site 47",
+        "code": "S047",
+        "city": "Dublin",
+        "country": "IE",
+        "status": "closed",
+        "organization_id": 48
+      },
+      {
+        "id": 48,
+        "name": "Site 48",
+        "code": "S048",
+        "city": "Berlin",
+        "country": "DE",
+        "status": "planned",
+        "organization_id": 49
+      },
+      {
+        "id": 49,
+        "name": "Site 49",
+        "code": "S049",
+        "city": "Paris",
+        "country": "FR",
+        "status": "building",
+        "organization_id": 50
+      },
+      {
+        "id": 50,
+        "name": "Site 50",
+        "code": "S050",
+        "city": "Madrid",
+        "country": "ES",
+        "status": "live",
+        "organization_id": 1
+      }
+    ],
+    "rack": [
+      {
+        "id": 1,
+        "name": "Rack 01",
+        "units": 42,
+        "site_id": 2
+      },
+      {
+        "id": 2,
+        "name": "Rack 02",
+        "units": 48,
+        "site_id": 3
+      },
+      {
+        "id": 3,
+        "name": "Rack 03",
+        "units": 24,
+        "site_id": 4
+      },
+      {
+        "id": 4,
+        "name": "Rack 04",
+        "units": 42,
+        "site_id": 5
+      },
+      {
+        "id": 5,
+        "name": "Rack 05",
+        "units": 48,
+        "site_id": 6
+      },
+      {
+        "id": 6,
+        "name": "Rack 06",
+        "units": 24,
+        "site_id": 7
+      },
+      {
+        "id": 7,
+        "name": "Rack 07",
+        "units": 42,
+        "site_id": 8
+      },
+      {
+        "id": 8,
+        "name": "Rack 08",
+        "units": 48,
+        "site_id": 9
+      },
+      {
+        "id": 9,
+        "name": "Rack 09",
+        "units": 24,
+        "site_id": 10
+      },
+      {
+        "id": 10,
+        "name": "Rack 10",
+        "units": 42,
+        "site_id": 11
+      },
+      {
+        "id": 11,
+        "name": "Rack 11",
+        "units": 48,
+        "site_id": 12
+      },
+      {
+        "id": 12,
+        "name": "Rack 12",
+        "units": 24,
+        "site_id": 13
+      },
+      {
+        "id": 13,
+        "name": "Rack 13",
+        "units": 42,
+        "site_id": 14
+      },
+      {
+        "id": 14,
+        "name": "Rack 14",
+        "units": 48,
+        "site_id": 15
+      },
+      {
+        "id": 15,
+        "name": "Rack 15",
+        "units": 24,
+        "site_id": 16
+      },
+      {
+        "id": 16,
+        "name": "Rack 16",
+        "units": 42,
+        "site_id": 17
+      },
+      {
+        "id": 17,
+        "name": "Rack 17",
+        "units": 48,
+        "site_id": 18
+      },
+      {
+        "id": 18,
+        "name": "Rack 18",
+        "units": 24,
+        "site_id": 19
+      },
+      {
+        "id": 19,
+        "name": "Rack 19",
+        "units": 42,
+        "site_id": 20
+      },
+      {
+        "id": 20,
+        "name": "Rack 20",
+        "units": 48,
+        "site_id": 21
+      },
+      {
+        "id": 21,
+        "name": "Rack 21",
+        "units": 24,
+        "site_id": 22
+      },
+      {
+        "id": 22,
+        "name": "Rack 22",
+        "units": 42,
+        "site_id": 23
+      },
+      {
+        "id": 23,
+        "name": "Rack 23",
+        "units": 48,
+        "site_id": 24
+      },
+      {
+        "id": 24,
+        "name": "Rack 24",
+        "units": 24,
+        "site_id": 25
+      },
+      {
+        "id": 25,
+        "name": "Rack 25",
+        "units": 42,
+        "site_id": 26
+      },
+      {
+        "id": 26,
+        "name": "Rack 26",
+        "units": 48,
+        "site_id": 27
+      },
+      {
+        "id": 27,
+        "name": "Rack 27",
+        "units": 24,
+        "site_id": 28
+      },
+      {
+        "id": 28,
+        "name": "Rack 28",
+        "units": 42,
+        "site_id": 29
+      },
+      {
+        "id": 29,
+        "name": "Rack 29",
+        "units": 48,
+        "site_id": 30
+      },
+      {
+        "id": 30,
+        "name": "Rack 30",
+        "units": 24,
+        "site_id": 31
+      },
+      {
+        "id": 31,
+        "name": "Rack 31",
+        "units": 42,
+        "site_id": 32
+      },
+      {
+        "id": 32,
+        "name": "Rack 32",
+        "units": 48,
+        "site_id": 33
+      },
+      {
+        "id": 33,
+        "name": "Rack 33",
+        "units": 24,
+        "site_id": 34
+      },
+      {
+        "id": 34,
+        "name": "Rack 34",
+        "units": 42,
+        "site_id": 35
+      },
+      {
+        "id": 35,
+        "name": "Rack 35",
+        "units": 48,
+        "site_id": 36
+      },
+      {
+        "id": 36,
+        "name": "Rack 36",
+        "units": 24,
+        "site_id": 37
+      },
+      {
+        "id": 37,
+        "name": "Rack 37",
+        "units": 42,
+        "site_id": 38
+      },
+      {
+        "id": 38,
+        "name": "Rack 38",
+        "units": 48,
+        "site_id": 39
+      },
+      {
+        "id": 39,
+        "name": "Rack 39",
+        "units": 24,
+        "site_id": 40
+      },
+      {
+        "id": 40,
+        "name": "Rack 40",
+        "units": 42,
+        "site_id": 41
+      },
+      {
+        "id": 41,
+        "name": "Rack 41",
+        "units": 48,
+        "site_id": 42
+      },
+      {
+        "id": 42,
+        "name": "Rack 42",
+        "units": 24,
+        "site_id": 43
+      },
+      {
+        "id": 43,
+        "name": "Rack 43",
+        "units": 42,
+        "site_id": 44
+      },
+      {
+        "id": 44,
+        "name": "Rack 44",
+        "units": 48,
+        "site_id": 45
+      },
+      {
+        "id": 45,
+        "name": "Rack 45",
+        "units": 24,
+        "site_id": 46
+      },
+      {
+        "id": 46,
+        "name": "Rack 46",
+        "units": 42,
+        "site_id": 47
+      },
+      {
+        "id": 47,
+        "name": "Rack 47",
+        "units": 48,
+        "site_id": 48
+      },
+      {
+        "id": 48,
+        "name": "Rack 48",
+        "units": 24,
+        "site_id": 49
+      },
+      {
+        "id": 49,
+        "name": "Rack 49",
+        "units": 42,
+        "site_id": 50
+      },
+      {
+        "id": 50,
+        "name": "Rack 50",
+        "units": 48,
+        "site_id": 1
+      }
+    ],
+    "router": [
+      {
+        "id": 1,
+        "name": "rtr-001",
+        "mgmt_ip": "10.2.0.1",
+        "status": "provisioning",
+        "site_id": 2,
+        "vendor_id": 5,
+        "model": "QFX5100",
+        "rack_id": 3
+      },
+      {
+        "id": 2,
+        "name": "rtr-002",
+        "mgmt_ip": "10.3.0.2",
+        "status": "active",
+        "site_id": 3,
+        "vendor_id": 6,
+        "model": "AP-515",
+        "rack_id": 4
+      },
+      {
+        "id": 3,
+        "name": "rtr-003",
+        "mgmt_ip": "10.4.0.3",
+        "status": "maintenance",
+        "site_id": 4,
+        "vendor_id": 7,
+        "model": "C9300",
+        "rack_id": 5
+      },
+      {
+        "id": 4,
+        "name": "rtr-004",
+        "mgmt_ip": "10.5.0.4",
+        "status": "decommissioned",
+        "site_id": 5,
+        "vendor_id": 8,
+        "model": "DL380",
+        "rack_id": 6
+      },
+      {
+        "id": 5,
+        "name": "rtr-005",
+        "mgmt_ip": "10.6.0.5",
+        "status": "planned",
+        "site_id": 6,
+        "vendor_id": 9,
+        "model": "ASR1001",
+        "rack_id": 7
+      },
+      {
+        "id": 6,
+        "name": "rtr-006",
+        "mgmt_ip": "10.7.0.6",
+        "status": "provisioning",
+        "site_id": 7,
+        "vendor_id": 10,
+        "model": "MX204",
+        "rack_id": 8
+      },
+      {
+        "id": 7,
+        "name": "rtr-007",
+        "mgmt_ip": "10.8.0.7",
+        "status": "active",
+        "site_id": 8,
+        "vendor_id": 11,
+        "model": "QFX5100",
+        "rack_id": 9
+      },
+      {
+        "id": 8,
+        "name": "rtr-008",
+        "mgmt_ip": "10.9.0.8",
+        "status": "maintenance",
+        "site_id": 9,
+        "vendor_id": 12,
+        "model": "AP-515",
+        "rack_id": 10
+      },
+      {
+        "id": 9,
+        "name": "rtr-009",
+        "mgmt_ip": "10.10.0.9",
+        "status": "decommissioned",
+        "site_id": 10,
+        "vendor_id": 13,
+        "model": "C9300",
+        "rack_id": 11
+      },
+      {
+        "id": 10,
+        "name": "rtr-010",
+        "mgmt_ip": "10.11.0.10",
+        "status": "planned",
+        "site_id": 11,
+        "vendor_id": 14,
+        "model": "DL380",
+        "rack_id": 12
+      },
+      {
+        "id": 11,
+        "name": "rtr-011",
+        "mgmt_ip": "10.12.0.11",
+        "status": "provisioning",
+        "site_id": 12,
+        "vendor_id": 15,
+        "model": "ASR1001",
+        "rack_id": 13
+      },
+      {
+        "id": 12,
+        "name": "rtr-012",
+        "mgmt_ip": "10.13.0.12",
+        "status": "active",
+        "site_id": 13,
+        "vendor_id": 16,
+        "model": "MX204",
+        "rack_id": 14
+      },
+      {
+        "id": 13,
+        "name": "rtr-013",
+        "mgmt_ip": "10.14.0.13",
+        "status": "maintenance",
+        "site_id": 14,
+        "vendor_id": 17,
+        "model": "QFX5100",
+        "rack_id": 15
+      },
+      {
+        "id": 14,
+        "name": "rtr-014",
+        "mgmt_ip": "10.15.0.14",
+        "status": "decommissioned",
+        "site_id": 15,
+        "vendor_id": 18,
+        "model": "AP-515",
+        "rack_id": 16
+      },
+      {
+        "id": 15,
+        "name": "rtr-015",
+        "mgmt_ip": "10.16.0.15",
+        "status": "planned",
+        "site_id": 16,
+        "vendor_id": 19,
+        "model": "C9300",
+        "rack_id": 17
+      },
+      {
+        "id": 16,
+        "name": "rtr-016",
+        "mgmt_ip": "10.17.0.16",
+        "status": "provisioning",
+        "site_id": 17,
+        "vendor_id": 20,
+        "model": "DL380",
+        "rack_id": 18
+      },
+      {
+        "id": 17,
+        "name": "rtr-017",
+        "mgmt_ip": "10.18.0.17",
+        "status": "active",
+        "site_id": 18,
+        "vendor_id": 21,
+        "model": "ASR1001",
+        "rack_id": 19
+      },
+      {
+        "id": 18,
+        "name": "rtr-018",
+        "mgmt_ip": "10.19.0.18",
+        "status": "maintenance",
+        "site_id": 19,
+        "vendor_id": 22,
+        "model": "MX204",
+        "rack_id": 20
+      },
+      {
+        "id": 19,
+        "name": "rtr-019",
+        "mgmt_ip": "10.20.0.19",
+        "status": "decommissioned",
+        "site_id": 20,
+        "vendor_id": 23,
+        "model": "QFX5100",
+        "rack_id": 21
+      },
+      {
+        "id": 20,
+        "name": "rtr-020",
+        "mgmt_ip": "10.21.0.20",
+        "status": "planned",
+        "site_id": 21,
+        "vendor_id": 24,
+        "model": "AP-515",
+        "rack_id": 22
+      },
+      {
+        "id": 21,
+        "name": "rtr-021",
+        "mgmt_ip": "10.22.0.21",
+        "status": "provisioning",
+        "site_id": 22,
+        "vendor_id": 25,
+        "model": "C9300",
+        "rack_id": 23
+      },
+      {
+        "id": 22,
+        "name": "rtr-022",
+        "mgmt_ip": "10.23.0.22",
+        "status": "active",
+        "site_id": 23,
+        "vendor_id": 26,
+        "model": "DL380",
+        "rack_id": 24
+      },
+      {
+        "id": 23,
+        "name": "rtr-023",
+        "mgmt_ip": "10.24.0.23",
+        "status": "maintenance",
+        "site_id": 24,
+        "vendor_id": 27,
+        "model": "ASR1001",
+        "rack_id": 25
+      },
+      {
+        "id": 24,
+        "name": "rtr-024",
+        "mgmt_ip": "10.25.0.24",
+        "status": "decommissioned",
+        "site_id": 25,
+        "vendor_id": 28,
+        "model": "MX204",
+        "rack_id": 26
+      },
+      {
+        "id": 25,
+        "name": "rtr-025",
+        "mgmt_ip": "10.26.0.25",
+        "status": "planned",
+        "site_id": 26,
+        "vendor_id": 29,
+        "model": "QFX5100",
+        "rack_id": 27
+      },
+      {
+        "id": 26,
+        "name": "rtr-026",
+        "mgmt_ip": "10.27.0.26",
+        "status": "provisioning",
+        "site_id": 27,
+        "vendor_id": 30,
+        "model": "AP-515",
+        "rack_id": 28
+      },
+      {
+        "id": 27,
+        "name": "rtr-027",
+        "mgmt_ip": "10.28.0.27",
+        "status": "active",
+        "site_id": 28,
+        "vendor_id": 31,
+        "model": "C9300",
+        "rack_id": 29
+      },
+      {
+        "id": 28,
+        "name": "rtr-028",
+        "mgmt_ip": "10.29.0.28",
+        "status": "maintenance",
+        "site_id": 29,
+        "vendor_id": 32,
+        "model": "DL380",
+        "rack_id": 30
+      },
+      {
+        "id": 29,
+        "name": "rtr-029",
+        "mgmt_ip": "10.30.0.29",
+        "status": "decommissioned",
+        "site_id": 30,
+        "vendor_id": 33,
+        "model": "ASR1001",
+        "rack_id": 31
+      },
+      {
+        "id": 30,
+        "name": "rtr-030",
+        "mgmt_ip": "10.31.0.30",
+        "status": "planned",
+        "site_id": 31,
+        "vendor_id": 34,
+        "model": "MX204",
+        "rack_id": 32
+      },
+      {
+        "id": 31,
+        "name": "rtr-031",
+        "mgmt_ip": "10.32.0.31",
+        "status": "provisioning",
+        "site_id": 32,
+        "vendor_id": 35,
+        "model": "QFX5100",
+        "rack_id": 33
+      },
+      {
+        "id": 32,
+        "name": "rtr-032",
+        "mgmt_ip": "10.33.0.32",
+        "status": "active",
+        "site_id": 33,
+        "vendor_id": 36,
+        "model": "AP-515",
+        "rack_id": 34
+      },
+      {
+        "id": 33,
+        "name": "rtr-033",
+        "mgmt_ip": "10.34.0.33",
+        "status": "maintenance",
+        "site_id": 34,
+        "vendor_id": 37,
+        "model": "C9300",
+        "rack_id": 35
+      },
+      {
+        "id": 34,
+        "name": "rtr-034",
+        "mgmt_ip": "10.35.0.34",
+        "status": "decommissioned",
+        "site_id": 35,
+        "vendor_id": 38,
+        "model": "DL380",
+        "rack_id": 36
+      },
+      {
+        "id": 35,
+        "name": "rtr-035",
+        "mgmt_ip": "10.36.0.35",
+        "status": "planned",
+        "site_id": 36,
+        "vendor_id": 39,
+        "model": "ASR1001",
+        "rack_id": 37
+      },
+      {
+        "id": 36,
+        "name": "rtr-036",
+        "mgmt_ip": "10.37.0.36",
+        "status": "provisioning",
+        "site_id": 37,
+        "vendor_id": 40,
+        "model": "MX204",
+        "rack_id": 38
+      },
+      {
+        "id": 37,
+        "name": "rtr-037",
+        "mgmt_ip": "10.38.0.37",
+        "status": "active",
+        "site_id": 38,
+        "vendor_id": 41,
+        "model": "QFX5100",
+        "rack_id": 39
+      },
+      {
+        "id": 38,
+        "name": "rtr-038",
+        "mgmt_ip": "10.39.0.38",
+        "status": "maintenance",
+        "site_id": 39,
+        "vendor_id": 42,
+        "model": "AP-515",
+        "rack_id": 40
+      },
+      {
+        "id": 39,
+        "name": "rtr-039",
+        "mgmt_ip": "10.40.0.39",
+        "status": "decommissioned",
+        "site_id": 40,
+        "vendor_id": 43,
+        "model": "C9300",
+        "rack_id": 41
+      },
+      {
+        "id": 40,
+        "name": "rtr-040",
+        "mgmt_ip": "10.41.0.40",
+        "status": "planned",
+        "site_id": 41,
+        "vendor_id": 44,
+        "model": "DL380",
+        "rack_id": 42
+      },
+      {
+        "id": 41,
+        "name": "rtr-041",
+        "mgmt_ip": "10.42.0.41",
+        "status": "provisioning",
+        "site_id": 42,
+        "vendor_id": 45,
+        "model": "ASR1001",
+        "rack_id": 43
+      },
+      {
+        "id": 42,
+        "name": "rtr-042",
+        "mgmt_ip": "10.43.0.42",
+        "status": "active",
+        "site_id": 43,
+        "vendor_id": 46,
+        "model": "MX204",
+        "rack_id": 44
+      },
+      {
+        "id": 43,
+        "name": "rtr-043",
+        "mgmt_ip": "10.44.0.43",
+        "status": "maintenance",
+        "site_id": 44,
+        "vendor_id": 47,
+        "model": "QFX5100",
+        "rack_id": 45
+      },
+      {
+        "id": 44,
+        "name": "rtr-044",
+        "mgmt_ip": "10.45.0.44",
+        "status": "decommissioned",
+        "site_id": 45,
+        "vendor_id": 48,
+        "model": "AP-515",
+        "rack_id": 46
+      },
+      {
+        "id": 45,
+        "name": "rtr-045",
+        "mgmt_ip": "10.46.0.45",
+        "status": "planned",
+        "site_id": 46,
+        "vendor_id": 49,
+        "model": "C9300",
+        "rack_id": 47
+      },
+      {
+        "id": 46,
+        "name": "rtr-046",
+        "mgmt_ip": "10.47.0.46",
+        "status": "provisioning",
+        "site_id": 47,
+        "vendor_id": 50,
+        "model": "DL380",
+        "rack_id": 48
+      },
+      {
+        "id": 47,
+        "name": "rtr-047",
+        "mgmt_ip": "10.48.0.47",
+        "status": "active",
+        "site_id": 48,
+        "vendor_id": 1,
+        "model": "ASR1001",
+        "rack_id": 49
+      },
+      {
+        "id": 48,
+        "name": "rtr-048",
+        "mgmt_ip": "10.49.0.48",
+        "status": "maintenance",
+        "site_id": 49,
+        "vendor_id": 2,
+        "model": "MX204",
+        "rack_id": 50
+      },
+      {
+        "id": 49,
+        "name": "rtr-049",
+        "mgmt_ip": "10.50.0.49",
+        "status": "decommissioned",
+        "site_id": 50,
+        "vendor_id": 3,
+        "model": "QFX5100",
+        "rack_id": 1
+      },
+      {
+        "id": 50,
+        "name": "rtr-050",
+        "mgmt_ip": "10.1.0.50",
+        "status": "planned",
+        "site_id": 1,
+        "vendor_id": 4,
+        "model": "AP-515",
+        "rack_id": 2
+      }
+    ],
+    "switch": [
+      {
+        "id": 1,
+        "name": "sw-001",
+        "mgmt_ip": "10.2.0.1",
+        "status": "provisioning",
+        "site_id": 2,
+        "vendor_id": 5,
+        "model": "QFX5100",
+        "rack_id": 3
+      },
+      {
+        "id": 2,
+        "name": "sw-002",
+        "mgmt_ip": "10.3.0.2",
+        "status": "active",
+        "site_id": 3,
+        "vendor_id": 6,
+        "model": "AP-515",
+        "rack_id": 4
+      },
+      {
+        "id": 3,
+        "name": "sw-003",
+        "mgmt_ip": "10.4.0.3",
+        "status": "maintenance",
+        "site_id": 4,
+        "vendor_id": 7,
+        "model": "C9300",
+        "rack_id": 5
+      },
+      {
+        "id": 4,
+        "name": "sw-004",
+        "mgmt_ip": "10.5.0.4",
+        "status": "decommissioned",
+        "site_id": 5,
+        "vendor_id": 8,
+        "model": "DL380",
+        "rack_id": 6
+      },
+      {
+        "id": 5,
+        "name": "sw-005",
+        "mgmt_ip": "10.6.0.5",
+        "status": "planned",
+        "site_id": 6,
+        "vendor_id": 9,
+        "model": "ASR1001",
+        "rack_id": 7
+      },
+      {
+        "id": 6,
+        "name": "sw-006",
+        "mgmt_ip": "10.7.0.6",
+        "status": "provisioning",
+        "site_id": 7,
+        "vendor_id": 10,
+        "model": "MX204",
+        "rack_id": 8
+      },
+      {
+        "id": 7,
+        "name": "sw-007",
+        "mgmt_ip": "10.8.0.7",
+        "status": "active",
+        "site_id": 8,
+        "vendor_id": 11,
+        "model": "QFX5100",
+        "rack_id": 9
+      },
+      {
+        "id": 8,
+        "name": "sw-008",
+        "mgmt_ip": "10.9.0.8",
+        "status": "maintenance",
+        "site_id": 9,
+        "vendor_id": 12,
+        "model": "AP-515",
+        "rack_id": 10
+      },
+      {
+        "id": 9,
+        "name": "sw-009",
+        "mgmt_ip": "10.10.0.9",
+        "status": "decommissioned",
+        "site_id": 10,
+        "vendor_id": 13,
+        "model": "C9300",
+        "rack_id": 11
+      },
+      {
+        "id": 10,
+        "name": "sw-010",
+        "mgmt_ip": "10.11.0.10",
+        "status": "planned",
+        "site_id": 11,
+        "vendor_id": 14,
+        "model": "DL380",
+        "rack_id": 12
+      },
+      {
+        "id": 11,
+        "name": "sw-011",
+        "mgmt_ip": "10.12.0.11",
+        "status": "provisioning",
+        "site_id": 12,
+        "vendor_id": 15,
+        "model": "ASR1001",
+        "rack_id": 13
+      },
+      {
+        "id": 12,
+        "name": "sw-012",
+        "mgmt_ip": "10.13.0.12",
+        "status": "active",
+        "site_id": 13,
+        "vendor_id": 16,
+        "model": "MX204",
+        "rack_id": 14
+      },
+      {
+        "id": 13,
+        "name": "sw-013",
+        "mgmt_ip": "10.14.0.13",
+        "status": "maintenance",
+        "site_id": 14,
+        "vendor_id": 17,
+        "model": "QFX5100",
+        "rack_id": 15
+      },
+      {
+        "id": 14,
+        "name": "sw-014",
+        "mgmt_ip": "10.15.0.14",
+        "status": "decommissioned",
+        "site_id": 15,
+        "vendor_id": 18,
+        "model": "AP-515",
+        "rack_id": 16
+      },
+      {
+        "id": 15,
+        "name": "sw-015",
+        "mgmt_ip": "10.16.0.15",
+        "status": "planned",
+        "site_id": 16,
+        "vendor_id": 19,
+        "model": "C9300",
+        "rack_id": 17
+      },
+      {
+        "id": 16,
+        "name": "sw-016",
+        "mgmt_ip": "10.17.0.16",
+        "status": "provisioning",
+        "site_id": 17,
+        "vendor_id": 20,
+        "model": "DL380",
+        "rack_id": 18
+      },
+      {
+        "id": 17,
+        "name": "sw-017",
+        "mgmt_ip": "10.18.0.17",
+        "status": "active",
+        "site_id": 18,
+        "vendor_id": 21,
+        "model": "ASR1001",
+        "rack_id": 19
+      },
+      {
+        "id": 18,
+        "name": "sw-018",
+        "mgmt_ip": "10.19.0.18",
+        "status": "maintenance",
+        "site_id": 19,
+        "vendor_id": 22,
+        "model": "MX204",
+        "rack_id": 20
+      },
+      {
+        "id": 19,
+        "name": "sw-019",
+        "mgmt_ip": "10.20.0.19",
+        "status": "decommissioned",
+        "site_id": 20,
+        "vendor_id": 23,
+        "model": "QFX5100",
+        "rack_id": 21
+      },
+      {
+        "id": 20,
+        "name": "sw-020",
+        "mgmt_ip": "10.21.0.20",
+        "status": "planned",
+        "site_id": 21,
+        "vendor_id": 24,
+        "model": "AP-515",
+        "rack_id": 22
+      },
+      {
+        "id": 21,
+        "name": "sw-021",
+        "mgmt_ip": "10.22.0.21",
+        "status": "provisioning",
+        "site_id": 22,
+        "vendor_id": 25,
+        "model": "C9300",
+        "rack_id": 23
+      },
+      {
+        "id": 22,
+        "name": "sw-022",
+        "mgmt_ip": "10.23.0.22",
+        "status": "active",
+        "site_id": 23,
+        "vendor_id": 26,
+        "model": "DL380",
+        "rack_id": 24
+      },
+      {
+        "id": 23,
+        "name": "sw-023",
+        "mgmt_ip": "10.24.0.23",
+        "status": "maintenance",
+        "site_id": 24,
+        "vendor_id": 27,
+        "model": "ASR1001",
+        "rack_id": 25
+      },
+      {
+        "id": 24,
+        "name": "sw-024",
+        "mgmt_ip": "10.25.0.24",
+        "status": "decommissioned",
+        "site_id": 25,
+        "vendor_id": 28,
+        "model": "MX204",
+        "rack_id": 26
+      },
+      {
+        "id": 25,
+        "name": "sw-025",
+        "mgmt_ip": "10.26.0.25",
+        "status": "planned",
+        "site_id": 26,
+        "vendor_id": 29,
+        "model": "QFX5100",
+        "rack_id": 27
+      },
+      {
+        "id": 26,
+        "name": "sw-026",
+        "mgmt_ip": "10.27.0.26",
+        "status": "provisioning",
+        "site_id": 27,
+        "vendor_id": 30,
+        "model": "AP-515",
+        "rack_id": 28
+      },
+      {
+        "id": 27,
+        "name": "sw-027",
+        "mgmt_ip": "10.28.0.27",
+        "status": "active",
+        "site_id": 28,
+        "vendor_id": 31,
+        "model": "C9300",
+        "rack_id": 29
+      },
+      {
+        "id": 28,
+        "name": "sw-028",
+        "mgmt_ip": "10.29.0.28",
+        "status": "maintenance",
+        "site_id": 29,
+        "vendor_id": 32,
+        "model": "DL380",
+        "rack_id": 30
+      },
+      {
+        "id": 29,
+        "name": "sw-029",
+        "mgmt_ip": "10.30.0.29",
+        "status": "decommissioned",
+        "site_id": 30,
+        "vendor_id": 33,
+        "model": "ASR1001",
+        "rack_id": 31
+      },
+      {
+        "id": 30,
+        "name": "sw-030",
+        "mgmt_ip": "10.31.0.30",
+        "status": "planned",
+        "site_id": 31,
+        "vendor_id": 34,
+        "model": "MX204",
+        "rack_id": 32
+      },
+      {
+        "id": 31,
+        "name": "sw-031",
+        "mgmt_ip": "10.32.0.31",
+        "status": "provisioning",
+        "site_id": 32,
+        "vendor_id": 35,
+        "model": "QFX5100",
+        "rack_id": 33
+      },
+      {
+        "id": 32,
+        "name": "sw-032",
+        "mgmt_ip": "10.33.0.32",
+        "status": "active",
+        "site_id": 33,
+        "vendor_id": 36,
+        "model": "AP-515",
+        "rack_id": 34
+      },
+      {
+        "id": 33,
+        "name": "sw-033",
+        "mgmt_ip": "10.34.0.33",
+        "status": "maintenance",
+        "site_id": 34,
+        "vendor_id": 37,
+        "model": "C9300",
+        "rack_id": 35
+      },
+      {
+        "id": 34,
+        "name": "sw-034",
+        "mgmt_ip": "10.35.0.34",
+        "status": "decommissioned",
+        "site_id": 35,
+        "vendor_id": 38,
+        "model": "DL380",
+        "rack_id": 36
+      },
+      {
+        "id": 35,
+        "name": "sw-035",
+        "mgmt_ip": "10.36.0.35",
+        "status": "planned",
+        "site_id": 36,
+        "vendor_id": 39,
+        "model": "ASR1001",
+        "rack_id": 37
+      },
+      {
+        "id": 36,
+        "name": "sw-036",
+        "mgmt_ip": "10.37.0.36",
+        "status": "provisioning",
+        "site_id": 37,
+        "vendor_id": 40,
+        "model": "MX204",
+        "rack_id": 38
+      },
+      {
+        "id": 37,
+        "name": "sw-037",
+        "mgmt_ip": "10.38.0.37",
+        "status": "active",
+        "site_id": 38,
+        "vendor_id": 41,
+        "model": "QFX5100",
+        "rack_id": 39
+      },
+      {
+        "id": 38,
+        "name": "sw-038",
+        "mgmt_ip": "10.39.0.38",
+        "status": "maintenance",
+        "site_id": 39,
+        "vendor_id": 42,
+        "model": "AP-515",
+        "rack_id": 40
+      },
+      {
+        "id": 39,
+        "name": "sw-039",
+        "mgmt_ip": "10.40.0.39",
+        "status": "decommissioned",
+        "site_id": 40,
+        "vendor_id": 43,
+        "model": "C9300",
+        "rack_id": 41
+      },
+      {
+        "id": 40,
+        "name": "sw-040",
+        "mgmt_ip": "10.41.0.40",
+        "status": "planned",
+        "site_id": 41,
+        "vendor_id": 44,
+        "model": "DL380",
+        "rack_id": 42
+      },
+      {
+        "id": 41,
+        "name": "sw-041",
+        "mgmt_ip": "10.42.0.41",
+        "status": "provisioning",
+        "site_id": 42,
+        "vendor_id": 45,
+        "model": "ASR1001",
+        "rack_id": 43
+      },
+      {
+        "id": 42,
+        "name": "sw-042",
+        "mgmt_ip": "10.43.0.42",
+        "status": "active",
+        "site_id": 43,
+        "vendor_id": 46,
+        "model": "MX204",
+        "rack_id": 44
+      },
+      {
+        "id": 43,
+        "name": "sw-043",
+        "mgmt_ip": "10.44.0.43",
+        "status": "maintenance",
+        "site_id": 44,
+        "vendor_id": 47,
+        "model": "QFX5100",
+        "rack_id": 45
+      },
+      {
+        "id": 44,
+        "name": "sw-044",
+        "mgmt_ip": "10.45.0.44",
+        "status": "decommissioned",
+        "site_id": 45,
+        "vendor_id": 48,
+        "model": "AP-515",
+        "rack_id": 46
+      },
+      {
+        "id": 45,
+        "name": "sw-045",
+        "mgmt_ip": "10.46.0.45",
+        "status": "planned",
+        "site_id": 46,
+        "vendor_id": 49,
+        "model": "C9300",
+        "rack_id": 47
+      },
+      {
+        "id": 46,
+        "name": "sw-046",
+        "mgmt_ip": "10.47.0.46",
+        "status": "provisioning",
+        "site_id": 47,
+        "vendor_id": 50,
+        "model": "DL380",
+        "rack_id": 48
+      },
+      {
+        "id": 47,
+        "name": "sw-047",
+        "mgmt_ip": "10.48.0.47",
+        "status": "active",
+        "site_id": 48,
+        "vendor_id": 1,
+        "model": "ASR1001",
+        "rack_id": 49
+      },
+      {
+        "id": 48,
+        "name": "sw-048",
+        "mgmt_ip": "10.49.0.48",
+        "status": "maintenance",
+        "site_id": 49,
+        "vendor_id": 2,
+        "model": "MX204",
+        "rack_id": 50
+      },
+      {
+        "id": 49,
+        "name": "sw-049",
+        "mgmt_ip": "10.50.0.49",
+        "status": "decommissioned",
+        "site_id": 50,
+        "vendor_id": 3,
+        "model": "QFX5100",
+        "rack_id": 1
+      },
+      {
+        "id": 50,
+        "name": "sw-050",
+        "mgmt_ip": "10.1.0.50",
+        "status": "planned",
+        "site_id": 1,
+        "vendor_id": 4,
+        "model": "AP-515",
+        "rack_id": 2
+      }
+    ],
+    "access_point": [
+      {
+        "id": 1,
+        "name": "ap-001",
+        "mgmt_ip": "10.2.0.1",
+        "status": "provisioning",
+        "site_id": 2,
+        "vendor_id": 5,
+        "model": "QFX5100"
+      },
+      {
+        "id": 2,
+        "name": "ap-002",
+        "mgmt_ip": "10.3.0.2",
+        "status": "active",
+        "site_id": 3,
+        "vendor_id": 6,
+        "model": "AP-515"
+      },
+      {
+        "id": 3,
+        "name": "ap-003",
+        "mgmt_ip": "10.4.0.3",
+        "status": "maintenance",
+        "site_id": 4,
+        "vendor_id": 7,
+        "model": "C9300"
+      },
+      {
+        "id": 4,
+        "name": "ap-004",
+        "mgmt_ip": "10.5.0.4",
+        "status": "decommissioned",
+        "site_id": 5,
+        "vendor_id": 8,
+        "model": "DL380"
+      },
+      {
+        "id": 5,
+        "name": "ap-005",
+        "mgmt_ip": "10.6.0.5",
+        "status": "planned",
+        "site_id": 6,
+        "vendor_id": 9,
+        "model": "ASR1001"
+      },
+      {
+        "id": 6,
+        "name": "ap-006",
+        "mgmt_ip": "10.7.0.6",
+        "status": "provisioning",
+        "site_id": 7,
+        "vendor_id": 10,
+        "model": "MX204"
+      },
+      {
+        "id": 7,
+        "name": "ap-007",
+        "mgmt_ip": "10.8.0.7",
+        "status": "active",
+        "site_id": 8,
+        "vendor_id": 11,
+        "model": "QFX5100"
+      },
+      {
+        "id": 8,
+        "name": "ap-008",
+        "mgmt_ip": "10.9.0.8",
+        "status": "maintenance",
+        "site_id": 9,
+        "vendor_id": 12,
+        "model": "AP-515"
+      },
+      {
+        "id": 9,
+        "name": "ap-009",
+        "mgmt_ip": "10.10.0.9",
+        "status": "decommissioned",
+        "site_id": 10,
+        "vendor_id": 13,
+        "model": "C9300"
+      },
+      {
+        "id": 10,
+        "name": "ap-010",
+        "mgmt_ip": "10.11.0.10",
+        "status": "planned",
+        "site_id": 11,
+        "vendor_id": 14,
+        "model": "DL380"
+      },
+      {
+        "id": 11,
+        "name": "ap-011",
+        "mgmt_ip": "10.12.0.11",
+        "status": "provisioning",
+        "site_id": 12,
+        "vendor_id": 15,
+        "model": "ASR1001"
+      },
+      {
+        "id": 12,
+        "name": "ap-012",
+        "mgmt_ip": "10.13.0.12",
+        "status": "active",
+        "site_id": 13,
+        "vendor_id": 16,
+        "model": "MX204"
+      },
+      {
+        "id": 13,
+        "name": "ap-013",
+        "mgmt_ip": "10.14.0.13",
+        "status": "maintenance",
+        "site_id": 14,
+        "vendor_id": 17,
+        "model": "QFX5100"
+      },
+      {
+        "id": 14,
+        "name": "ap-014",
+        "mgmt_ip": "10.15.0.14",
+        "status": "decommissioned",
+        "site_id": 15,
+        "vendor_id": 18,
+        "model": "AP-515"
+      },
+      {
+        "id": 15,
+        "name": "ap-015",
+        "mgmt_ip": "10.16.0.15",
+        "status": "planned",
+        "site_id": 16,
+        "vendor_id": 19,
+        "model": "C9300"
+      },
+      {
+        "id": 16,
+        "name": "ap-016",
+        "mgmt_ip": "10.17.0.16",
+        "status": "provisioning",
+        "site_id": 17,
+        "vendor_id": 20,
+        "model": "DL380"
+      },
+      {
+        "id": 17,
+        "name": "ap-017",
+        "mgmt_ip": "10.18.0.17",
+        "status": "active",
+        "site_id": 18,
+        "vendor_id": 21,
+        "model": "ASR1001"
+      },
+      {
+        "id": 18,
+        "name": "ap-018",
+        "mgmt_ip": "10.19.0.18",
+        "status": "maintenance",
+        "site_id": 19,
+        "vendor_id": 22,
+        "model": "MX204"
+      },
+      {
+        "id": 19,
+        "name": "ap-019",
+        "mgmt_ip": "10.20.0.19",
+        "status": "decommissioned",
+        "site_id": 20,
+        "vendor_id": 23,
+        "model": "QFX5100"
+      },
+      {
+        "id": 20,
+        "name": "ap-020",
+        "mgmt_ip": "10.21.0.20",
+        "status": "planned",
+        "site_id": 21,
+        "vendor_id": 24,
+        "model": "AP-515"
+      },
+      {
+        "id": 21,
+        "name": "ap-021",
+        "mgmt_ip": "10.22.0.21",
+        "status": "provisioning",
+        "site_id": 22,
+        "vendor_id": 25,
+        "model": "C9300"
+      },
+      {
+        "id": 22,
+        "name": "ap-022",
+        "mgmt_ip": "10.23.0.22",
+        "status": "active",
+        "site_id": 23,
+        "vendor_id": 26,
+        "model": "DL380"
+      },
+      {
+        "id": 23,
+        "name": "ap-023",
+        "mgmt_ip": "10.24.0.23",
+        "status": "maintenance",
+        "site_id": 24,
+        "vendor_id": 27,
+        "model": "ASR1001"
+      },
+      {
+        "id": 24,
+        "name": "ap-024",
+        "mgmt_ip": "10.25.0.24",
+        "status": "decommissioned",
+        "site_id": 25,
+        "vendor_id": 28,
+        "model": "MX204"
+      },
+      {
+        "id": 25,
+        "name": "ap-025",
+        "mgmt_ip": "10.26.0.25",
+        "status": "planned",
+        "site_id": 26,
+        "vendor_id": 29,
+        "model": "QFX5100"
+      },
+      {
+        "id": 26,
+        "name": "ap-026",
+        "mgmt_ip": "10.27.0.26",
+        "status": "provisioning",
+        "site_id": 27,
+        "vendor_id": 30,
+        "model": "AP-515"
+      },
+      {
+        "id": 27,
+        "name": "ap-027",
+        "mgmt_ip": "10.28.0.27",
+        "status": "active",
+        "site_id": 28,
+        "vendor_id": 31,
+        "model": "C9300"
+      },
+      {
+        "id": 28,
+        "name": "ap-028",
+        "mgmt_ip": "10.29.0.28",
+        "status": "maintenance",
+        "site_id": 29,
+        "vendor_id": 32,
+        "model": "DL380"
+      },
+      {
+        "id": 29,
+        "name": "ap-029",
+        "mgmt_ip": "10.30.0.29",
+        "status": "decommissioned",
+        "site_id": 30,
+        "vendor_id": 33,
+        "model": "ASR1001"
+      },
+      {
+        "id": 30,
+        "name": "ap-030",
+        "mgmt_ip": "10.31.0.30",
+        "status": "planned",
+        "site_id": 31,
+        "vendor_id": 34,
+        "model": "MX204"
+      },
+      {
+        "id": 31,
+        "name": "ap-031",
+        "mgmt_ip": "10.32.0.31",
+        "status": "provisioning",
+        "site_id": 32,
+        "vendor_id": 35,
+        "model": "QFX5100"
+      },
+      {
+        "id": 32,
+        "name": "ap-032",
+        "mgmt_ip": "10.33.0.32",
+        "status": "active",
+        "site_id": 33,
+        "vendor_id": 36,
+        "model": "AP-515"
+      },
+      {
+        "id": 33,
+        "name": "ap-033",
+        "mgmt_ip": "10.34.0.33",
+        "status": "maintenance",
+        "site_id": 34,
+        "vendor_id": 37,
+        "model": "C9300"
+      },
+      {
+        "id": 34,
+        "name": "ap-034",
+        "mgmt_ip": "10.35.0.34",
+        "status": "decommissioned",
+        "site_id": 35,
+        "vendor_id": 38,
+        "model": "DL380"
+      },
+      {
+        "id": 35,
+        "name": "ap-035",
+        "mgmt_ip": "10.36.0.35",
+        "status": "planned",
+        "site_id": 36,
+        "vendor_id": 39,
+        "model": "ASR1001"
+      },
+      {
+        "id": 36,
+        "name": "ap-036",
+        "mgmt_ip": "10.37.0.36",
+        "status": "provisioning",
+        "site_id": 37,
+        "vendor_id": 40,
+        "model": "MX204"
+      },
+      {
+        "id": 37,
+        "name": "ap-037",
+        "mgmt_ip": "10.38.0.37",
+        "status": "active",
+        "site_id": 38,
+        "vendor_id": 41,
+        "model": "QFX5100"
+      },
+      {
+        "id": 38,
+        "name": "ap-038",
+        "mgmt_ip": "10.39.0.38",
+        "status": "maintenance",
+        "site_id": 39,
+        "vendor_id": 42,
+        "model": "AP-515"
+      },
+      {
+        "id": 39,
+        "name": "ap-039",
+        "mgmt_ip": "10.40.0.39",
+        "status": "decommissioned",
+        "site_id": 40,
+        "vendor_id": 43,
+        "model": "C9300"
+      },
+      {
+        "id": 40,
+        "name": "ap-040",
+        "mgmt_ip": "10.41.0.40",
+        "status": "planned",
+        "site_id": 41,
+        "vendor_id": 44,
+        "model": "DL380"
+      },
+      {
+        "id": 41,
+        "name": "ap-041",
+        "mgmt_ip": "10.42.0.41",
+        "status": "provisioning",
+        "site_id": 42,
+        "vendor_id": 45,
+        "model": "ASR1001"
+      },
+      {
+        "id": 42,
+        "name": "ap-042",
+        "mgmt_ip": "10.43.0.42",
+        "status": "active",
+        "site_id": 43,
+        "vendor_id": 46,
+        "model": "MX204"
+      },
+      {
+        "id": 43,
+        "name": "ap-043",
+        "mgmt_ip": "10.44.0.43",
+        "status": "maintenance",
+        "site_id": 44,
+        "vendor_id": 47,
+        "model": "QFX5100"
+      },
+      {
+        "id": 44,
+        "name": "ap-044",
+        "mgmt_ip": "10.45.0.44",
+        "status": "decommissioned",
+        "site_id": 45,
+        "vendor_id": 48,
+        "model": "AP-515"
+      },
+      {
+        "id": 45,
+        "name": "ap-045",
+        "mgmt_ip": "10.46.0.45",
+        "status": "planned",
+        "site_id": 46,
+        "vendor_id": 49,
+        "model": "C9300"
+      },
+      {
+        "id": 46,
+        "name": "ap-046",
+        "mgmt_ip": "10.47.0.46",
+        "status": "provisioning",
+        "site_id": 47,
+        "vendor_id": 50,
+        "model": "DL380"
+      },
+      {
+        "id": 47,
+        "name": "ap-047",
+        "mgmt_ip": "10.48.0.47",
+        "status": "active",
+        "site_id": 48,
+        "vendor_id": 1,
+        "model": "ASR1001"
+      },
+      {
+        "id": 48,
+        "name": "ap-048",
+        "mgmt_ip": "10.49.0.48",
+        "status": "maintenance",
+        "site_id": 49,
+        "vendor_id": 2,
+        "model": "MX204"
+      },
+      {
+        "id": 49,
+        "name": "ap-049",
+        "mgmt_ip": "10.50.0.49",
+        "status": "decommissioned",
+        "site_id": 50,
+        "vendor_id": 3,
+        "model": "QFX5100"
+      },
+      {
+        "id": 50,
+        "name": "ap-050",
+        "mgmt_ip": "10.1.0.50",
+        "status": "planned",
+        "site_id": 1,
+        "vendor_id": 4,
+        "model": "AP-515"
+      }
+    ],
+    "server": [
+      {
+        "id": 1,
+        "name": "srv-001",
+        "hostname": "srv-001.net",
+        "mgmt_ip": "10.2.1.1",
+        "status": "provisioning",
+        "site_id": 2,
+        "vendor_id": 5,
+        "rack_id": 3
+      },
+      {
+        "id": 2,
+        "name": "srv-002",
+        "hostname": "srv-002.net",
+        "mgmt_ip": "10.3.1.2",
+        "status": "active",
+        "site_id": 3,
+        "vendor_id": 6,
+        "rack_id": 4
+      },
+      {
+        "id": 3,
+        "name": "srv-003",
+        "hostname": "srv-003.net",
+        "mgmt_ip": "10.4.1.3",
+        "status": "maintenance",
+        "site_id": 4,
+        "vendor_id": 7,
+        "rack_id": 5
+      },
+      {
+        "id": 4,
+        "name": "srv-004",
+        "hostname": "srv-004.net",
+        "mgmt_ip": "10.5.1.4",
+        "status": "decommissioned",
+        "site_id": 5,
+        "vendor_id": 8,
+        "rack_id": 6
+      },
+      {
+        "id": 5,
+        "name": "srv-005",
+        "hostname": "srv-005.net",
+        "mgmt_ip": "10.6.1.5",
+        "status": "planned",
+        "site_id": 6,
+        "vendor_id": 9,
+        "rack_id": 7
+      },
+      {
+        "id": 6,
+        "name": "srv-006",
+        "hostname": "srv-006.net",
+        "mgmt_ip": "10.7.1.6",
+        "status": "provisioning",
+        "site_id": 7,
+        "vendor_id": 10,
+        "rack_id": 8
+      },
+      {
+        "id": 7,
+        "name": "srv-007",
+        "hostname": "srv-007.net",
+        "mgmt_ip": "10.8.1.7",
+        "status": "active",
+        "site_id": 8,
+        "vendor_id": 11,
+        "rack_id": 9
+      },
+      {
+        "id": 8,
+        "name": "srv-008",
+        "hostname": "srv-008.net",
+        "mgmt_ip": "10.9.1.8",
+        "status": "maintenance",
+        "site_id": 9,
+        "vendor_id": 12,
+        "rack_id": 10
+      },
+      {
+        "id": 9,
+        "name": "srv-009",
+        "hostname": "srv-009.net",
+        "mgmt_ip": "10.10.1.9",
+        "status": "decommissioned",
+        "site_id": 10,
+        "vendor_id": 13,
+        "rack_id": 11
+      },
+      {
+        "id": 10,
+        "name": "srv-010",
+        "hostname": "srv-010.net",
+        "mgmt_ip": "10.11.1.10",
+        "status": "planned",
+        "site_id": 11,
+        "vendor_id": 14,
+        "rack_id": 12
+      },
+      {
+        "id": 11,
+        "name": "srv-011",
+        "hostname": "srv-011.net",
+        "mgmt_ip": "10.12.1.11",
+        "status": "provisioning",
+        "site_id": 12,
+        "vendor_id": 15,
+        "rack_id": 13
+      },
+      {
+        "id": 12,
+        "name": "srv-012",
+        "hostname": "srv-012.net",
+        "mgmt_ip": "10.13.1.12",
+        "status": "active",
+        "site_id": 13,
+        "vendor_id": 16,
+        "rack_id": 14
+      },
+      {
+        "id": 13,
+        "name": "srv-013",
+        "hostname": "srv-013.net",
+        "mgmt_ip": "10.14.1.13",
+        "status": "maintenance",
+        "site_id": 14,
+        "vendor_id": 17,
+        "rack_id": 15
+      },
+      {
+        "id": 14,
+        "name": "srv-014",
+        "hostname": "srv-014.net",
+        "mgmt_ip": "10.15.1.14",
+        "status": "decommissioned",
+        "site_id": 15,
+        "vendor_id": 18,
+        "rack_id": 16
+      },
+      {
+        "id": 15,
+        "name": "srv-015",
+        "hostname": "srv-015.net",
+        "mgmt_ip": "10.16.1.15",
+        "status": "planned",
+        "site_id": 16,
+        "vendor_id": 19,
+        "rack_id": 17
+      },
+      {
+        "id": 16,
+        "name": "srv-016",
+        "hostname": "srv-016.net",
+        "mgmt_ip": "10.17.1.16",
+        "status": "provisioning",
+        "site_id": 17,
+        "vendor_id": 20,
+        "rack_id": 18
+      },
+      {
+        "id": 17,
+        "name": "srv-017",
+        "hostname": "srv-017.net",
+        "mgmt_ip": "10.18.1.17",
+        "status": "active",
+        "site_id": 18,
+        "vendor_id": 21,
+        "rack_id": 19
+      },
+      {
+        "id": 18,
+        "name": "srv-018",
+        "hostname": "srv-018.net",
+        "mgmt_ip": "10.19.1.18",
+        "status": "maintenance",
+        "site_id": 19,
+        "vendor_id": 22,
+        "rack_id": 20
+      },
+      {
+        "id": 19,
+        "name": "srv-019",
+        "hostname": "srv-019.net",
+        "mgmt_ip": "10.20.1.19",
+        "status": "decommissioned",
+        "site_id": 20,
+        "vendor_id": 23,
+        "rack_id": 21
+      },
+      {
+        "id": 20,
+        "name": "srv-020",
+        "hostname": "srv-020.net",
+        "mgmt_ip": "10.21.1.20",
+        "status": "planned",
+        "site_id": 21,
+        "vendor_id": 24,
+        "rack_id": 22
+      },
+      {
+        "id": 21,
+        "name": "srv-021",
+        "hostname": "srv-021.net",
+        "mgmt_ip": "10.22.1.21",
+        "status": "provisioning",
+        "site_id": 22,
+        "vendor_id": 25,
+        "rack_id": 23
+      },
+      {
+        "id": 22,
+        "name": "srv-022",
+        "hostname": "srv-022.net",
+        "mgmt_ip": "10.23.1.22",
+        "status": "active",
+        "site_id": 23,
+        "vendor_id": 26,
+        "rack_id": 24
+      },
+      {
+        "id": 23,
+        "name": "srv-023",
+        "hostname": "srv-023.net",
+        "mgmt_ip": "10.24.1.23",
+        "status": "maintenance",
+        "site_id": 24,
+        "vendor_id": 27,
+        "rack_id": 25
+      },
+      {
+        "id": 24,
+        "name": "srv-024",
+        "hostname": "srv-024.net",
+        "mgmt_ip": "10.25.1.24",
+        "status": "decommissioned",
+        "site_id": 25,
+        "vendor_id": 28,
+        "rack_id": 26
+      },
+      {
+        "id": 25,
+        "name": "srv-025",
+        "hostname": "srv-025.net",
+        "mgmt_ip": "10.26.1.25",
+        "status": "planned",
+        "site_id": 26,
+        "vendor_id": 29,
+        "rack_id": 27
+      },
+      {
+        "id": 26,
+        "name": "srv-026",
+        "hostname": "srv-026.net",
+        "mgmt_ip": "10.27.1.26",
+        "status": "provisioning",
+        "site_id": 27,
+        "vendor_id": 30,
+        "rack_id": 28
+      },
+      {
+        "id": 27,
+        "name": "srv-027",
+        "hostname": "srv-027.net",
+        "mgmt_ip": "10.28.1.27",
+        "status": "active",
+        "site_id": 28,
+        "vendor_id": 31,
+        "rack_id": 29
+      },
+      {
+        "id": 28,
+        "name": "srv-028",
+        "hostname": "srv-028.net",
+        "mgmt_ip": "10.29.1.28",
+        "status": "maintenance",
+        "site_id": 29,
+        "vendor_id": 32,
+        "rack_id": 30
+      },
+      {
+        "id": 29,
+        "name": "srv-029",
+        "hostname": "srv-029.net",
+        "mgmt_ip": "10.30.1.29",
+        "status": "decommissioned",
+        "site_id": 30,
+        "vendor_id": 33,
+        "rack_id": 31
+      },
+      {
+        "id": 30,
+        "name": "srv-030",
+        "hostname": "srv-030.net",
+        "mgmt_ip": "10.31.1.30",
+        "status": "planned",
+        "site_id": 31,
+        "vendor_id": 34,
+        "rack_id": 32
+      },
+      {
+        "id": 31,
+        "name": "srv-031",
+        "hostname": "srv-031.net",
+        "mgmt_ip": "10.32.1.31",
+        "status": "provisioning",
+        "site_id": 32,
+        "vendor_id": 35,
+        "rack_id": 33
+      },
+      {
+        "id": 32,
+        "name": "srv-032",
+        "hostname": "srv-032.net",
+        "mgmt_ip": "10.33.1.32",
+        "status": "active",
+        "site_id": 33,
+        "vendor_id": 36,
+        "rack_id": 34
+      },
+      {
+        "id": 33,
+        "name": "srv-033",
+        "hostname": "srv-033.net",
+        "mgmt_ip": "10.34.1.33",
+        "status": "maintenance",
+        "site_id": 34,
+        "vendor_id": 37,
+        "rack_id": 35
+      },
+      {
+        "id": 34,
+        "name": "srv-034",
+        "hostname": "srv-034.net",
+        "mgmt_ip": "10.35.1.34",
+        "status": "decommissioned",
+        "site_id": 35,
+        "vendor_id": 38,
+        "rack_id": 36
+      },
+      {
+        "id": 35,
+        "name": "srv-035",
+        "hostname": "srv-035.net",
+        "mgmt_ip": "10.36.1.35",
+        "status": "planned",
+        "site_id": 36,
+        "vendor_id": 39,
+        "rack_id": 37
+      },
+      {
+        "id": 36,
+        "name": "srv-036",
+        "hostname": "srv-036.net",
+        "mgmt_ip": "10.37.1.36",
+        "status": "provisioning",
+        "site_id": 37,
+        "vendor_id": 40,
+        "rack_id": 38
+      },
+      {
+        "id": 37,
+        "name": "srv-037",
+        "hostname": "srv-037.net",
+        "mgmt_ip": "10.38.1.37",
+        "status": "active",
+        "site_id": 38,
+        "vendor_id": 41,
+        "rack_id": 39
+      },
+      {
+        "id": 38,
+        "name": "srv-038",
+        "hostname": "srv-038.net",
+        "mgmt_ip": "10.39.1.38",
+        "status": "maintenance",
+        "site_id": 39,
+        "vendor_id": 42,
+        "rack_id": 40
+      },
+      {
+        "id": 39,
+        "name": "srv-039",
+        "hostname": "srv-039.net",
+        "mgmt_ip": "10.40.1.39",
+        "status": "decommissioned",
+        "site_id": 40,
+        "vendor_id": 43,
+        "rack_id": 41
+      },
+      {
+        "id": 40,
+        "name": "srv-040",
+        "hostname": "srv-040.net",
+        "mgmt_ip": "10.41.1.40",
+        "status": "planned",
+        "site_id": 41,
+        "vendor_id": 44,
+        "rack_id": 42
+      },
+      {
+        "id": 41,
+        "name": "srv-041",
+        "hostname": "srv-041.net",
+        "mgmt_ip": "10.42.1.41",
+        "status": "provisioning",
+        "site_id": 42,
+        "vendor_id": 45,
+        "rack_id": 43
+      },
+      {
+        "id": 42,
+        "name": "srv-042",
+        "hostname": "srv-042.net",
+        "mgmt_ip": "10.43.1.42",
+        "status": "active",
+        "site_id": 43,
+        "vendor_id": 46,
+        "rack_id": 44
+      },
+      {
+        "id": 43,
+        "name": "srv-043",
+        "hostname": "srv-043.net",
+        "mgmt_ip": "10.44.1.43",
+        "status": "maintenance",
+        "site_id": 44,
+        "vendor_id": 47,
+        "rack_id": 45
+      },
+      {
+        "id": 44,
+        "name": "srv-044",
+        "hostname": "srv-044.net",
+        "mgmt_ip": "10.45.1.44",
+        "status": "decommissioned",
+        "site_id": 45,
+        "vendor_id": 48,
+        "rack_id": 46
+      },
+      {
+        "id": 45,
+        "name": "srv-045",
+        "hostname": "srv-045.net",
+        "mgmt_ip": "10.46.1.45",
+        "status": "planned",
+        "site_id": 46,
+        "vendor_id": 49,
+        "rack_id": 47
+      },
+      {
+        "id": 46,
+        "name": "srv-046",
+        "hostname": "srv-046.net",
+        "mgmt_ip": "10.47.1.46",
+        "status": "provisioning",
+        "site_id": 47,
+        "vendor_id": 50,
+        "rack_id": 48
+      },
+      {
+        "id": 47,
+        "name": "srv-047",
+        "hostname": "srv-047.net",
+        "mgmt_ip": "10.48.1.47",
+        "status": "active",
+        "site_id": 48,
+        "vendor_id": 1,
+        "rack_id": 49
+      },
+      {
+        "id": 48,
+        "name": "srv-048",
+        "hostname": "srv-048.net",
+        "mgmt_ip": "10.49.1.48",
+        "status": "maintenance",
+        "site_id": 49,
+        "vendor_id": 2,
+        "rack_id": 50
+      },
+      {
+        "id": 49,
+        "name": "srv-049",
+        "hostname": "srv-049.net",
+        "mgmt_ip": "10.50.1.49",
+        "status": "decommissioned",
+        "site_id": 50,
+        "vendor_id": 3,
+        "rack_id": 1
+      },
+      {
+        "id": 50,
+        "name": "srv-050",
+        "hostname": "srv-050.net",
+        "mgmt_ip": "10.1.1.50",
+        "status": "planned",
+        "site_id": 1,
+        "vendor_id": 4,
+        "rack_id": 2
+      }
+    ],
+    "ip_subnet": [
+      {
+        "id": 1,
+        "cidr": "10.1.0.0/24",
+        "vlan": 101,
+        "site_id": 2
+      },
+      {
+        "id": 2,
+        "cidr": "10.2.0.0/24",
+        "vlan": 102,
+        "site_id": 3
+      },
+      {
+        "id": 3,
+        "cidr": "10.3.0.0/24",
+        "vlan": 103,
+        "site_id": 4
+      },
+      {
+        "id": 4,
+        "cidr": "10.4.0.0/24",
+        "vlan": 104,
+        "site_id": 5
+      },
+      {
+        "id": 5,
+        "cidr": "10.5.0.0/24",
+        "vlan": 105,
+        "site_id": 6
+      },
+      {
+        "id": 6,
+        "cidr": "10.6.0.0/24",
+        "vlan": 106,
+        "site_id": 7
+      },
+      {
+        "id": 7,
+        "cidr": "10.7.0.0/24",
+        "vlan": 107,
+        "site_id": 8
+      },
+      {
+        "id": 8,
+        "cidr": "10.8.0.0/24",
+        "vlan": 108,
+        "site_id": 9
+      },
+      {
+        "id": 9,
+        "cidr": "10.9.0.0/24",
+        "vlan": 109,
+        "site_id": 10
+      },
+      {
+        "id": 10,
+        "cidr": "10.10.0.0/24",
+        "vlan": 110,
+        "site_id": 11
+      },
+      {
+        "id": 11,
+        "cidr": "10.11.0.0/24",
+        "vlan": 111,
+        "site_id": 12
+      },
+      {
+        "id": 12,
+        "cidr": "10.12.0.0/24",
+        "vlan": 112,
+        "site_id": 13
+      },
+      {
+        "id": 13,
+        "cidr": "10.13.0.0/24",
+        "vlan": 113,
+        "site_id": 14
+      },
+      {
+        "id": 14,
+        "cidr": "10.14.0.0/24",
+        "vlan": 114,
+        "site_id": 15
+      },
+      {
+        "id": 15,
+        "cidr": "10.15.0.0/24",
+        "vlan": 115,
+        "site_id": 16
+      },
+      {
+        "id": 16,
+        "cidr": "10.16.0.0/24",
+        "vlan": 116,
+        "site_id": 17
+      },
+      {
+        "id": 17,
+        "cidr": "10.17.0.0/24",
+        "vlan": 117,
+        "site_id": 18
+      },
+      {
+        "id": 18,
+        "cidr": "10.18.0.0/24",
+        "vlan": 118,
+        "site_id": 19
+      },
+      {
+        "id": 19,
+        "cidr": "10.19.0.0/24",
+        "vlan": 119,
+        "site_id": 20
+      },
+      {
+        "id": 20,
+        "cidr": "10.20.0.0/24",
+        "vlan": 120,
+        "site_id": 21
+      },
+      {
+        "id": 21,
+        "cidr": "10.21.0.0/24",
+        "vlan": 121,
+        "site_id": 22
+      },
+      {
+        "id": 22,
+        "cidr": "10.22.0.0/24",
+        "vlan": 122,
+        "site_id": 23
+      },
+      {
+        "id": 23,
+        "cidr": "10.23.0.0/24",
+        "vlan": 123,
+        "site_id": 24
+      },
+      {
+        "id": 24,
+        "cidr": "10.24.0.0/24",
+        "vlan": 124,
+        "site_id": 25
+      },
+      {
+        "id": 25,
+        "cidr": "10.25.0.0/24",
+        "vlan": 125,
+        "site_id": 26
+      },
+      {
+        "id": 26,
+        "cidr": "10.26.0.0/24",
+        "vlan": 126,
+        "site_id": 27
+      },
+      {
+        "id": 27,
+        "cidr": "10.27.0.0/24",
+        "vlan": 127,
+        "site_id": 28
+      },
+      {
+        "id": 28,
+        "cidr": "10.28.0.0/24",
+        "vlan": 128,
+        "site_id": 29
+      },
+      {
+        "id": 29,
+        "cidr": "10.29.0.0/24",
+        "vlan": 129,
+        "site_id": 30
+      },
+      {
+        "id": 30,
+        "cidr": "10.30.0.0/24",
+        "vlan": 130,
+        "site_id": 31
+      },
+      {
+        "id": 31,
+        "cidr": "10.31.0.0/24",
+        "vlan": 131,
+        "site_id": 32
+      },
+      {
+        "id": 32,
+        "cidr": "10.32.0.0/24",
+        "vlan": 132,
+        "site_id": 33
+      },
+      {
+        "id": 33,
+        "cidr": "10.33.0.0/24",
+        "vlan": 133,
+        "site_id": 34
+      },
+      {
+        "id": 34,
+        "cidr": "10.34.0.0/24",
+        "vlan": 134,
+        "site_id": 35
+      },
+      {
+        "id": 35,
+        "cidr": "10.35.0.0/24",
+        "vlan": 135,
+        "site_id": 36
+      },
+      {
+        "id": 36,
+        "cidr": "10.36.0.0/24",
+        "vlan": 136,
+        "site_id": 37
+      },
+      {
+        "id": 37,
+        "cidr": "10.37.0.0/24",
+        "vlan": 137,
+        "site_id": 38
+      },
+      {
+        "id": 38,
+        "cidr": "10.38.0.0/24",
+        "vlan": 138,
+        "site_id": 39
+      },
+      {
+        "id": 39,
+        "cidr": "10.39.0.0/24",
+        "vlan": 139,
+        "site_id": 40
+      },
+      {
+        "id": 40,
+        "cidr": "10.40.0.0/24",
+        "vlan": 140,
+        "site_id": 41
+      },
+      {
+        "id": 41,
+        "cidr": "10.41.0.0/24",
+        "vlan": 141,
+        "site_id": 42
+      },
+      {
+        "id": 42,
+        "cidr": "10.42.0.0/24",
+        "vlan": 142,
+        "site_id": 43
+      },
+      {
+        "id": 43,
+        "cidr": "10.43.0.0/24",
+        "vlan": 143,
+        "site_id": 44
+      },
+      {
+        "id": 44,
+        "cidr": "10.44.0.0/24",
+        "vlan": 144,
+        "site_id": 45
+      },
+      {
+        "id": 45,
+        "cidr": "10.45.0.0/24",
+        "vlan": 145,
+        "site_id": 46
+      },
+      {
+        "id": 46,
+        "cidr": "10.46.0.0/24",
+        "vlan": 146,
+        "site_id": 47
+      },
+      {
+        "id": 47,
+        "cidr": "10.47.0.0/24",
+        "vlan": 147,
+        "site_id": 48
+      },
+      {
+        "id": 48,
+        "cidr": "10.48.0.0/24",
+        "vlan": 148,
+        "site_id": 49
+      },
+      {
+        "id": 49,
+        "cidr": "10.49.0.0/24",
+        "vlan": 149,
+        "site_id": 50
+      },
+      {
+        "id": 50,
+        "cidr": "10.50.0.0/24",
+        "vlan": 150,
+        "site_id": 1
+      }
+    ],
+    "circuit": [
+      {
+        "id": 1,
+        "name": "Circuit 01",
+        "bandwidth_mbps": 500,
+        "status": "installing",
+        "site_id": 2,
+        "carrier_id": 7
+      },
+      {
+        "id": 2,
+        "name": "Circuit 02",
+        "bandwidth_mbps": 1000,
+        "status": "active",
+        "site_id": 3,
+        "carrier_id": 8
+      },
+      {
+        "id": 3,
+        "name": "Circuit 03",
+        "bandwidth_mbps": 10000,
+        "status": "cancelled",
+        "site_id": 4,
+        "carrier_id": 9
+      },
+      {
+        "id": 4,
+        "name": "Circuit 04",
+        "bandwidth_mbps": 100,
+        "status": "ordered",
+        "site_id": 5,
+        "carrier_id": 10
+      },
+      {
+        "id": 5,
+        "name": "Circuit 05",
+        "bandwidth_mbps": 500,
+        "status": "installing",
+        "site_id": 6,
+        "carrier_id": 11
+      },
+      {
+        "id": 6,
+        "name": "Circuit 06",
+        "bandwidth_mbps": 1000,
+        "status": "active",
+        "site_id": 7,
+        "carrier_id": 12
+      },
+      {
+        "id": 7,
+        "name": "Circuit 07",
+        "bandwidth_mbps": 10000,
+        "status": "cancelled",
+        "site_id": 8,
+        "carrier_id": 13
+      },
+      {
+        "id": 8,
+        "name": "Circuit 08",
+        "bandwidth_mbps": 100,
+        "status": "ordered",
+        "site_id": 9,
+        "carrier_id": 14
+      },
+      {
+        "id": 9,
+        "name": "Circuit 09",
+        "bandwidth_mbps": 500,
+        "status": "installing",
+        "site_id": 10,
+        "carrier_id": 15
+      },
+      {
+        "id": 10,
+        "name": "Circuit 10",
+        "bandwidth_mbps": 1000,
+        "status": "active",
+        "site_id": 11,
+        "carrier_id": 16
+      },
+      {
+        "id": 11,
+        "name": "Circuit 11",
+        "bandwidth_mbps": 10000,
+        "status": "cancelled",
+        "site_id": 12,
+        "carrier_id": 17
+      },
+      {
+        "id": 12,
+        "name": "Circuit 12",
+        "bandwidth_mbps": 100,
+        "status": "ordered",
+        "site_id": 13,
+        "carrier_id": 18
+      },
+      {
+        "id": 13,
+        "name": "Circuit 13",
+        "bandwidth_mbps": 500,
+        "status": "installing",
+        "site_id": 14,
+        "carrier_id": 19
+      },
+      {
+        "id": 14,
+        "name": "Circuit 14",
+        "bandwidth_mbps": 1000,
+        "status": "active",
+        "site_id": 15,
+        "carrier_id": 20
+      },
+      {
+        "id": 15,
+        "name": "Circuit 15",
+        "bandwidth_mbps": 10000,
+        "status": "cancelled",
+        "site_id": 16,
+        "carrier_id": 21
+      },
+      {
+        "id": 16,
+        "name": "Circuit 16",
+        "bandwidth_mbps": 100,
+        "status": "ordered",
+        "site_id": 17,
+        "carrier_id": 22
+      },
+      {
+        "id": 17,
+        "name": "Circuit 17",
+        "bandwidth_mbps": 500,
+        "status": "installing",
+        "site_id": 18,
+        "carrier_id": 23
+      },
+      {
+        "id": 18,
+        "name": "Circuit 18",
+        "bandwidth_mbps": 1000,
+        "status": "active",
+        "site_id": 19,
+        "carrier_id": 24
+      },
+      {
+        "id": 19,
+        "name": "Circuit 19",
+        "bandwidth_mbps": 10000,
+        "status": "cancelled",
+        "site_id": 20,
+        "carrier_id": 25
+      },
+      {
+        "id": 20,
+        "name": "Circuit 20",
+        "bandwidth_mbps": 100,
+        "status": "ordered",
+        "site_id": 21,
+        "carrier_id": 26
+      },
+      {
+        "id": 21,
+        "name": "Circuit 21",
+        "bandwidth_mbps": 500,
+        "status": "installing",
+        "site_id": 22,
+        "carrier_id": 27
+      },
+      {
+        "id": 22,
+        "name": "Circuit 22",
+        "bandwidth_mbps": 1000,
+        "status": "active",
+        "site_id": 23,
+        "carrier_id": 28
+      },
+      {
+        "id": 23,
+        "name": "Circuit 23",
+        "bandwidth_mbps": 10000,
+        "status": "cancelled",
+        "site_id": 24,
+        "carrier_id": 29
+      },
+      {
+        "id": 24,
+        "name": "Circuit 24",
+        "bandwidth_mbps": 100,
+        "status": "ordered",
+        "site_id": 25,
+        "carrier_id": 30
+      },
+      {
+        "id": 25,
+        "name": "Circuit 25",
+        "bandwidth_mbps": 500,
+        "status": "installing",
+        "site_id": 26,
+        "carrier_id": 31
+      },
+      {
+        "id": 26,
+        "name": "Circuit 26",
+        "bandwidth_mbps": 1000,
+        "status": "active",
+        "site_id": 27,
+        "carrier_id": 32
+      },
+      {
+        "id": 27,
+        "name": "Circuit 27",
+        "bandwidth_mbps": 10000,
+        "status": "cancelled",
+        "site_id": 28,
+        "carrier_id": 33
+      },
+      {
+        "id": 28,
+        "name": "Circuit 28",
+        "bandwidth_mbps": 100,
+        "status": "ordered",
+        "site_id": 29,
+        "carrier_id": 34
+      },
+      {
+        "id": 29,
+        "name": "Circuit 29",
+        "bandwidth_mbps": 500,
+        "status": "installing",
+        "site_id": 30,
+        "carrier_id": 35
+      },
+      {
+        "id": 30,
+        "name": "Circuit 30",
+        "bandwidth_mbps": 1000,
+        "status": "active",
+        "site_id": 31,
+        "carrier_id": 36
+      },
+      {
+        "id": 31,
+        "name": "Circuit 31",
+        "bandwidth_mbps": 10000,
+        "status": "cancelled",
+        "site_id": 32,
+        "carrier_id": 37
+      },
+      {
+        "id": 32,
+        "name": "Circuit 32",
+        "bandwidth_mbps": 100,
+        "status": "ordered",
+        "site_id": 33,
+        "carrier_id": 38
+      },
+      {
+        "id": 33,
+        "name": "Circuit 33",
+        "bandwidth_mbps": 500,
+        "status": "installing",
+        "site_id": 34,
+        "carrier_id": 39
+      },
+      {
+        "id": 34,
+        "name": "Circuit 34",
+        "bandwidth_mbps": 1000,
+        "status": "active",
+        "site_id": 35,
+        "carrier_id": 40
+      },
+      {
+        "id": 35,
+        "name": "Circuit 35",
+        "bandwidth_mbps": 10000,
+        "status": "cancelled",
+        "site_id": 36,
+        "carrier_id": 41
+      },
+      {
+        "id": 36,
+        "name": "Circuit 36",
+        "bandwidth_mbps": 100,
+        "status": "ordered",
+        "site_id": 37,
+        "carrier_id": 42
+      },
+      {
+        "id": 37,
+        "name": "Circuit 37",
+        "bandwidth_mbps": 500,
+        "status": "installing",
+        "site_id": 38,
+        "carrier_id": 43
+      },
+      {
+        "id": 38,
+        "name": "Circuit 38",
+        "bandwidth_mbps": 1000,
+        "status": "active",
+        "site_id": 39,
+        "carrier_id": 44
+      },
+      {
+        "id": 39,
+        "name": "Circuit 39",
+        "bandwidth_mbps": 10000,
+        "status": "cancelled",
+        "site_id": 40,
+        "carrier_id": 45
+      },
+      {
+        "id": 40,
+        "name": "Circuit 40",
+        "bandwidth_mbps": 100,
+        "status": "ordered",
+        "site_id": 41,
+        "carrier_id": 46
+      },
+      {
+        "id": 41,
+        "name": "Circuit 41",
+        "bandwidth_mbps": 500,
+        "status": "installing",
+        "site_id": 42,
+        "carrier_id": 47
+      },
+      {
+        "id": 42,
+        "name": "Circuit 42",
+        "bandwidth_mbps": 1000,
+        "status": "active",
+        "site_id": 43,
+        "carrier_id": 48
+      },
+      {
+        "id": 43,
+        "name": "Circuit 43",
+        "bandwidth_mbps": 10000,
+        "status": "cancelled",
+        "site_id": 44,
+        "carrier_id": 49
+      },
+      {
+        "id": 44,
+        "name": "Circuit 44",
+        "bandwidth_mbps": 100,
+        "status": "ordered",
+        "site_id": 45,
+        "carrier_id": 50
+      },
+      {
+        "id": 45,
+        "name": "Circuit 45",
+        "bandwidth_mbps": 500,
+        "status": "installing",
+        "site_id": 46,
+        "carrier_id": 1
+      },
+      {
+        "id": 46,
+        "name": "Circuit 46",
+        "bandwidth_mbps": 1000,
+        "status": "active",
+        "site_id": 47,
+        "carrier_id": 2
+      },
+      {
+        "id": 47,
+        "name": "Circuit 47",
+        "bandwidth_mbps": 10000,
+        "status": "cancelled",
+        "site_id": 48,
+        "carrier_id": 3
+      },
+      {
+        "id": 48,
+        "name": "Circuit 48",
+        "bandwidth_mbps": 100,
+        "status": "ordered",
+        "site_id": 49,
+        "carrier_id": 4
+      },
+      {
+        "id": 49,
+        "name": "Circuit 49",
+        "bandwidth_mbps": 500,
+        "status": "installing",
+        "site_id": 50,
+        "carrier_id": 5
+      },
+      {
+        "id": 50,
+        "name": "Circuit 50",
+        "bandwidth_mbps": 1000,
+        "status": "active",
+        "site_id": 1,
+        "carrier_id": 6
+      }
+    ],
+    "change_request": [
+      {
+        "id": 1,
+        "title": "CR-0001 change at site 2",
+        "description": "Auto-generated demo change.",
+        "risk": "medium",
+        "status": "submitted",
+        "site_id": 2
+      },
+      {
+        "id": 2,
+        "title": "CR-0002 change at site 3",
+        "description": "Auto-generated demo change.",
+        "risk": "high",
+        "status": "approved",
+        "site_id": 3
+      },
+      {
+        "id": 3,
+        "title": "CR-0003 change at site 4",
+        "description": "Auto-generated demo change.",
+        "risk": "low",
+        "status": "rejected",
+        "site_id": 4
+      },
+      {
+        "id": 4,
+        "title": "CR-0004 change at site 5",
+        "description": "Auto-generated demo change.",
+        "risk": "medium",
+        "status": "implemented",
+        "site_id": 5
+      },
+      {
+        "id": 5,
+        "title": "CR-0005 change at site 6",
+        "description": "Auto-generated demo change.",
+        "risk": "high",
+        "status": "closed",
+        "site_id": 6
+      },
+      {
+        "id": 6,
+        "title": "CR-0006 change at site 7",
+        "description": "Auto-generated demo change.",
+        "risk": "low",
+        "status": "draft",
+        "site_id": 7
+      },
+      {
+        "id": 7,
+        "title": "CR-0007 change at site 8",
+        "description": "Auto-generated demo change.",
+        "risk": "medium",
+        "status": "submitted",
+        "site_id": 8
+      },
+      {
+        "id": 8,
+        "title": "CR-0008 change at site 9",
+        "description": "Auto-generated demo change.",
+        "risk": "high",
+        "status": "approved",
+        "site_id": 9
+      },
+      {
+        "id": 9,
+        "title": "CR-0009 change at site 10",
+        "description": "Auto-generated demo change.",
+        "risk": "low",
+        "status": "rejected",
+        "site_id": 10
+      },
+      {
+        "id": 10,
+        "title": "CR-0010 change at site 11",
+        "description": "Auto-generated demo change.",
+        "risk": "medium",
+        "status": "implemented",
+        "site_id": 11
+      },
+      {
+        "id": 11,
+        "title": "CR-0011 change at site 12",
+        "description": "Auto-generated demo change.",
+        "risk": "high",
+        "status": "closed",
+        "site_id": 12
+      },
+      {
+        "id": 12,
+        "title": "CR-0012 change at site 13",
+        "description": "Auto-generated demo change.",
+        "risk": "low",
+        "status": "draft",
+        "site_id": 13
+      },
+      {
+        "id": 13,
+        "title": "CR-0013 change at site 14",
+        "description": "Auto-generated demo change.",
+        "risk": "medium",
+        "status": "submitted",
+        "site_id": 14
+      },
+      {
+        "id": 14,
+        "title": "CR-0014 change at site 15",
+        "description": "Auto-generated demo change.",
+        "risk": "high",
+        "status": "approved",
+        "site_id": 15
+      },
+      {
+        "id": 15,
+        "title": "CR-0015 change at site 16",
+        "description": "Auto-generated demo change.",
+        "risk": "low",
+        "status": "rejected",
+        "site_id": 16
+      },
+      {
+        "id": 16,
+        "title": "CR-0016 change at site 17",
+        "description": "Auto-generated demo change.",
+        "risk": "medium",
+        "status": "implemented",
+        "site_id": 17
+      },
+      {
+        "id": 17,
+        "title": "CR-0017 change at site 18",
+        "description": "Auto-generated demo change.",
+        "risk": "high",
+        "status": "closed",
+        "site_id": 18
+      },
+      {
+        "id": 18,
+        "title": "CR-0018 change at site 19",
+        "description": "Auto-generated demo change.",
+        "risk": "low",
+        "status": "draft",
+        "site_id": 19
+      },
+      {
+        "id": 19,
+        "title": "CR-0019 change at site 20",
+        "description": "Auto-generated demo change.",
+        "risk": "medium",
+        "status": "submitted",
+        "site_id": 20
+      },
+      {
+        "id": 20,
+        "title": "CR-0020 change at site 21",
+        "description": "Auto-generated demo change.",
+        "risk": "high",
+        "status": "approved",
+        "site_id": 21
+      },
+      {
+        "id": 21,
+        "title": "CR-0021 change at site 22",
+        "description": "Auto-generated demo change.",
+        "risk": "low",
+        "status": "rejected",
+        "site_id": 22
+      },
+      {
+        "id": 22,
+        "title": "CR-0022 change at site 23",
+        "description": "Auto-generated demo change.",
+        "risk": "medium",
+        "status": "implemented",
+        "site_id": 23
+      },
+      {
+        "id": 23,
+        "title": "CR-0023 change at site 24",
+        "description": "Auto-generated demo change.",
+        "risk": "high",
+        "status": "closed",
+        "site_id": 24
+      },
+      {
+        "id": 24,
+        "title": "CR-0024 change at site 25",
+        "description": "Auto-generated demo change.",
+        "risk": "low",
+        "status": "draft",
+        "site_id": 25
+      },
+      {
+        "id": 25,
+        "title": "CR-0025 change at site 26",
+        "description": "Auto-generated demo change.",
+        "risk": "medium",
+        "status": "submitted",
+        "site_id": 26
+      },
+      {
+        "id": 26,
+        "title": "CR-0026 change at site 27",
+        "description": "Auto-generated demo change.",
+        "risk": "high",
+        "status": "approved",
+        "site_id": 27
+      },
+      {
+        "id": 27,
+        "title": "CR-0027 change at site 28",
+        "description": "Auto-generated demo change.",
+        "risk": "low",
+        "status": "rejected",
+        "site_id": 28
+      },
+      {
+        "id": 28,
+        "title": "CR-0028 change at site 29",
+        "description": "Auto-generated demo change.",
+        "risk": "medium",
+        "status": "implemented",
+        "site_id": 29
+      },
+      {
+        "id": 29,
+        "title": "CR-0029 change at site 30",
+        "description": "Auto-generated demo change.",
+        "risk": "high",
+        "status": "closed",
+        "site_id": 30
+      },
+      {
+        "id": 30,
+        "title": "CR-0030 change at site 31",
+        "description": "Auto-generated demo change.",
+        "risk": "low",
+        "status": "draft",
+        "site_id": 31
+      },
+      {
+        "id": 31,
+        "title": "CR-0031 change at site 32",
+        "description": "Auto-generated demo change.",
+        "risk": "medium",
+        "status": "submitted",
+        "site_id": 32
+      },
+      {
+        "id": 32,
+        "title": "CR-0032 change at site 33",
+        "description": "Auto-generated demo change.",
+        "risk": "high",
+        "status": "approved",
+        "site_id": 33
+      },
+      {
+        "id": 33,
+        "title": "CR-0033 change at site 34",
+        "description": "Auto-generated demo change.",
+        "risk": "low",
+        "status": "rejected",
+        "site_id": 34
+      },
+      {
+        "id": 34,
+        "title": "CR-0034 change at site 35",
+        "description": "Auto-generated demo change.",
+        "risk": "medium",
+        "status": "implemented",
+        "site_id": 35
+      },
+      {
+        "id": 35,
+        "title": "CR-0035 change at site 36",
+        "description": "Auto-generated demo change.",
+        "risk": "high",
+        "status": "closed",
+        "site_id": 36
+      },
+      {
+        "id": 36,
+        "title": "CR-0036 change at site 37",
+        "description": "Auto-generated demo change.",
+        "risk": "low",
+        "status": "draft",
+        "site_id": 37
+      },
+      {
+        "id": 37,
+        "title": "CR-0037 change at site 38",
+        "description": "Auto-generated demo change.",
+        "risk": "medium",
+        "status": "submitted",
+        "site_id": 38
+      },
+      {
+        "id": 38,
+        "title": "CR-0038 change at site 39",
+        "description": "Auto-generated demo change.",
+        "risk": "high",
+        "status": "approved",
+        "site_id": 39
+      },
+      {
+        "id": 39,
+        "title": "CR-0039 change at site 40",
+        "description": "Auto-generated demo change.",
+        "risk": "low",
+        "status": "rejected",
+        "site_id": 40
+      },
+      {
+        "id": 40,
+        "title": "CR-0040 change at site 41",
+        "description": "Auto-generated demo change.",
+        "risk": "medium",
+        "status": "implemented",
+        "site_id": 41
+      },
+      {
+        "id": 41,
+        "title": "CR-0041 change at site 42",
+        "description": "Auto-generated demo change.",
+        "risk": "high",
+        "status": "closed",
+        "site_id": 42
+      },
+      {
+        "id": 42,
+        "title": "CR-0042 change at site 43",
+        "description": "Auto-generated demo change.",
+        "risk": "low",
+        "status": "draft",
+        "site_id": 43
+      },
+      {
+        "id": 43,
+        "title": "CR-0043 change at site 44",
+        "description": "Auto-generated demo change.",
+        "risk": "medium",
+        "status": "submitted",
+        "site_id": 44
+      },
+      {
+        "id": 44,
+        "title": "CR-0044 change at site 45",
+        "description": "Auto-generated demo change.",
+        "risk": "high",
+        "status": "approved",
+        "site_id": 45
+      },
+      {
+        "id": 45,
+        "title": "CR-0045 change at site 46",
+        "description": "Auto-generated demo change.",
+        "risk": "low",
+        "status": "rejected",
+        "site_id": 46
+      },
+      {
+        "id": 46,
+        "title": "CR-0046 change at site 47",
+        "description": "Auto-generated demo change.",
+        "risk": "medium",
+        "status": "implemented",
+        "site_id": 47
+      },
+      {
+        "id": 47,
+        "title": "CR-0047 change at site 48",
+        "description": "Auto-generated demo change.",
+        "risk": "high",
+        "status": "closed",
+        "site_id": 48
+      },
+      {
+        "id": 48,
+        "title": "CR-0048 change at site 49",
+        "description": "Auto-generated demo change.",
+        "risk": "low",
+        "status": "draft",
+        "site_id": 49
+      },
+      {
+        "id": 49,
+        "title": "CR-0049 change at site 50",
+        "description": "Auto-generated demo change.",
+        "risk": "medium",
+        "status": "submitted",
+        "site_id": 50
+      },
+      {
+        "id": 50,
+        "title": "CR-0050 change at site 1",
+        "description": "Auto-generated demo change.",
+        "risk": "high",
+        "status": "approved",
+        "site_id": 1
+      }
+    ],
+    "incident": [
+      {
+        "id": 1,
+        "title": "INC-0001 issue at site 2",
+        "severity": "sev2",
+        "status": "triaged",
+        "site_id": 2
+      },
+      {
+        "id": 2,
+        "title": "INC-0002 issue at site 3",
+        "severity": "sev3",
+        "status": "in_progress",
+        "site_id": 3
+      },
+      {
+        "id": 3,
+        "title": "INC-0003 issue at site 4",
+        "severity": "sev4",
+        "status": "resolved",
+        "site_id": 4
+      },
+      {
+        "id": 4,
+        "title": "INC-0004 issue at site 5",
+        "severity": "sev1",
+        "status": "closed",
+        "site_id": 5
+      },
+      {
+        "id": 5,
+        "title": "INC-0005 issue at site 6",
+        "severity": "sev2",
+        "status": "new",
+        "site_id": 6
+      },
+      {
+        "id": 6,
+        "title": "INC-0006 issue at site 7",
+        "severity": "sev3",
+        "status": "triaged",
+        "site_id": 7
+      },
+      {
+        "id": 7,
+        "title": "INC-0007 issue at site 8",
+        "severity": "sev4",
+        "status": "in_progress",
+        "site_id": 8
+      },
+      {
+        "id": 8,
+        "title": "INC-0008 issue at site 9",
+        "severity": "sev1",
+        "status": "resolved",
+        "site_id": 9
+      },
+      {
+        "id": 9,
+        "title": "INC-0009 issue at site 10",
+        "severity": "sev2",
+        "status": "closed",
+        "site_id": 10
+      },
+      {
+        "id": 10,
+        "title": "INC-0010 issue at site 11",
+        "severity": "sev3",
+        "status": "new",
+        "site_id": 11
+      },
+      {
+        "id": 11,
+        "title": "INC-0011 issue at site 12",
+        "severity": "sev4",
+        "status": "triaged",
+        "site_id": 12
+      },
+      {
+        "id": 12,
+        "title": "INC-0012 issue at site 13",
+        "severity": "sev1",
+        "status": "in_progress",
+        "site_id": 13
+      },
+      {
+        "id": 13,
+        "title": "INC-0013 issue at site 14",
+        "severity": "sev2",
+        "status": "resolved",
+        "site_id": 14
+      },
+      {
+        "id": 14,
+        "title": "INC-0014 issue at site 15",
+        "severity": "sev3",
+        "status": "closed",
+        "site_id": 15
+      },
+      {
+        "id": 15,
+        "title": "INC-0015 issue at site 16",
+        "severity": "sev4",
+        "status": "new",
+        "site_id": 16
+      },
+      {
+        "id": 16,
+        "title": "INC-0016 issue at site 17",
+        "severity": "sev1",
+        "status": "triaged",
+        "site_id": 17
+      },
+      {
+        "id": 17,
+        "title": "INC-0017 issue at site 18",
+        "severity": "sev2",
+        "status": "in_progress",
+        "site_id": 18
+      },
+      {
+        "id": 18,
+        "title": "INC-0018 issue at site 19",
+        "severity": "sev3",
+        "status": "resolved",
+        "site_id": 19
+      },
+      {
+        "id": 19,
+        "title": "INC-0019 issue at site 20",
+        "severity": "sev4",
+        "status": "closed",
+        "site_id": 20
+      },
+      {
+        "id": 20,
+        "title": "INC-0020 issue at site 21",
+        "severity": "sev1",
+        "status": "new",
+        "site_id": 21
+      },
+      {
+        "id": 21,
+        "title": "INC-0021 issue at site 22",
+        "severity": "sev2",
+        "status": "triaged",
+        "site_id": 22
+      },
+      {
+        "id": 22,
+        "title": "INC-0022 issue at site 23",
+        "severity": "sev3",
+        "status": "in_progress",
+        "site_id": 23
+      },
+      {
+        "id": 23,
+        "title": "INC-0023 issue at site 24",
+        "severity": "sev4",
+        "status": "resolved",
+        "site_id": 24
+      },
+      {
+        "id": 24,
+        "title": "INC-0024 issue at site 25",
+        "severity": "sev1",
+        "status": "closed",
+        "site_id": 25
+      },
+      {
+        "id": 25,
+        "title": "INC-0025 issue at site 26",
+        "severity": "sev2",
+        "status": "new",
+        "site_id": 26
+      },
+      {
+        "id": 26,
+        "title": "INC-0026 issue at site 27",
+        "severity": "sev3",
+        "status": "triaged",
+        "site_id": 27
+      },
+      {
+        "id": 27,
+        "title": "INC-0027 issue at site 28",
+        "severity": "sev4",
+        "status": "in_progress",
+        "site_id": 28
+      },
+      {
+        "id": 28,
+        "title": "INC-0028 issue at site 29",
+        "severity": "sev1",
+        "status": "resolved",
+        "site_id": 29
+      },
+      {
+        "id": 29,
+        "title": "INC-0029 issue at site 30",
+        "severity": "sev2",
+        "status": "closed",
+        "site_id": 30
+      },
+      {
+        "id": 30,
+        "title": "INC-0030 issue at site 31",
+        "severity": "sev3",
+        "status": "new",
+        "site_id": 31
+      },
+      {
+        "id": 31,
+        "title": "INC-0031 issue at site 32",
+        "severity": "sev4",
+        "status": "triaged",
+        "site_id": 32
+      },
+      {
+        "id": 32,
+        "title": "INC-0032 issue at site 33",
+        "severity": "sev1",
+        "status": "in_progress",
+        "site_id": 33
+      },
+      {
+        "id": 33,
+        "title": "INC-0033 issue at site 34",
+        "severity": "sev2",
+        "status": "resolved",
+        "site_id": 34
+      },
+      {
+        "id": 34,
+        "title": "INC-0034 issue at site 35",
+        "severity": "sev3",
+        "status": "closed",
+        "site_id": 35
+      },
+      {
+        "id": 35,
+        "title": "INC-0035 issue at site 36",
+        "severity": "sev4",
+        "status": "new",
+        "site_id": 36
+      },
+      {
+        "id": 36,
+        "title": "INC-0036 issue at site 37",
+        "severity": "sev1",
+        "status": "triaged",
+        "site_id": 37
+      },
+      {
+        "id": 37,
+        "title": "INC-0037 issue at site 38",
+        "severity": "sev2",
+        "status": "in_progress",
+        "site_id": 38
+      },
+      {
+        "id": 38,
+        "title": "INC-0038 issue at site 39",
+        "severity": "sev3",
+        "status": "resolved",
+        "site_id": 39
+      },
+      {
+        "id": 39,
+        "title": "INC-0039 issue at site 40",
+        "severity": "sev4",
+        "status": "closed",
+        "site_id": 40
+      },
+      {
+        "id": 40,
+        "title": "INC-0040 issue at site 41",
+        "severity": "sev1",
+        "status": "new",
+        "site_id": 41
+      },
+      {
+        "id": 41,
+        "title": "INC-0041 issue at site 42",
+        "severity": "sev2",
+        "status": "triaged",
+        "site_id": 42
+      },
+      {
+        "id": 42,
+        "title": "INC-0042 issue at site 43",
+        "severity": "sev3",
+        "status": "in_progress",
+        "site_id": 43
+      },
+      {
+        "id": 43,
+        "title": "INC-0043 issue at site 44",
+        "severity": "sev4",
+        "status": "resolved",
+        "site_id": 44
+      },
+      {
+        "id": 44,
+        "title": "INC-0044 issue at site 45",
+        "severity": "sev1",
+        "status": "closed",
+        "site_id": 45
+      },
+      {
+        "id": 45,
+        "title": "INC-0045 issue at site 46",
+        "severity": "sev2",
+        "status": "new",
+        "site_id": 46
+      },
+      {
+        "id": 46,
+        "title": "INC-0046 issue at site 47",
+        "severity": "sev3",
+        "status": "triaged",
+        "site_id": 47
+      },
+      {
+        "id": 47,
+        "title": "INC-0047 issue at site 48",
+        "severity": "sev4",
+        "status": "in_progress",
+        "site_id": 48
+      },
+      {
+        "id": 48,
+        "title": "INC-0048 issue at site 49",
+        "severity": "sev1",
+        "status": "resolved",
+        "site_id": 49
+      },
+      {
+        "id": 49,
+        "title": "INC-0049 issue at site 50",
+        "severity": "sev2",
+        "status": "closed",
+        "site_id": 50
+      },
+      {
+        "id": 50,
+        "title": "INC-0050 issue at site 1",
+        "severity": "sev3",
+        "status": "new",
+        "site_id": 1
+      }
+    ],
+    "j_incident_router": [
+      {
+        "incident_id": 1,
+        "router_id": 11
+      },
+      {
+        "incident_id": 2,
+        "router_id": 12
+      },
+      {
+        "incident_id": 3,
+        "router_id": 13
+      },
+      {
+        "incident_id": 4,
+        "router_id": 14
+      },
+      {
+        "incident_id": 5,
+        "router_id": 15
+      },
+      {
+        "incident_id": 6,
+        "router_id": 16
+      },
+      {
+        "incident_id": 7,
+        "router_id": 17
+      },
+      {
+        "incident_id": 8,
+        "router_id": 18
+      },
+      {
+        "incident_id": 9,
+        "router_id": 19
+      },
+      {
+        "incident_id": 10,
+        "router_id": 20
+      },
+      {
+        "incident_id": 11,
+        "router_id": 21
+      },
+      {
+        "incident_id": 12,
+        "router_id": 22
+      },
+      {
+        "incident_id": 13,
+        "router_id": 23
+      },
+      {
+        "incident_id": 14,
+        "router_id": 24
+      },
+      {
+        "incident_id": 15,
+        "router_id": 25
+      },
+      {
+        "incident_id": 16,
+        "router_id": 26
+      },
+      {
+        "incident_id": 17,
+        "router_id": 27
+      },
+      {
+        "incident_id": 18,
+        "router_id": 28
+      },
+      {
+        "incident_id": 19,
+        "router_id": 29
+      },
+      {
+        "incident_id": 20,
+        "router_id": 30
+      },
+      {
+        "incident_id": 21,
+        "router_id": 31
+      },
+      {
+        "incident_id": 22,
+        "router_id": 32
+      },
+      {
+        "incident_id": 23,
+        "router_id": 33
+      },
+      {
+        "incident_id": 24,
+        "router_id": 34
+      },
+      {
+        "incident_id": 25,
+        "router_id": 35
+      },
+      {
+        "incident_id": 26,
+        "router_id": 36
+      },
+      {
+        "incident_id": 27,
+        "router_id": 37
+      },
+      {
+        "incident_id": 28,
+        "router_id": 38
+      },
+      {
+        "incident_id": 29,
+        "router_id": 39
+      },
+      {
+        "incident_id": 30,
+        "router_id": 40
+      },
+      {
+        "incident_id": 31,
+        "router_id": 41
+      },
+      {
+        "incident_id": 32,
+        "router_id": 42
+      },
+      {
+        "incident_id": 33,
+        "router_id": 43
+      },
+      {
+        "incident_id": 34,
+        "router_id": 44
+      },
+      {
+        "incident_id": 35,
+        "router_id": 45
+      },
+      {
+        "incident_id": 36,
+        "router_id": 46
+      },
+      {
+        "incident_id": 37,
+        "router_id": 47
+      },
+      {
+        "incident_id": 38,
+        "router_id": 48
+      },
+      {
+        "incident_id": 39,
+        "router_id": 49
+      },
+      {
+        "incident_id": 40,
+        "router_id": 50
+      },
+      {
+        "incident_id": 41,
+        "router_id": 1
+      },
+      {
+        "incident_id": 42,
+        "router_id": 2
+      },
+      {
+        "incident_id": 43,
+        "router_id": 3
+      },
+      {
+        "incident_id": 44,
+        "router_id": 4
+      },
+      {
+        "incident_id": 45,
+        "router_id": 5
+      },
+      {
+        "incident_id": 46,
+        "router_id": 6
+      },
+      {
+        "incident_id": 47,
+        "router_id": 7
+      },
+      {
+        "incident_id": 48,
+        "router_id": 8
+      },
+      {
+        "incident_id": 49,
+        "router_id": 9
+      },
+      {
+        "incident_id": 50,
+        "router_id": 10
+      }
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}Widget · Biggy{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">Edit widget</h1>
+  <span style="flex:1"></span>
+  <a class="btn" href="{{ url_for('designer.dashboard_edit', dash_id=w.dashboard_id) }}">Back</a>
+</div>
+<div class="panel" style="max-width:680px">
+  <form method="post">
+    {{ form.hidden_tag() }}
+    {{ render_field(form.kind) }}
+    {{ render_field(form.title) }}
+    {{ render_field(form.table_id) }}
+    <p class="help">For <em>Chart</em>/<em>KPI</em>: a report query (e.g.
+      <code>group=status&metric=count</code>). KPI uses the first metric as a single total;
+      put a numeric target in <em>content</em> to show value/target.</p>
+    {{ render_field(form.query) }}
+    {{ render_field(form.chart_type) }}
+    {{ render_field(form.content) }}
+    {{ render_field(form.width) }}
+    {{ render_field(form.limit) }}
+    <button class="btn primary" type="submit">Save</button>
+    <a class="btn" href="{{ url_for('designer.dashboard_edit', dash_id=w.dashboard_id) }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

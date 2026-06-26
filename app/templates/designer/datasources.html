@@ -1,0 +1,54 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import delete_form, render_field %}
+{% block title %}Data sources · Biggy{% endblock %}
+{% block inner %}
+<h1>Data sources</h1>
+<p class="muted">Other databases whose tables Biggy can map. New tables (and adopted ones) can
+  live in any source; the <strong>home</strong> database holds Biggy's own metadata and is used by
+  default. Relations may only connect tables in the <em>same</em> source.</p>
+
+<div class="panel">
+  <table class="grid">
+    <tr><th>Name</th><th>Target</th><th>Tables</th><th>Active</th><th>Last check</th><th></th></tr>
+    {% for d in items %}
+      <tr>
+        <td>{{ d.name }}</td>
+        <td class="muted">{{ d.driver }}://{{ d.host or '' }}{% if d.port %}:{{ d.port }}{% endif %}/{{ d.database or '' }}</td>
+        <td>{{ counts.get(d.id, 0) }}</td>
+        <td>{{ 'yes' if d.active else 'no' }}</td>
+        <td class="muted">{{ d.last_status or '—' }}</td>
+        <td class="actions">
+          <form method="post" action="{{ url_for('designer.source_test', source_id=d.id) }}" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn sm" type="submit">Test</button>
+          </form>
+          <a class="btn sm" href="{{ url_for('designer.source_edit', source_id=d.id) }}">Edit</a>
+          {{ delete_form(url_for('designer.source_delete', source_id=d.id), 'Delete', 'Delete this data source?') }}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="muted">No data sources yet — only the home database.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<h2>New data source</h2>
+<div class="panel" style="max-width:620px">
+  <form method="post" action="{{ url_for('designer.source_create') }}">
+    {{ form.hidden_tag() }}
+    {{ render_field(form.name) }}
+    {{ render_field(form.driver) }}
+    <div class="pill-row">
+      <div style="flex:2">{{ render_field(form.host) }}</div>
+      <div style="flex:1">{{ render_field(form.port) }}</div>
+    </div>
+    {{ render_field(form.database) }}
+    <div class="pill-row">
+      <div style="flex:1">{{ render_field(form.username) }}</div>
+      <div style="flex:1">{{ render_field(form.password) }}</div>
+    </div>
+    <div class="field checkline">{{ form.active() }} <label style="margin:0">{{ form.active.label.text }}</label></div>
+    <button class="btn primary" type="submit">Add data source</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Biggy{% endblock %}</title>
+  <script>
+    /* Apply the saved (or OS-preferred) theme before paint to avoid a flash. */
+    (function () {
+      try {
+        var t = localStorage.getItem('biggy.theme');
+        if (!t) t = (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches)
+          ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <script src="{{ url_for('static', filename='htmx.min.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='theme.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='shortcuts.js') }}" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand">Biggy</span>
+    {% block mode %}{% endblock %}
+    <span class="spacer"></span>
+    <select id="theme-select" aria-label="Theme" title="Theme">
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+      <option value="sepia">Sepia</option>
+      <option value="ocean">Ocean</option>
+      <option value="contrast">High contrast</option>
+    </select>
+    {% if current_user.is_authenticated %}
+      {% if current_user.is_designer %}
+        <a href="{{ url_for('designer.dashboard') }}">Designer</a>
+        <a href="{{ url_for('user.dashboard') }}">User mode</a>
+        <a href="{{ url_for('auth.users') }}">Users</a>
+        <a href="{{ url_for('core.connection') }}">Connection</a>
+      {% endif %}
+      <a href="{{ url_for('user.notifications') }}" title="Notifications">🔔{% if unread_notifications %} <span class="badge">{{ unread_notifications }}</span>{% endif %}</a>
+      <a href="{{ url_for('core.help_page', topic='user') }}" title="Help">Help</a>
+      <a href="{{ url_for('auth.account') }}" class="muted" title="Account">{{ current_user.username }}</a>
+      <a href="{{ url_for('auth.logout') }}">Sign out</a>
+    {% endif %}
+  </header>
+
+  <div class="layout">
+    {% block sidebar %}{% endblock %}
+    <main class="content">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</body>
+</html>

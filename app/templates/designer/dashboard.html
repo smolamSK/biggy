@@ -1,0 +1,22 @@
+{% extends "designer/_base.html" %}
+{% block title %}Designer · Biggy{% endblock %}
+{% block inner %}
+<h1>Designer</h1>
+<div class="cards">
+  <div class="card"><div class="num">{{ tables|length }}</div>Tables</div>
+  <div class="card"><div class="num">{{ relations|length }}</div>Relations</div>
+  <div class="card"><div class="num">{{ forms|length }}</div>Forms</div>
+  <div class="card"><div class="num">{{ menus|length }}</div>Menu items</div>
+</div>
+
+<h2>Quick start</h2>
+<div class="panel">
+  <ol>
+    <li><a href="{{ url_for('designer.table_new') }}">Create a table</a> and add fields.</li>
+    <li>Add <a href="{{ url_for('designer.relations') }}">relations</a> between tables.</li>
+    <li>Build a <a href="{{ url_for('designer.forms') }}">form</a> for data entry.</li>
+    <li>Add the form to a <a href="{{ url_for('designer.menus') }}">menu</a> for User mode.</li>
+    <li>Switch to <a href="{{ url_for('user.dashboard') }}">User mode</a> to enter data.</li>
+  </ol>
+</div>
+{% endblock %}

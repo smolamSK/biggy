@@ -1,0 +1,18 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}{{ title }} · Biggy{% endblock %}
+{% block inner %}
+<h1>{{ title }}</h1>
+<div class="panel" style="max-width:520px">
+  <form method="post">
+    {{ form.hidden_tag() }}
+    {{ render_field(form.username) }}
+    {{ render_field(form.password) }}
+    <div class="help">Leave password blank to keep it unchanged.</div>
+    {{ render_field(form.role) }}
+    {{ render_field(form.is_active) }}
+    <button class="btn primary" type="submit">Save</button>
+    <a class="btn" href="{{ url_for('auth.users') }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import delete_form, obj_link %}
+{% block title %}Pull sources · Biggy{% endblock %}
+{% block inner %}
+<h1>Pull sources</h1>
+<p class="muted">Poll a remote source on a schedule and upsert rows into a local table — the
+  inbound mirror of <a href="{{ url_for('designer.feeds_list') }}">Feeds</a>. Pull from another
+  Biggy instance (a <a href="{{ url_for('designer.connections') }}">Connection</a>) or any REST
+  endpoint. Runs from <code>flask run-jobs</code> / the scheduler.</p>
+
+<div class="panel">
+  <table class="grid">
+    <tr><th>Name</th><th>Kind</th><th>From</th><th>→ Table</th><th>Every</th><th>Active</th><th>Last run</th><th></th></tr>
+    {% for it in items %}
+      <tr>
+        <td><a href="{{ url_for('designer.pull_edit', source_id=it.src.id) }}">{{ it.src.name }}</a></td>
+        <td>{{ it.src.kind }}</td>
+        <td class="muted">{% if it.src.kind == 'peer' %}{% if it.conn %}{{ obj_link('designer.connection_edit', 'conn_id', it.conn.id, it.conn.name) }}{% else %}?{% endif %} / {{ it.src.remote_table or '?' }}{% else %}{{ it.src.url or '?' }}{% endif %}</td>
+        <td>{% if it.table %}{{ obj_link('designer.table_view', 'table_id', it.table.id, it.table.label) }}{% else %}—{% endif %}</td>
+        <td>{{ it.src.schedule_minutes ~ ' min' if it.src.schedule_minutes else 'manual' }}</td>
+        <td>{{ 'yes' if it.src.active else 'no' }}</td>
+        <td class="muted">{{ it.src.last_status or '—' }}</td>
+        <td class="actions">
+          <form method="post" action="{{ url_for('designer.pull_run', source_id=it.src.id) }}" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn sm" type="submit">Run now</button>
+          </form>
+          <a class="btn sm" href="{{ url_for('designer.pull_edit', source_id=it.src.id) }}">Edit</a>
+          {{ delete_form(url_for('designer.pull_delete', source_id=it.src.id), 'Delete', 'Delete this pull source?') }}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="8" class="muted">No pull sources yet.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<h2>New pull source</h2>
+<div class="panel">
+  <form method="post" action="{{ url_for('designer.pull_create') }}" class="toolbar" style="margin:0">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Into table
+      <select name="table_id">
+        {% for t in tables %}<option value="{{ t.id }}">{{ t.label }}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="btn primary" type="submit">Create pull source</button>
+  </form>
+</div>
+{% endblock %}

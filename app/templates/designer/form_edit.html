@@ -1,0 +1,75 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import render_field, delete_form, move_form %}
+{% block title %}{{ mf.title }} · Biggy{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">{{ mf.title }}</h1>
+  <span class="muted">form for {{ mf.table.label }}</span>
+  <span style="flex:1"></span>
+  <form method="post" action="{{ url_for('designer.form_purpose', form_id=mf.id) }}" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <select name="purpose" onchange="this.form.submit()">
+      <option value="data" {{ 'selected' if mf.purpose != 'view' }}>Data entry</option>
+      <option value="view" {{ 'selected' if mf.purpose == 'view' }}>View (read-only)</option>
+    </select>
+  </form>
+  <a class="btn" href="{{ url_for('user.form_list', form_id=mf.id) }}">Open in User mode</a>
+</div>
+
+<h2>Items</h2>
+<div class="panel">
+  {% if mf.items %}
+  <table class="grid">
+    <tr><th>Order</th><th>Item</th><th>Type</th><th>Label</th><th>Required</th><th>Actions</th></tr>
+    {% for it in mf.items %}
+      <tr>
+        <td class="actions">
+          {{ move_form(url_for('designer.form_item_move', form_id=mf.id, item_id=it.id, direction='up'), '↑') }}
+          {{ move_form(url_for('designer.form_item_move', form_id=mf.id, item_id=it.id, direction='down'), '↓') }}
+        </td>
+        <td>
+          {% if it.kind == 'section' %}
+            <strong>{{ it.label_override or 'Section' }}</strong>
+          {% elif it.kind == 'field' and it.field_id in field_map %}
+            <code>{{ field_map[it.field_id].phys_name }}</code>
+          {% elif it.kind == 'relation' and it.relation_id in rel_map %}
+            <code>{{ rel_map[it.relation_id].name }}</code>
+          {% else %}<span class="muted">(missing)</span>{% endif %}
+        </td>
+        <td>
+          {% if it.kind == 'section' %}section
+          {% elif it.kind == 'field' and it.field_id in field_map %}
+            {{ type_label(field_map[it.field_id].data_type) }}
+          {% else %}many-to-many{% endif %}
+        </td>
+        <td>{{ it.label_override or '' }}</td>
+        <td>{{ 'yes' if it.required else '' }}</td>
+        <td class="actions">
+          <a class="btn sm" href="{{ url_for('designer.form_item_edit', form_id=mf.id, item_id=it.id) }}">Edit</a>
+          {{ delete_form(url_for('designer.form_item_delete', form_id=mf.id, item_id=it.id),
+                        label='Remove', confirm='Remove this item?') }}
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">No items yet. Add fields below.</p>{% endif %}
+</div>
+
+<h2>Add item</h2>
+<div class="panel" style="max-width:620px">
+  <form method="post">
+    {{ item_form.hidden_tag() }}
+    {{ render_field(item_form.kind) }}
+    {{ render_field(item_form.field_id) }}
+    {{ render_field(item_form.relation_id) }}
+    {{ render_field(item_form.label_override) }}
+    {{ render_field(item_form.help_text) }}
+    {{ render_field(item_form.position) }}
+    {{ render_field(item_form.required) }}
+    {{ render_field(item_form.readonly) }}
+    <button class="btn primary" type="submit">Add item</button>
+  </form>
+  <p class="help">Choose <em>Field</em> + a field, <em>Many-to-many</em> + a relation, or
+    <em>Section heading</em> + a Label to group the fields that follow into a tab.</p>
+</div>
+{% endblock %}

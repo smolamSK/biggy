@@ -1,0 +1,50 @@
+{% extends "user/_base.html" %}
+{% block title %}API tokens · Biggy{% endblock %}
+{% block inner %}
+<h1>API tokens</h1>
+<p class="muted">Use a token in the <code>Authorization: Bearer &lt;token&gt;</code> header to call the
+  REST API at <code>/api/v1/</code>. A request acts as you — with your permissions.
+  See the <a href="{{ url_for('api.docs') }}">API reference</a> or grab the
+  <a href="{{ url_for('api.openapi_json') }}">OpenAPI spec</a>.</p>
+
+{% if new_raw %}
+<div class="panel" style="border-color:var(--ok)">
+  <strong>New token</strong> — copy it now, it won't be shown again:
+  <pre style="white-space:pre-wrap;word-break:break-all;margin:.5rem 0 0">{{ new_raw }}</pre>
+</div>
+{% endif %}
+
+<div class="panel" style="max-width:520px">
+  <form method="post" class="toolbar" style="margin:0">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="text" name="name" placeholder="Token name (e.g. integration)" required>
+    <button class="btn primary" type="submit">Create token</button>
+  </form>
+</div>
+
+<div class="panel">
+  <table class="grid">
+    <tr><th>Name</th><th>Prefix</th><th>Created</th><th>Last used</th><th>Status</th><th></th></tr>
+    {% for t in tokens %}
+      <tr>
+        <td>{{ t.name }}</td>
+        <td><code>{{ t.prefix }}…</code></td>
+        <td class="muted">{{ t.created_at.strftime('%Y-%m-%d') }}</td>
+        <td class="muted">{{ t.last_used_at.strftime('%Y-%m-%d %H:%M') if t.last_used_at else '—' }}</td>
+        <td>{% if t.revoked %}<span class="muted">revoked</span>{% else %}<span class="badge">active</span>{% endif %}</td>
+        <td class="actions">
+          {% if not t.revoked %}
+            <form method="post" action="{{ url_for('user.token_revoke', token_id=t.id) }}" class="inline"
+                  onsubmit="return confirm('Revoke this token? Apps using it will stop working.');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn danger sm" type="submit">Revoke</button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="muted">No tokens yet.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

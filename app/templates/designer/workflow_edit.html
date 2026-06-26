@@ -1,0 +1,27 @@
+{% extends "designer/_base.html" %}
+{% block title %}Workflow: {{ field.label }} · Biggy{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">Workflow — {{ table.label }} · {{ field.label }}</h1>
+  <span style="flex:1"></span>
+  <button class="btn sm" id="wf-initial" type="button" title="Mark the selected state as the initial one">★ Set initial</button>
+  <button class="btn danger sm" id="wf-del-edge" type="button">Delete transition</button>
+  <button class="btn primary sm" id="wf-save" type="button">Save</button>
+  <a class="btn sm" href="{{ url_for('designer.workflows') }}">Back</a>
+</div>
+<p class="muted" style="margin-top:0">Click a state, then another, to add/remove a transition · drag to lay out ·
+  click an arrow to select it · scroll to zoom. <span id="wf-status"></span></p>
+
+<div id="wf-roles" class="panel" hidden style="margin-bottom:.6rem">
+  <strong>Roles for the selected transition</strong>
+  <span class="muted">— none ticked means any user who can edit the record</span>
+  <div id="wf-roles-boxes" class="pill-row" style="margin-top:.4rem"></div>
+</div>
+
+<div id="er-canvas">
+  <div id="er-world"><svg id="er-edges" xmlns="http://www.w3.org/2000/svg"></svg></div>
+</div>
+<input type="hidden" id="wf-csrf" value="{{ csrf_token() }}">
+<script type="application/json" id="wf-graph">{{ graph|tojson }}</script>
+<script src="{{ url_for('static', filename='workflow_edit.js') }}" defer></script>
+{% endblock %}

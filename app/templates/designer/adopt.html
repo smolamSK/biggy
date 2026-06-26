@@ -1,0 +1,63 @@
+{% extends "designer/_base.html" %}
+{% block title %}Adopt tables · Biggy{% endblock %}
+{% block inner %}
+<h1>Adopt existing tables</h1>
+<p class="muted">Map tables that already exist in the connected database so you can build
+  forms, views and workflows over them. Adopted tables are <strong>external</strong> — Biggy
+  never alters or drops their schema. (v1 adopts tables with a single integer <code>id</code>
+  primary key.)</p>
+
+{% if sources | length > 1 %}
+<div class="panel">
+  <form method="get" class="toolbar" style="margin:0">
+    <label>Data source
+      <select name="source" onchange="this.form.submit()">
+        {% for sid, sname in sources %}
+          <option value="{{ sid }}" {{ 'selected' if (source_id or 0) == sid }}>{{ sname }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </form>
+</div>
+{% endif %}
+
+{% set ready = candidates | selectattr('ok') | list %}
+{% set blocked = candidates | rejectattr('ok') | list %}
+
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="source" value="{{ source_id or 0 }}">
+  <div class="panel">
+    {% if ready %}
+      <table class="grid">
+        <tr><th></th><th>Table</th><th>Columns</th></tr>
+        {% for c in ready %}
+          <tr>
+            <td><input type="checkbox" name="tables" value="{{ c.name }}"></td>
+            <td><code>{{ c.name }}</code></td>
+            <td class="muted">{{ c.ncols }}</td>
+          </tr>
+        {% endfor %}
+      </table>
+      <label class="checkline" style="margin-top:.6rem">
+        <input type="checkbox" name="with_relations" checked> Also import foreign keys as relations
+      </label>
+      <div style="margin-top:.6rem"><button class="btn primary" type="submit">Adopt selected</button></div>
+    {% else %}
+      <p class="muted">No adoptable tables found in the connected database.</p>
+    {% endif %}
+  </div>
+</form>
+
+{% if blocked %}
+  <h2>Not adoptable</h2>
+  <div class="panel">
+    <table class="grid">
+      <tr><th>Table</th><th>Reason</th></tr>
+      {% for c in blocked %}
+        <tr><td><code>{{ c.name }}</code></td><td class="muted">{{ c.reason }}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+{% endif %}
+{% endblock %}

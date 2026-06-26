@@ -1,0 +1,44 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import delete_form, render_field %}
+{% block title %}Connections · Biggy{% endblock %}
+{% block inner %}
+<h1>Connections</h1>
+<p class="muted">Remote Biggy instances this app can push records into. Each holds a peer's
+  API base URL and a bearer token (created under <em>API tokens</em> on that peer).</p>
+
+<div class="panel">
+  <table class="grid">
+    <tr><th>Name</th><th>Base URL</th><th>Active</th><th>Last check</th><th></th></tr>
+    {% for c in items %}
+      <tr>
+        <td>{{ c.name }}</td>
+        <td class="muted">{{ c.base_url }}</td>
+        <td>{{ 'yes' if c.active else 'no' }}</td>
+        <td class="muted">{{ c.last_status or '—' }}</td>
+        <td class="actions">
+          <form method="post" action="{{ url_for('designer.connection_test', conn_id=c.id) }}" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn sm" type="submit">Test</button>
+          </form>
+          <a class="btn sm" href="{{ url_for('designer.connection_edit', conn_id=c.id) }}">Edit</a>
+          {{ delete_form(url_for('designer.connection_delete', conn_id=c.id), 'Delete', 'Delete this connection?') }}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="muted">No connections yet.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<h2>New connection</h2>
+<div class="panel" style="max-width:620px">
+  <form method="post" action="{{ url_for('designer.connection_create') }}">
+    {{ form.hidden_tag() }}
+    {{ render_field(form.name) }}
+    {{ render_field(form.base_url) }}
+    {{ render_field(form.token) }}
+    <div class="field checkline">{{ form.active() }} <label style="margin:0">{{ form.active.label.text }}</label></div>
+    <button class="btn primary" type="submit">Add connection</button>
+  </form>
+</div>
+{% endblock %}

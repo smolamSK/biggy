@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Biggy API · Reference</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <style>
+    body { max-width: 980px; margin: 2rem auto; padding: 0 1rem; }
+    code { background: var(--code, #f3f4f6); padding: .1rem .3rem; border-radius: 4px; }
+    .method { font-weight: 700; }
+    table.grid { width: 100%; margin: .5rem 0 1.5rem; }
+  </style>
+</head>
+<body>
+  <h1>{{ spec.info.title }} <span class="muted">v{{ spec.info.version }}</span></h1>
+  <p class="muted">{{ spec.info.description }}</p>
+  <p>Base URL <code>/api/v1</code> · <a href="{{ url_for('api.openapi_json') }}">Download openapi.json</a>
+    (import into Postman / Swagger).</p>
+  <div class="panel">
+    <strong>Authentication</strong>
+    <pre style="white-space:pre-wrap">curl -H "Authorization: Bearer &lt;your token&gt;" {{ request.host_url }}api/v1/</pre>
+    <p class="help">Create a token under <em>API tokens</em>. Every request acts as that token's
+      user, so the same permissions, row-ownership and soft-delete apply.</p>
+  </div>
+
+  <h2>Endpoints</h2>
+  <table class="grid">
+    <tr><th>Method</th><th>Path</th><th>Summary</th><th>Query params</th></tr>
+    {% for path, ops in spec.paths | dictsort %}
+      {% for method in ['get', 'post', 'patch', 'delete'] %}
+        {% set op = ops[method] %}
+        {% if op %}
+          <tr>
+            <td class="method">{{ method | upper }}</td>
+            <td><code>/api/v1{{ path }}</code></td>
+            <td>{{ op.summary }}</td>
+            <td class="muted">{% for p in op.parameters or [] %}{% if p.in == 'query' %}{{ p.name }} {% endif %}{% endfor %}</td>
+          </tr>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+  </table>
+
+  <h2>Schemas</h2>
+  {% for name, sch in spec.components.schemas | dictsort %}
+    {% if name != 'Error' %}
+    <h3>{{ name }}</h3>
+    <table class="grid">
+      <tr><th>Field</th><th>Type</th><th>Required</th><th>Read-only</th></tr>
+      {% for prop, ps in (sch.properties or {}) | dictsort %}
+        <tr>
+          <td><code>{{ prop }}</code></td>
+          <td>{{ ps.type }}{% if ps.format %} <span class="muted">({{ ps.format }})</span>{% endif %}{% if ps.enum %} <span class="muted">enum: {{ ps.enum | join(', ') }}</span>{% endif %}</td>
+          <td>{{ 'yes' if prop in (sch.required or []) else '' }}</td>
+          <td>{{ 'yes' if ps.readOnly else '' }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+    {% endif %}
+  {% endfor %}
+</body>
+</html>

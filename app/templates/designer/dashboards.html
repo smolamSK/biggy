@@ -1,0 +1,38 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import delete_form, render_field %}
+{% block title %}Dashboards · Biggy{% endblock %}
+{% block inner %}
+<h1>Dashboards</h1>
+<p class="muted">Shared dashboards — composable pages of chart, KPI, list and text tiles.
+  Link one from a <a href="{{ url_for('designer.menus') }}">menu</a> to put it in the nav.
+  Users build their own personal dashboards under <em>My dashboards</em>.</p>
+
+<div class="panel">
+  <table class="grid">
+    <tr><th>Name</th><th>Widgets</th><th>Columns</th><th></th></tr>
+    {% for d in items %}
+      <tr>
+        <td><a href="{{ url_for('designer.dashboard_edit', dash_id=d.id) }}">{{ d.name }}</a></td>
+        <td>{{ d.widgets | length }}</td>
+        <td>{{ d.columns }}</td>
+        <td class="actions">
+          <a class="btn sm" href="{{ url_for('user.dashboard_view', dash_id=d.id) }}">View</a>
+          <a class="btn sm" href="{{ url_for('designer.dashboard_edit', dash_id=d.id) }}">Edit</a>
+          {{ delete_form(url_for('designer.dashboard_delete', dash_id=d.id), 'Delete', 'Delete this dashboard?') }}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" class="muted">No dashboards yet.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<h2>New dashboard</h2>
+<div class="panel" style="max-width:520px">
+  <form method="post" action="{{ url_for('designer.dashboard_create') }}" class="toolbar" style="margin:0">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="text" name="name" placeholder="Dashboard name" required>
+    <button class="btn primary" type="submit">Create dashboard</button>
+  </form>
+</div>
+{% endblock %}

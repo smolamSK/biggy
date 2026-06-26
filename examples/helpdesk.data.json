@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "tables": {
+    "agent": [
+      {
+        "id": 1,
+        "name": "Sam Carter",
+        "email": "sam@support.example"
+      },
+      {
+        "id": 2,
+        "name": "Lee Wong",
+        "email": "lee@support.example"
+      }
+    ],
+    "category": [
+      {
+        "id": 1,
+        "name": "Account"
+      },
+      {
+        "id": 2,
+        "name": "Billing"
+      },
+      {
+        "id": 3,
+        "name": "Technical"
+      }
+    ],
+    "ticket": [
+      {
+        "id": 1,
+        "subject": "Cannot log in",
+        "description": "Password reset loops.",
+        "status": "open",
+        "priority": "high",
+        "opened_on": "2024-03-01",
+        "requester": "jane@acme.test",
+        "category_id": 1,
+        "assignee_id": 1
+      },
+      {
+        "id": 2,
+        "subject": "Invoice wrong amount",
+        "description": "Charged twice.",
+        "status": "in_progress",
+        "priority": "urgent",
+        "opened_on": "2024-03-02",
+        "requester": "bob@acme.test",
+        "category_id": 2,
+        "assignee_id": 2
+      }
+    ]
+  }
+}

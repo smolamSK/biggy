@@ -1,0 +1,61 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}Feed · {{ feed.name }}{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">Feed — {{ table.label }}</h1>
+  <span style="flex:1"></span>
+  <a class="btn" href="{{ url_for('designer.feeds_list') }}">Back</a>
+</div>
+
+<div class="panel" style="max-width:760px">
+  <form method="post">
+    {{ form.hidden_tag() }}
+    {{ render_field(form.name) }}
+    <div class="field checkline">{{ form.active() }} <label style="margin:0">{{ form.active.label.text }}</label></div>
+
+    <h3>Target</h3>
+    {{ render_field(form.connection_id) }}
+    {{ render_field(form.target_table) }}
+    {{ render_field(form.mode) }}
+    <p class="help">Upsert matches an existing remote record on the key field below; mapping a
+      value to the remote status field drives that record's workflow (validated by the peer).</p>
+    {{ render_field(form.match_target_field) }}
+
+    <h3>Field mapping</h3>
+    <p class="help">Map each remote <em>target</em> field to a source column or a
+      <code>{token}</code> template (e.g. <code>{first_name} {last_name}</code>).</p>
+    <datalist id="src-cols">{% for c in source_columns %}<option value="{{ c }}">{% endfor %}</datalist>
+    <datalist id="tgt-cols">{% for c in remote_fields %}<option value="{{ c }}">{% endfor %}</datalist>
+    <table class="grid">
+      <tr><th>Source (column or {token})</th><th>→ Target field</th></tr>
+      {% for m in field_map + [{'source': '', 'target': ''}] * 5 %}
+        <tr>
+          <td><input name="map_source" list="src-cols" value="{{ m.source }}" style="width:100%"></td>
+          <td><input name="map_target" list="tgt-cols" value="{{ m.target }}" style="width:100%"></td>
+        </tr>
+      {% endfor %}
+    </table>
+
+    <h3>When (live push)</h3>
+    <p class="help">For <em>Status transition</em>, pick the status field and optionally a from/to state.</p>
+    {{ render_field(form.event) }}
+    {{ render_field(form.field_id) }}
+    {{ render_field(form.from_state) }}
+    {{ render_field(form.to_state) }}
+
+    <h3>Only if (optional condition)</h3>
+    {{ render_field(form.cond_field_id) }}
+    {{ render_field(form.cond_op) }}
+    {{ render_field(form.cond_value) }}
+
+    <h3>Scheduled / manual</h3>
+    {{ render_field(form.schedule_minutes) }}
+    <div class="field checkline">{{ form.allow_manual() }} <label style="margin:0">{{ form.allow_manual.label.text }}</label></div>
+    <div class="field checkline">{{ form.skip_api_writes() }} <label style="margin:0">{{ form.skip_api_writes.label.text }}</label></div>
+
+    <button class="btn primary" type="submit">Save</button>
+    <a class="btn" href="{{ url_for('designer.feeds_list') }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

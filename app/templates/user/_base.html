@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block mode %}<span class="mode-tag">User</span>{% endblock %}
+{% block sidebar %}
+{% set group_count = nav_menu | selectattr('kind', 'equalto', 'group') | list | length %}
+<nav class="sidebar">
+  <div class="menu-head">
+    <h3 style="margin:0">Menu</h3>
+    {% if group_count %}
+      <span class="menu-actions">
+        <a href="#" id="menu-expand-all">Expand all</a> ·
+        <a href="#" id="menu-collapse-all">Collapse all</a>
+      </span>
+    {% endif %}
+  </div>
+  <form class="nav-search" method="get" action="{{ url_for('user.search') }}" style="margin:.4rem 0">
+    <input type="search" name="q" placeholder="Search all…" style="width:100%">
+  </form>
+  <a href="{{ url_for('user.dashboard') }}">Home</a>
+  <a href="{{ url_for('user.my_dashboards') }}">My dashboards</a>
+  <a href="{{ url_for('user.import_home') }}">Import data</a>
+  <a href="{{ url_for('user.tokens') }}">API tokens</a>
+  {% for item in nav_menu %}
+    {% if item.kind == 'group' %}
+      <details class="menu-group" data-menu-id="{{ item.id }}" open>
+        <summary class="group-label">{{ item.label }}</summary>
+        {% for child in item.children if menu_can_see(child) %}
+          <a class="child" href="{{ menu_url(child) }}">{{ child.label }}</a>
+        {% endfor %}
+      </details>
+    {% else %}
+      <a href="{{ menu_url(item) }}">{{ item.label }}</a>
+    {% endif %}
+  {% else %}
+    <span class="muted">No menu defined yet</span>
+  {% endfor %}
+</nav>
+{% endblock %}
+{% block content %}{% block inner %}{% endblock %}{% endblock %}

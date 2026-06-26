@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "tables": {
+    "project": [
+      {
+        "id": 1,
+        "name": "Website revamp",
+        "description": "Q2 redesign.",
+        "start_date": "2024-04-01"
+      },
+      {
+        "id": 2,
+        "name": "Mobile app",
+        "description": "MVP build.",
+        "start_date": "2024-05-01"
+      }
+    ],
+    "label": [
+      {
+        "id": 1,
+        "name": "frontend"
+      },
+      {
+        "id": 2,
+        "name": "backend"
+      },
+      {
+        "id": 3,
+        "name": "urgent"
+      }
+    ],
+    "task": [
+      {
+        "id": 1,
+        "title": "Design homepage",
+        "status": "doing",
+        "priority": "high",
+        "due_date": "2024-04-15",
+        "assignee": "Ada",
+        "project_id": 1
+      },
+      {
+        "id": 2,
+        "title": "Set up CI",
+        "status": "todo",
+        "priority": "medium",
+        "due_date": "2024-04-20",
+        "assignee": "Alan",
+        "project_id": 2
+      }
+    ],
+    "j_label_task": [
+      {
+        "task_id": 1,
+        "label_id": 1
+      },
+      {
+        "task_id": 1,
+        "label_id": 3
+      },
+      {
+        "task_id": 2,
+        "label_id": 2
+      }
+    ]
+  }
+}

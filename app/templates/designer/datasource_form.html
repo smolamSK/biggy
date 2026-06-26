@@ -1,0 +1,31 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}Data source · {{ ds.name }}{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">Data source — {{ ds.name }}</h1>
+  <span style="flex:1"></span>
+  <a class="btn" href="{{ url_for('designer.sources') }}">Back</a>
+</div>
+
+<div class="panel" style="max-width:620px">
+  <form method="post">
+    {{ form.hidden_tag() }}
+    {{ render_field(form.name) }}
+    {{ render_field(form.driver) }}
+    <div class="pill-row">
+      <div style="flex:2">{{ render_field(form.host) }}</div>
+      <div style="flex:1">{{ render_field(form.port) }}</div>
+    </div>
+    {{ render_field(form.database) }}
+    <div class="pill-row">
+      <div style="flex:1">{{ render_field(form.username) }}</div>
+      <div style="flex:1">{{ render_field(form.password) }}</div>
+    </div>
+    <p class="help">Leave the password blank to keep the current one.</p>
+    <div class="field checkline">{{ form.active() }} <label style="margin:0">{{ form.active.label.text }}</label></div>
+    <button class="btn primary" type="submit">Save</button>
+    <a class="btn" href="{{ url_for('designer.sources') }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

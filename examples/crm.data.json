@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "tables": {
+    "company": [
+      {
+        "id": 1,
+        "name": "Acme Corp",
+        "industry": "Manufacturing",
+        "website": "acme.test"
+      },
+      {
+        "id": 2,
+        "name": "Globex",
+        "industry": "Energy",
+        "website": "globex.test"
+      }
+    ],
+    "contact": [
+      {
+        "id": 1,
+        "name": "Jane Roe",
+        "email": "jane@acme.test",
+        "company_id": 1
+      },
+      {
+        "id": 2,
+        "name": "Max Power",
+        "email": "max@globex.test",
+        "company_id": 2
+      }
+    ],
+    "deal": [
+      {
+        "id": 1,
+        "title": "Acme renewal",
+        "amount": "12000.00",
+        "stage": "proposal",
+        "close_date": "2024-04-30",
+        "company_id": 1,
+        "contact_id": 1
+      },
+      {
+        "id": 2,
+        "title": "Globex expansion",
+        "amount": "48000.00",
+        "stage": "qualified",
+        "close_date": "2024-06-15",
+        "company_id": 2,
+        "contact_id": 2
+      }
+    ]
+  }
+}

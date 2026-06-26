@@ -1,0 +1,58 @@
+{% extends "user/_base.html" %}
+{% from "_macros.html" import record_link, typed_value with context %}
+{% block title %}{{ label }} · Biggy{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">{{ table.label }}: {{ label }}
+    {% if deleted %}<span class="badge">deleted</span>{% endif %}</h1>
+  <span style="flex:1"></span>
+  {% if send_form_id %}
+    <form method="post" action="{{ url_for('user.feed_send', form_id=send_form_id) }}" class="inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="ids" value="{{ pk }}">
+      <input type="hidden" name="next" value="{{ request.path }}">
+      <button class="btn" type="submit">Send to tools</button>
+    </form>
+  {% endif %}
+  {% if edit_url %}<a class="btn primary" href="{{ edit_url }}">Edit</a>{% endif %}
+</div>
+
+<div class="panel" style="max-width:680px">
+  <table class="grid">
+    {% for it in items %}
+      <tr>
+        <th style="width:35%; text-align:left">{{ it.label }}</th>
+        <td>
+          {% if it.kind == 'scalar' %}
+            {% set v = it.value %}
+            {% if v is sameas true %}yes{% elif v is sameas false %}no
+            {% else %}{{ typed_value(it.data_type, v) }}{% endif %}
+          {% elif it.kind == 'm1' %}
+            {% if it.ref_id %}{{ record_link(it.target_id, it.ref_id, it.ref_label) }}
+            {% else %}<span class="muted">—</span>{% endif %}
+          {% elif it.kind == 'm2n' %}
+            {% if it.refs %}
+              {% for rid, rlabel in it.refs %}{{ record_link(it.other_table_id, rid, rlabel) }}{% if not loop.last %}, {% endif %}{% endfor %}
+            {% else %}<span class="muted">—</span>{% endif %}
+          {% elif it.kind == 'file' %}
+            {% if it.files %}
+              <div class="attach-list">
+                {% for f in it.files %}
+                  {% if it.is_image %}
+                    <a href="{{ url_for('user.attachment', att_id=f.id) }}" target="_blank">
+                      <img class="thumb" src="{{ url_for('user.attachment', att_id=f.id) }}" alt="{{ f.name }}"></a>
+                  {% else %}
+                    <a href="{{ url_for('user.attachment', att_id=f.id) }}" target="_blank">{{ f.name }}</a>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            {% else %}<span class="muted">—</span>{% endif %}
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td class="muted">This view form has no fields. Add some in Designer mode.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

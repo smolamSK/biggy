@@ -1,0 +1,161 @@
+{
+  "version": 1,
+
+  "data_sources": [
+    {"id": 1, "name": "Legacy DB", "driver": "mysql+pymysql", "host": "db.internal",
+     "port": 3306, "username": "reader", "password": "", "database": "legacy", "active": true}
+  ],
+
+  "tables": [
+    {"id": 1, "phys_name": "customer", "label": "Customer", "description": "People we sell to.",
+     "display_field_id": 10, "track_audit": true, "soft_delete": true, "row_owned": false,
+     "managed": true, "source_id": null, "pk_col": "id"},
+    {"id": 2, "phys_name": "sales_order", "label": "Order", "description": "Sales orders.",
+     "display_field_id": 20, "track_audit": false, "soft_delete": false, "row_owned": false,
+     "managed": true, "source_id": null, "pk_col": "ref"},
+    {"id": 3, "phys_name": "tag", "label": "Tag", "description": "Customer labels.",
+     "display_field_id": 30, "managed": true, "pk_col": "id"}
+  ],
+
+  "fields": [
+    {"id": 10, "table_id": 1, "phys_name": "name", "label": "Name", "data_type": "string",
+     "length": 120, "nullable": false, "is_unique": false, "position": 0,
+     "min_length": 2, "max_length": 120},
+    {"id": 11, "table_id": 1, "phys_name": "email", "label": "Email", "data_type": "email",
+     "length": 255, "nullable": true, "is_unique": true, "position": 1},
+    {"id": 12, "table_id": 1, "phys_name": "tier", "label": "Tier", "data_type": "enum",
+     "nullable": true, "position": 2, "enum_options": "[\"gold\", \"silver\", \"bronze\"]",
+     "default_value": "bronze"},
+    {"id": 13, "table_id": 1, "phys_name": "notes", "label": "Notes", "data_type": "text",
+     "nullable": true, "position": 3},
+
+    {"id": 20, "table_id": 2, "phys_name": "ref", "label": "Reference", "data_type": "string",
+     "length": 40, "nullable": false, "is_unique": true, "position": 0,
+     "pattern": "^ORD-[0-9]+$"},
+    {"id": 21, "table_id": 2, "phys_name": "amount", "label": "Amount", "data_type": "decimal",
+     "precision": 10, "scale": 2, "nullable": true, "position": 1, "min_value": "0"},
+    {"id": 22, "table_id": 2, "phys_name": "status", "label": "Status", "data_type": "enum",
+     "nullable": false, "position": 2, "enum_options": "[\"new\", \"paid\", \"shipped\"]",
+     "default_value": "new"},
+    {"id": 24, "table_id": 2, "phys_name": "number", "label": "Number", "data_type": "autonumber",
+     "nullable": true, "position": 3, "default_value": "ORD-"},
+
+    {"id": 23, "table_id": 2, "phys_name": "customer_id", "label": "Customer",
+     "data_type": "relation", "related_table_id": 1, "on_delete": "SET NULL",
+     "nullable": true, "position": 4},
+
+    {"id": 30, "table_id": 3, "phys_name": "label", "label": "Label", "data_type": "string",
+     "length": 60, "nullable": false, "is_unique": true, "position": 0}
+  ],
+
+  "relations": [
+    {"id": 1, "name": "Customer", "kind": "m1", "from_table_id": 2, "to_table_id": 1,
+     "from_field_id": 23, "junction_phys_name": null, "on_delete": "SET NULL",
+     "to_display_field_ids": "[10]", "from_display_field_ids": null},
+    {"id": 2, "name": "Tags", "kind": "mn", "from_table_id": 1, "to_table_id": 3,
+     "from_field_id": null, "junction_phys_name": null, "on_delete": null,
+     "to_display_field_ids": "[30]", "from_display_field_ids": "[10]"}
+  ],
+
+  "forms": [
+    {"id": 1, "table_id": 1, "name": "customer_form", "title": "Customers",
+     "description": "Add and edit customers.", "purpose": "data"},
+    {"id": 2, "table_id": 2, "name": "order_form", "title": "Orders",
+     "description": "Add and edit orders.", "purpose": "data"}
+  ],
+
+  "form_fields": [
+    {"id": 101, "form_id": 1, "kind": "field", "field_id": 10, "required": true, "position": 0},
+    {"id": 102, "form_id": 1, "kind": "field", "field_id": 11, "required": false, "position": 1},
+    {"id": 103, "form_id": 1, "kind": "field", "field_id": 12, "required": false, "position": 2},
+    {"id": 104, "form_id": 1, "kind": "field", "field_id": 13, "required": false, "position": 3},
+    {"id": 105, "form_id": 2, "kind": "field", "field_id": 20, "required": true, "position": 0},
+    {"id": 106, "form_id": 2, "kind": "field", "field_id": 21, "required": false, "position": 1},
+    {"id": 107, "form_id": 2, "kind": "field", "field_id": 22, "required": true, "position": 2},
+    {"id": 108, "form_id": 2, "kind": "field", "field_id": 23, "required": false, "position": 3}
+  ],
+
+  "menus": [
+    {"id": 1, "parent_id": null, "label": "Sales", "kind": "group", "position": 0},
+    {"id": 2, "parent_id": 1, "label": "Customers", "kind": "form", "target_form_id": 1, "position": 0},
+    {"id": 3, "parent_id": 1, "label": "Orders", "kind": "form", "target_form_id": 2, "position": 1},
+    {"id": 4, "parent_id": 1, "label": "Overview", "kind": "dashboard", "target_dashboard_id": 1, "position": 2}
+  ],
+
+  "roles": [
+    {"name": "sales", "label": "Sales", "builtin": false}
+  ],
+
+  "permissions": [
+    {"id": 1, "role": "sales", "form_id": 1, "access": "write"},
+    {"id": 2, "role": "sales", "form_id": 2, "access": "read"}
+  ],
+
+  "field_permissions": [
+    {"role": "sales", "field_id": 13, "access": "read"}
+  ],
+
+  "composite_uniques": [
+    {"table_id": 1, "name": "uq_customer_name_tier", "field_ids": "[10, 12]"}
+  ],
+
+  "workflows": [
+    {"id": 1, "table_id": 2, "field_id": 22, "initial_state": "new",
+     "transitions": "[{\"from\": \"new\", \"to\": \"paid\", \"roles\": []}, {\"from\": \"paid\", \"to\": \"shipped\", \"roles\": [\"sales\"]}]",
+     "layout": "{}"}
+  ],
+
+  "trigger_rules": [
+    {"id": 1, "table_id": 2, "name": "Order paid", "active": true, "event": "transition",
+     "field_id": 22, "to_state": "paid", "in_app": true, "notify_target": "owner",
+     "message": "Order {ref} was paid."},
+    {"id": 2, "table_id": 2, "name": "Daily recap", "active": true, "event": "scheduled",
+     "schedule_minutes": 1440, "cond_field_id": 22, "cond_op": "ne", "cond_value": "shipped",
+     "in_app": true, "notify_target": "actor", "message": "Order {ref} still open."}
+  ],
+
+  "connections": [
+    {"id": 1, "name": "Partner CRM", "base_url": "https://partner.example.com", "active": true}
+  ],
+
+  "feeds": [
+    {"id": 1, "name": "Push orders to partner", "active": true, "source_table_id": 2,
+     "connection_id": 1, "target_table": "sales_order", "mode": "upsert", "match_target_field": "ref",
+     "field_map": "[{\"target\": \"ref\", \"source\": \"ref\"}, {\"target\": \"amount\", \"source\": \"amount\"}]",
+     "event": "create", "allow_manual": true, "skip_api_writes": true}
+  ],
+
+  "webhooks": [
+    {"id": 1, "name": "Inbound orders", "active": true, "target_table_id": 2, "mode": "upsert",
+     "match_field": "ref",
+     "field_map": "[{\"target\": \"ref\", \"source\": \"id\"}, {\"target\": \"amount\", \"source\": \"total\"}]",
+     "user_id": null, "max_body_bytes": 65536, "rate_limit": 120, "rate_window": 60}
+  ],
+
+  "pull_sources": [
+    {"id": 1, "name": "Pull customers", "active": true, "target_table_id": 1, "kind": "rest",
+     "url": "https://api.example.com/customers", "records_path": "data",
+     "config": "{\"pagination\": {\"style\": \"page\", \"param\": \"page\", \"max_pages\": 20}, \"auth\": {\"type\": \"bearer\"}}",
+     "field_map": "[{\"target\": \"name\", \"source\": \"name\"}, {\"target\": \"email\", \"source\": \"contact.email\"}]",
+     "mode": "upsert", "match_field": "email", "cursor_field": "id", "page_size": 100, "user_id": null}
+  ],
+
+  "dashboards": [
+    {"id": 1, "name": "Overview", "description": "Sales at a glance.", "columns": 2, "position": 0}
+  ],
+
+  "dashboard_widgets": [
+    {"id": 1, "dashboard_id": 1, "title": "Customers by tier", "kind": "chart", "table_id": 1,
+     "query": "group=tier&metric=count", "chart_type": "pie", "width": 1, "position": 0},
+    {"id": 2, "dashboard_id": 1, "title": "Total orders", "kind": "number", "table_id": 2,
+     "query": "metric=count", "width": 1, "position": 1},
+    {"id": 3, "dashboard_id": 1, "title": "Recent orders", "kind": "list", "table_id": 2,
+     "limit": 5, "width": 1, "position": 2},
+    {"id": 4, "dashboard_id": 1, "title": "About", "kind": "text",
+     "content": "## Overview\n\nThis dashboard summarises **sales**.", "width": 2, "position": 3}
+  ],
+
+  "sequences": [
+    {"field_id": 24, "next": 1000}
+  ]
+}

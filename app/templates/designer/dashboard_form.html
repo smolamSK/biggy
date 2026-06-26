@@ -1,0 +1,68 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import render_field, delete_form %}
+{% block title %}Dashboard · {{ dash.name }}{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">Dashboard — {{ dash.name }}</h1>
+  <span style="flex:1"></span>
+  <a class="btn" href="{{ view_url }}">View</a>
+  <a class="btn" href="{{ url_for('designer.dashboards_list') }}">Back</a>
+</div>
+
+<div class="panel" style="max-width:620px">
+  <form method="post">
+    {{ form.hidden_tag() }}
+    {{ render_field(form.name) }}
+    {{ render_field(form.description) }}
+    {{ render_field(form.columns) }}
+    <button class="btn primary" type="submit">Save</button>
+  </form>
+</div>
+
+<h2>Widgets</h2>
+<div class="panel">
+  <table class="grid">
+    <tr><th>#</th><th>Title</th><th>Kind</th><th>Source</th><th></th></tr>
+    {% for w in widgets %}
+      <tr>
+        <td class="muted">{{ loop.index }}</td>
+        <td><a href="{{ url_for('designer.widget_edit', widget_id=w.id) }}">{{ w.title or '(untitled)' }}</a></td>
+        <td>{{ w.kind }}{% if w.kind == 'chart' %} · {{ w.chart_type }}{% endif %}</td>
+        <td class="muted">{% if w.table_id %}{{ (w.query or '') | truncate(40) }}{% elif w.kind == 'text' %}text{% else %}—{% endif %}</td>
+        <td class="actions">
+          {% for d in ['up', 'down'] %}
+          <form method="post" action="{{ url_for('designer.widget_move', widget_id=w.id) }}" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="dir" value="{{ d }}">
+            <button class="btn sm" type="submit">{{ '↑' if d == 'up' else '↓' }}</button>
+          </form>
+          {% endfor %}
+          <a class="btn sm" href="{{ url_for('designer.widget_edit', widget_id=w.id) }}">Edit</a>
+          {{ delete_form(url_for('designer.widget_delete', widget_id=w.id), '×', 'Remove this widget?') }}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="muted">No widgets yet — add one below.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<h3>Add a widget</h3>
+<div class="panel" style="max-width:680px">
+  <form method="post" action="{{ url_for('designer.widget_add', dash_id=dash.id) }}">
+    {{ wform.hidden_tag() }}
+    {{ render_field(wform.kind) }}
+    {{ render_field(wform.title) }}
+    {{ render_field(wform.table_id) }}
+    <p class="help">For <em>Chart</em>/<em>KPI</em>: paste a report query (build it on the
+      <a href="{{ url_for('designer.report') }}">report</a> page — its URL after <code>?</code>),
+      e.g. <code>group=status&metric=count</code>. KPI uses the first metric as a single total.</p>
+    {{ render_field(wform.query) }}
+    {{ render_field(wform.chart_type) }}
+    {{ render_field(wform.content) }}
+    {{ render_field(wform.width) }}
+    {{ render_field(wform.limit) }}
+    <button class="btn primary" type="submit">Add widget</button>
+  </form>
+</div>
+{% endblock %}

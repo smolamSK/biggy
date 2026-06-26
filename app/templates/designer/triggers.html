@@ -1,0 +1,49 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import delete_form, obj_link %}
+{% block title %}Triggers · Biggy{% endblock %}
+{% block inner %}
+<h1>Triggers &amp; notifications</h1>
+<p class="muted">Run actions (in-app, email, webhook, set a field) when a record is created,
+  updated, deleted, or its status transitions.</p>
+
+<div class="panel">
+  <table class="grid">
+    <tr><th>Table</th><th>Name</th><th>When</th><th>Actions</th><th>Active</th><th></th></tr>
+    {% for it in items %}
+      <tr>
+        <td>{% if it.table %}{{ obj_link('designer.table_view', 'table_id', it.table.id, it.table.label) }}{% else %}—{% endif %}</td>
+        <td><a href="{{ url_for('designer.trigger_edit', rule_id=it.rule.id) }}">{{ it.rule.name }}</a></td>
+        <td>{{ it.rule.event }}{% if it.rule.event == 'transition' and it.rule.to_state %} → {{ it.rule.to_state }}{% endif %}</td>
+        <td class="muted">
+          {%- set a = [] -%}
+          {%- if it.rule.in_app %}{% set _ = a.append('in-app') %}{% endif -%}
+          {%- if it.rule.email_to %}{% set _ = a.append('email') %}{% endif -%}
+          {%- if it.rule.webhook_url %}{% set _ = a.append('webhook') %}{% endif -%}
+          {%- if it.rule.set_field_id %}{% set _ = a.append('set-field') %}{% endif -%}
+          {{ a|join(', ') or '—' }}
+        </td>
+        <td>{{ 'yes' if it.rule.active else 'no' }}</td>
+        <td class="actions">
+          <a class="btn sm" href="{{ url_for('designer.trigger_edit', rule_id=it.rule.id) }}">Edit</a>
+          {{ delete_form(url_for('designer.trigger_delete', rule_id=it.rule.id), 'Delete', 'Delete this trigger?') }}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="muted">No triggers yet.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<h2>New trigger</h2>
+<div class="panel">
+  <form method="post" class="toolbar" style="margin:0">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>On table
+      <select name="table_id">
+        {% for t in tables %}<option value="{{ t.id }}">{{ t.label }}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="btn primary" type="submit">Create rule</button>
+  </form>
+</div>
+{% endblock %}

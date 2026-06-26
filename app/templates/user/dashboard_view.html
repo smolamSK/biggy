@@ -1,0 +1,87 @@
+{% extends "user/_base.html" %}
+{% block title %}{{ dash.name }} · Biggy{% endblock %}
+{% block inner %}
+{% set can_edit = dash.owner_user_id and dash.owner_user_id == current_user.id %}
+<div class="toolbar">
+  <h1 style="margin:0">{{ dash.name }}</h1>
+  <span style="flex:1"></span>
+  {% if can_edit %}<a class="btn sm" href="#add-widget">＋ Widget</a>{% endif %}
+</div>
+{% if dash.description %}<p class="muted">{{ dash.description }}</p>{% endif %}
+
+<div class="dash-grid" style="grid-template-columns:repeat({{ dash.columns or 2 }}, minmax(0,1fr))">
+  {% for t in tiles %}
+    <div class="card" style="grid-column:span {{ [t.width, dash.columns or 2] | min }}">
+      <div class="toolbar" style="margin:0 0 .4rem">
+        <strong>{{ t.title or '' }}</strong>
+        <span style="flex:1"></span>
+        {% if can_edit %}
+        <form method="post" action="{{ url_for('user.my_widget_delete', dash_id=dash.id, widget_id=t.w.id) }}"
+              class="inline" onsubmit="return confirm('Remove this widget?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn sm" title="Remove" style="padding:0 .35rem">×</button>
+        </form>
+        {% endif %}
+      </div>
+
+      {% if t.kind == 'chart' %}
+        <div class="js-chart" data-type="{{ t.chart_type }}">
+          <script type="application/json">{{ t.chart_data|tojson }}</script>
+        </div>
+      {% elif t.kind == 'number' %}
+        <div class="kpi">
+          <div class="kpi-value">{{ '%g' % t.value }}</div>
+          <div class="kpi-label muted">{{ t.metric }}{% if t.target %} / target {{ t.target }}{% endif %}</div>
+        </div>
+      {% elif t.kind == 'list' %}
+        <table class="grid">
+          <tr>{% for c in t.columns %}<th>{{ c.label }}</th>{% endfor %}</tr>
+          {% for row in t.rows %}
+            <tr>{% for c in t.columns %}<td>{{ row[c.phys_name] if row[c.phys_name] is not none else '' }}</td>{% endfor %}</tr>
+          {% else %}
+            <tr><td colspan="{{ t.columns|length or 1 }}" class="muted">No rows.</td></tr>
+          {% endfor %}
+        </table>
+        {% if t.form_id %}<a class="btn sm" href="{{ url_for('user.form_list', form_id=t.form_id) }}">View all</a>{% endif %}
+      {% elif t.kind == 'text' %}
+        <div class="md">{{ t.html }}</div>
+      {% endif %}
+    </div>
+  {% else %}
+    <p class="muted">This dashboard has no widgets yet.</p>
+  {% endfor %}
+</div>
+
+{% if can_edit %}
+<h3 id="add-widget">Add a widget</h3>
+<div class="panel" style="max-width:680px">
+  <form method="post" action="{{ url_for('user.my_widget_add', dash_id=dash.id) }}" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Kind
+      <select name="kind">
+        <option value="chart">Chart</option><option value="number">KPI number</option>
+        <option value="list">List</option><option value="text">Text / markdown</option>
+      </select>
+    </label>
+    <input type="text" name="title" placeholder="Title">
+    <label>Table
+      <select name="table_id"><option value="0">— none (text) —</option>
+        {% for t in user_tables %}<option value="{{ t.id }}">{{ t.label }}</option>{% endfor %}
+      </select>
+    </label>
+    <input type="text" name="query" placeholder="Report query (e.g. group=status&metric=count)">
+    <label>Chart type
+      <select name="chart_type"><option value="bar">Bar</option><option value="line">Line</option><option value="pie">Pie</option></select>
+    </label>
+    <textarea name="content" placeholder="Text/markdown (or KPI numeric target)"></textarea>
+    <div class="toolbar" style="margin:0">
+      <label>Width <select name="width"><option value="1">1</option><option value="2">2</option></select></label>
+      <label>List limit <input type="number" name="limit" value="5" style="width:5rem"></label>
+      <button class="btn primary" type="submit">Add widget</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<script src="{{ url_for('static', filename='charts.js') }}" defer></script>
+{% endblock %}

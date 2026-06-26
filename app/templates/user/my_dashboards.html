@@ -1,0 +1,38 @@
+{% extends "user/_base.html" %}
+{% block title %}My dashboards · Biggy{% endblock %}
+{% block inner %}
+<h1>My dashboards</h1>
+<p class="muted">Your personal dashboards. Add chart/KPI tiles from the
+  <strong>Report</strong> page ("Add to dashboard"), or list/text tiles on the dashboard itself.</p>
+
+<div class="panel">
+  <table class="grid">
+    <tr><th>Name</th><th>Widgets</th><th></th></tr>
+    {% for d in items %}
+      <tr>
+        <td><a href="{{ url_for('user.dashboard_view', dash_id=d.id) }}">{{ d.name }}</a></td>
+        <td>{{ d.widgets | length }}</td>
+        <td class="actions">
+          <a class="btn sm" href="{{ url_for('user.dashboard_view', dash_id=d.id) }}">Open</a>
+          <form method="post" action="{{ url_for('user.my_dashboard_delete', dash_id=d.id) }}" class="inline"
+                onsubmit="return confirm('Delete this dashboard?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn danger sm" type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="3" class="muted">No personal dashboards yet.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<h2>New dashboard</h2>
+<div class="panel" style="max-width:520px">
+  <form method="post" action="{{ url_for('user.my_dashboard_create') }}" class="toolbar" style="margin:0">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="text" name="name" placeholder="Dashboard name" required>
+    <button class="btn primary" type="submit">Create</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import delete_form, obj_link %}
+{% block title %}Feeds · Biggy{% endblock %}
+{% block inner %}
+<h1>Feeds</h1>
+<p class="muted">Push records from a local table into a remote tool — on a record event,
+  on a schedule, or on demand. Define remote peers under
+  <a href="{{ url_for('designer.connections') }}">Connections</a> first.</p>
+
+<div class="panel">
+  <table class="grid">
+    <tr><th>Source</th><th>Name</th><th>→ Target</th><th>When</th><th>Active</th><th></th></tr>
+    {% for it in items %}
+      <tr>
+        <td>{% if it.table %}{{ obj_link('designer.table_view', 'table_id', it.table.id, it.table.label) }}{% else %}—{% endif %}</td>
+        <td><a href="{{ url_for('designer.feed_edit', feed_id=it.feed.id) }}">{{ it.feed.name }}</a></td>
+        <td class="muted">{% if it.conn %}{{ obj_link('designer.connection_edit', 'conn_id', it.conn.id, it.conn.name) }}{% else %}?{% endif %} / {{ it.feed.target_table }}</td>
+        <td>{{ it.feed.event or 'manual' }}{% if it.feed.schedule_minutes %} · every {{ it.feed.schedule_minutes }}m{% endif %}</td>
+        <td>{{ 'yes' if it.feed.active else 'no' }}</td>
+        <td class="actions">
+          <form method="post" action="{{ url_for('designer.feed_run', feed_id=it.feed.id) }}" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn sm" type="submit">Run now</button>
+          </form>
+          <a class="btn sm" href="{{ url_for('designer.feed_edit', feed_id=it.feed.id) }}">Edit</a>
+          {{ delete_form(url_for('designer.feed_delete', feed_id=it.feed.id), 'Delete', 'Delete this feed?') }}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="muted">No feeds yet.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<h2>New feed</h2>
+<div class="panel">
+  {% if connections %}
+    <form method="post" class="toolbar" style="margin:0">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>From table
+        <select name="table_id">
+          {% for t in tables %}<option value="{{ t.id }}">{{ t.label }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>To connection
+        <select name="connection_id">
+          {% for c in connections %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="btn primary" type="submit">Create feed</button>
+    </form>
+  {% else %}
+    <p class="muted">Add a <a href="{{ url_for('designer.connections') }}">connection</a> first.</p>
+  {% endif %}
+</div>
+{% endblock %}

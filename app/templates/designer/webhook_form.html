@@ -1,0 +1,79 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}Webhook · {{ wh.name }}{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">Webhook → {{ table.label }}</h1>
+  <span style="flex:1"></span>
+  <a class="btn" href="{{ url_for('designer.webhooks') }}">Back</a>
+</div>
+
+{% if new_url %}
+<div class="panel" style="border-color:var(--ok)">
+  <strong>Receive URL</strong> — copy it now, the token won't be shown again:
+  <pre style="white-space:pre-wrap;word-break:break-all;margin:.5rem 0 0">{{ new_url }}</pre>
+  <p class="help">Have the external system <code>POST</code> a JSON body to this URL.</p>
+</div>
+{% else %}
+<div class="panel">
+  <p style="margin:0">Receive URL: <code>/hooks/{{ wh.prefix }}…</code> (token shown once on create/rotate).</p>
+  <form method="post" action="{{ url_for('designer.webhook_rotate', webhook_id=wh.id) }}" class="inline"
+        onsubmit="return confirm('Rotate the token? The current URL stops working.');" style="margin-top:.5rem">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn sm" type="submit">Rotate token</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="panel" style="max-width:760px">
+  <form method="post">
+    {{ form.hidden_tag() }}
+    {{ render_field(form.name) }}
+    <div class="field checkline">{{ form.active() }} <label style="margin:0">{{ form.active.label.text }}</label></div>
+    {{ render_field(form.user_id) }}
+
+    <h3>Mapping</h3>
+    {{ render_field(form.mode) }}
+    <p class="help">Upsert matches an existing record on the target field below; otherwise a new
+      record is created on every POST.</p>
+    {{ render_field(form.match_field) }}
+
+    <p class="help">Map each <em>incoming</em> JSON path (dotted, e.g. <code>customer.email</code>)
+      to a target column. Unmapped paths are ignored.</p>
+    <datalist id="tgt-cols">{% for c in target_columns %}<option value="{{ c }}">{% endfor %}</datalist>
+    <table class="grid">
+      <tr><th>Source (JSON path)</th><th>→ Target field</th></tr>
+      {% for m in field_map + [{'source': '', 'target': ''}] * 5 %}
+        <tr>
+          <td><input name="map_source" value="{{ m.source }}" placeholder="customer.email" style="width:100%"></td>
+          <td><input name="map_target" list="tgt-cols" value="{{ m.target }}" style="width:100%"></td>
+        </tr>
+      {% endfor %}
+    </table>
+
+    <h3>Security (optional)</h3>
+    <p class="help">Set an HMAC secret to require a signed body: the sender must include
+      <code>X-Biggy-Signature: sha256=&lt;hex&gt;</code> = HMAC-SHA256 of the raw body.
+      {% if has_secret %}<strong>A secret is set</strong> — leave blank to keep it.{% endif %}</p>
+    {{ render_field(form.secret) }}
+
+    <h3>Limits</h3>
+    <p class="help">Protect this endpoint from oversized or excessive requests. Leave a field
+      blank to use the server default. Oversized bodies get <code>413</code>; over-rate
+      requests get <code>429</code> with a <code>Retry-After</code> header.</p>
+    {{ render_field(form.max_body_bytes) }}
+    <p class="help">Default: {{ defaults.body }} bytes.</p>
+    <div class="pill-row">
+      <div style="flex:1">{{ render_field(form.rate_limit) }}
+        <p class="help">Default: {{ defaults.rate }} ({{ 'off' if defaults.rate == 0 else 'per window' }}).</p>
+      </div>
+      <div style="flex:1">{{ render_field(form.rate_window) }}
+        <p class="help">Default: {{ defaults.window }}s.</p>
+      </div>
+    </div>
+
+    <button class="btn primary" type="submit">Save</button>
+    <a class="btn" href="{{ url_for('designer.webhooks') }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

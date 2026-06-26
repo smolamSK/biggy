@@ -1,0 +1,2363 @@
+"""Designer mode: define tables, fields, relations, forms and menus.
+
+Each schema change updates the ``app_meta_*`` metadata *and* issues real DDL via
+:mod:`app.metadata.schema_service`, so user data lives in genuine MariaDB tables.
+"""
+import json
+
+from flask import (
+    Blueprint,
+    Response,
+    current_app,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session as web_session,
+    url_for,
+)
+from flask_login import current_user, login_required
+from sqlalchemy import delete, func, or_, select
+
+from urllib.parse import urlencode
+
+from .. import (
+    adopt, connectors, dashboards, data_io, data_service, examples, feeds, file_store, formula,
+    helpers, pull, reporting, schema_io, scheduler, sql_console, workflow,
+)
+from ..db import SessionLocal, engine_for, engine_for_table, get_engine, test_source
+from ..forms.admin_forms import (
+    ConnectionForm,
+    DashboardForm,
+    DashboardWidgetForm,
+    DataSourceForm,
+    FeedForm,
+    WebhookForm,
+    PullSourceForm,
+    FieldForm,
+    FormDefForm,
+    FormItemEditForm,
+    FormItemForm,
+    MenuForm,
+    RelationEditForm,
+    RelationM1Form,
+    RelationMNForm,
+    DataImportForm,
+    SchemaImportForm,
+    SqlQueryForm,
+    TableForm,
+    TriggerRuleForm,
+)
+from ..helpers import designer_required
+from ..identifiers import (
+    RESERVED_COLUMNS,
+    IdentifierError,
+    junction_name,
+    validate_identifier,
+)
+from ..metadata import schema_service
+from ..metadata.field_types import FILE_TYPES, RELATION_TYPE, type_label
+from ..metadata.models import (
+    ACCESS_LEVELS,
+    ACCESS_WRITE,
+    AppUser,
+    Attachment,
+    AuditLog,
+    CompositeUnique,
+    Connection,
+    Dashboard,
+    DashboardWidget,
+    DataSource,
+    Feed,
+    MetaField,
+    MetaForm,
+    MetaFieldPermission,
+    MetaFormField,
+    MetaMenu,
+    MetaPermission,
+    MetaRelation,
+    MetaTable,
+    PullSource,
+    ReportDef,
+    ROLE_DESIGNER,
+    ROLE_USER,
+    Role,
+    TriggerRule,
+    Webhook,
+    Workflow,
+)
+
+bp = Blueprint("designer", __name__, url_prefix="/designer")
+
+
+@bp.before_request
+@login_required
+@designer_required
+def _guard():
+    pass
+
+
+def _s():
+    return SessionLocal()
+
+
+def _tables(session):
+    return session.scalars(select(MetaTable).order_by(MetaTable.label)).all()
+
+
+def _external_readonly(mt):
+    """Flash + return True when ``mt`` is an adopted (external) table.
+
+    External tables are mapped, not owned: Biggy must never issue DDL against
+    them, so structural-change routes refuse early.
+    """
+    if mt is not None and not mt.managed:
+        flash("This table is external (adopted) — its schema is read-only here.", "warning")
+        return True
+    return False
+
+
+def _reorder(session, ordered, item_id, direction):
+    """Normalise positions of an ordered list, then swap one item up/down."""
+    ordered = list(ordered)
+    for i, x in enumerate(ordered):
+        x.position = i
+    idx = next((i for i, x in enumerate(ordered) if x.id == item_id), None)
+    if idx is None:
+        return
+    swap = idx - 1 if direction == "up" else idx + 1
+    if 0 <= swap < len(ordered):
+        ordered[idx].position, ordered[swap].position = swap, idx
+    session.commit()
+
+
+def _apply_validation(field, form):
+    """Copy validation-rule inputs from a FieldForm onto a MetaField."""
+    field.min_length = form.min_length.data
+    field.max_length = form.max_length.data
+    field.min_value = (form.min_value.data or None)
+    field.max_value = (form.max_value.data or None)
+    field.pattern = (form.pattern.data or None)
+
+
+# --------------------------------------------------------------------------- #
+# Dashboard
+# --------------------------------------------------------------------------- #
+@bp.route("/")
+def dashboard():
+    session = _s()
+    return render_template(
+        "designer/dashboard.html",
+        tables=_tables(session),
+        relations=session.scalars(select(MetaRelation)).all(),
+        forms=session.scalars(select(MetaForm)).all(),
+        menus=session.scalars(select(MetaMenu)).all(),
+    )
+
+
+# --------------------------------------------------------------------------- #
+# ER diagram
+# --------------------------------------------------------------------------- #
+def _diagram_graph(session):
+    """Tables (with fields) + relations as a JSON-able graph for the diagram."""
+    tables = []
+    for t in _tables(session):
+        fields = [{"name": "id", "type": "integer", "pk": True, "fk_to": None}]
+        for f in t.fields:
+            fields.append({
+                "name": f.phys_name, "type": type_label(f.data_type), "pk": False,
+                "fk_to": f.related_table_id if f.data_type == RELATION_TYPE else None,
+            })
+        tables.append({
+            "id": t.id, "label": t.label, "phys_name": t.phys_name, "fields": fields,
+            "url": url_for("designer.table_view", table_id=t.id),
+        })
+
+    relations = [
+        {"kind": r.kind, "from": r.from_table_id, "to": r.to_table_id, "label": r.name}
+        for r in session.scalars(select(MetaRelation).order_by(MetaRelation.id))
+    ]
+    return {"tables": tables, "relations": relations}
+
+
+@bp.route("/diagram")
+def diagram():
+    return render_template("designer/diagram.html", graph=_diagram_graph(_s()))
+
+
+# --------------------------------------------------------------------------- #
+# Adopt existing (external) tables
+# --------------------------------------------------------------------------- #
+def _source_engine(session, source_id):
+    ds = session.get(DataSource, source_id) if source_id else None
+    return engine_for(ds)
+
+
+@bp.route("/adopt")
+def adopt_home():
+    session = _s()
+    source_id = request.args.get("source", type=int) or None
+    return render_template(
+        "designer/adopt.html", source_id=source_id, sources=_source_choices(session),
+        candidates=adopt.list_adoptable(session, _source_engine(session, source_id)))
+
+
+@bp.route("/adopt", methods=["POST"])
+def adopt_run():
+    session = _s()
+    source_id = request.form.get("source", type=int) or None
+    engine = _source_engine(session, source_id)
+    names = request.form.getlist("tables")
+    with_relations = bool(request.form.get("with_relations"))
+    adopted, rels, errors = 0, 0, []
+    for name in names:
+        mt, err = adopt.adopt_table(session, engine, name, source_id=source_id)
+        if mt:
+            adopted += 1
+        elif err:
+            errors.append(f"{name}: {err}")
+    if with_relations:
+        rels = adopt.adopt_relations(session, engine, source_id=source_id)
+    session.commit()
+    if adopted:
+        msg = f"Adopted {adopted} table(s)" + (f" and {rels} relation(s)" if with_relations else "")
+        flash(msg + ".", "success")
+    elif not errors:
+        flash("No tables selected.", "info")
+    for e in errors:
+        flash(e, "warning")
+    return redirect(url_for("designer.adopt_home", source=source_id))
+
+
+# --------------------------------------------------------------------------- #
+# Tables & fields
+# --------------------------------------------------------------------------- #
+def _source_choices(session):
+    return [(0, "Home database")] + [
+        (d.id, d.name) for d in session.scalars(
+            select(DataSource).where(DataSource.active.is_(True)).order_by(DataSource.name))]
+
+
+@bp.route("/tables/new", methods=["GET", "POST"])
+def table_new():
+    session = _s()
+    form = TableForm()
+    form.source_id.choices = _source_choices(session)
+    if form.validate_on_submit():
+        source_id = form.source_id.data or None
+        engine = engine_for(session.get(DataSource, source_id) if source_id else None)
+        try:
+            phys = validate_identifier(form.phys_name.data, kind="Table")
+        except IdentifierError as exc:
+            flash(str(exc), "danger")
+            return render_template("designer/table_form.html", form=form)
+        if session.scalar(select(MetaTable).where(MetaTable.phys_name == phys)) \
+                or schema_service.table_exists(engine, phys):
+            flash(f"A table named '{phys}' already exists.", "danger")
+            return render_template("designer/table_form.html", form=form)
+
+        pk_field = None
+        pk_col = "id"
+        if form.pk_mode.data == "custom":
+            try:
+                pk_col = validate_identifier(form.pk_name.data or "", kind="Column")
+            except IdentifierError as exc:
+                flash(f"Primary key: {exc}", "danger")
+                return render_template("designer/table_form.html", form=form)
+            pk_field = MetaField(
+                phys_name=pk_col, label=(form.pk_name.data or pk_col).title(),
+                data_type=form.pk_type.data or "string",
+                length=form.pk_length.data if form.pk_type.data == "string" else None,
+                nullable=False, is_unique=True, position=0)
+
+        mt = MetaTable(phys_name=phys, label=form.label.data,
+                       description=form.description.data, source_id=source_id, pk_col=pk_col)
+        session.add(mt)
+        session.flush()
+        if pk_field is not None:
+            pk_field.table_id = mt.id
+            session.add(pk_field)
+        schema_service.create_physical_table(engine, phys, [], pk=pk_field)
+        session.commit()
+        flash(f"Table '{phys}' created.", "success")
+        return redirect(url_for("designer.table_view", table_id=mt.id))
+    return render_template("designer/table_form.html", form=form)
+
+
+@bp.route("/tables/<int:table_id>")
+def table_view(table_id):
+    session = _s()
+    mt = session.get(MetaTable, table_id)
+    if not mt:
+        flash("Table not found.", "danger")
+        return redirect(url_for("designer.dashboard"))
+    relations = session.scalars(
+        select(MetaRelation).where(
+            or_(MetaRelation.from_table_id == table_id, MetaRelation.to_table_id == table_id)
+        )
+    ).all()
+    by_id = {f.id: f for f in mt.fields}
+    uniques = []
+    for u in session.scalars(select(CompositeUnique).where(CompositeUnique.table_id == table_id)):
+        labels = [by_id[i].label for i in json.loads(u.field_ids or "[]") if i in by_id]
+        uniques.append({"u": u, "labels": labels})
+    source = session.get(DataSource, mt.source_id) if mt.source_id else None
+    return render_template(
+        "designer/table_view.html", table=mt, relations=relations, uniques=uniques,
+        type_label=type_label, field_form=FieldForm(), source=source,
+    )
+
+
+@bp.route("/tables/<int:table_id>/uniques", methods=["POST"])
+def unique_add(table_id):
+    session = _s()
+    mt = session.get(MetaTable, table_id)
+    if not mt:
+        return redirect(url_for("designer.dashboard"))
+    if _external_readonly(mt):
+        return redirect(url_for("designer.table_view", table_id=table_id))
+    engine = engine_for_table(mt)
+    ids = [int(x) for x in request.form.getlist("field_ids") if x.isdigit()]
+    fields = [f for f in mt.fields if f.id in ids
+              and f.data_type not in (RELATION_TYPE, "file", "image", "tags", "json")]
+    if len(fields) < 2:
+        flash("Pick at least two columns for a composite unique constraint.", "warning")
+        return redirect(url_for("designer.table_view", table_id=table_id))
+    cols = [f.phys_name for f in fields]
+    name = ("uq_" + mt.phys_name + "_" + "_".join(cols))[:64]
+    try:
+        schema_service.add_composite_unique(engine, mt.phys_name, name, cols)
+    except Exception as exc:  # noqa: BLE001
+        flash(f"Could not add constraint: {exc}", "danger")
+        return redirect(url_for("designer.table_view", table_id=table_id))
+    session.add(CompositeUnique(table_id=mt.id, name=name,
+                                field_ids=json.dumps([f.id for f in fields])))
+    session.commit()
+    flash("Unique constraint added.", "success")
+    return redirect(url_for("designer.table_view", table_id=table_id))
+
+
+@bp.route("/uniques/<int:uid>/delete", methods=["POST"])
+def unique_delete(uid):
+    session = _s()
+    u = session.get(CompositeUnique, uid)
+    table_id = u.table_id if u else None
+    if u:
+        mt = session.get(MetaTable, u.table_id)
+        if _external_readonly(mt):
+            return redirect(url_for("designer.table_view", table_id=table_id))
+        try:
+            schema_service.drop_composite_unique(engine_for_table(mt), mt.phys_name, u.name)
+        except Exception:  # noqa: BLE001
+            pass
+        session.delete(u)
+        session.commit()
+        flash("Constraint removed.", "info")
+    return redirect(url_for("designer.table_view", table_id=table_id) if table_id
+                    else url_for("designer.dashboard"))
+
+
+def _formula_error(session, mt, expr, exclude_field_id=None):
+    """Validate a formula against table ``mt``; return an error string or None."""
+    cols = {"id"} | {f.phys_name for f in mt.fields
+                     if f.data_type not in FILE_TYPES and f.id != exclude_field_id}
+    lookup_fields = {f.phys_name for f in mt.fields if f.data_type == RELATION_TYPE}
+    rollup_rels = {r.name for r in session.scalars(select(MetaRelation).where(
+        or_(MetaRelation.from_table_id == mt.id, MetaRelation.to_table_id == mt.id)))}
+    return formula.validate(expr, cols, lookup_fields=lookup_fields, rollup_rels=rollup_rels)
+
+
+@bp.route("/tables/<int:table_id>/fields", methods=["POST"])
+def field_add(table_id):
+    session = _s()
+    mt = session.get(MetaTable, table_id)
+    if not mt:
+        flash("Table not found.", "danger")
+        return redirect(url_for("designer.dashboard"))
+    if _external_readonly(mt):
+        return redirect(url_for("designer.table_view", table_id=table_id))
+    engine = engine_for_table(mt)
+    form = FieldForm()
+    if not form.validate_on_submit():
+        flash("Invalid field input.", "danger")
+        return redirect(url_for("designer.table_view", table_id=table_id))
+    try:
+        phys = validate_identifier(form.phys_name.data, kind="Column")
+    except IdentifierError as exc:
+        flash(str(exc), "danger")
+        return redirect(url_for("designer.table_view", table_id=table_id))
+    if phys in RESERVED_COLUMNS or any(f.phys_name == phys for f in mt.fields):
+        flash(f"Column '{phys}' is reserved or already exists.", "danger")
+        return redirect(url_for("designer.table_view", table_id=table_id))
+
+    enum_json = None
+    if form.data_type.data in ("enum", "tags"):
+        opts = [ln.strip() for ln in (form.enum_options.data or "").splitlines() if ln.strip()]
+        if not opts:
+            flash("Choice/tags fields need at least one option.", "danger")
+            return redirect(url_for("designer.table_view", table_id=table_id))
+        enum_json = json.dumps(opts)
+
+    formula_expr = result_type = None
+    if form.data_type.data == "formula":
+        formula_expr = (form.formula.data or "").strip()
+        result_type = form.result_type.data or "number"
+        err = _formula_error(session, mt, formula_expr)
+        if err:
+            flash(f"Formula error: {err}", "danger")
+            return redirect(url_for("designer.table_view", table_id=table_id))
+
+    field = MetaField(
+        table_id=mt.id, phys_name=phys, label=form.label.data,
+        data_type=form.data_type.data, length=form.length.data,
+        precision=form.precision.data, scale=form.scale.data,
+        nullable=form.nullable.data, is_unique=form.is_unique.data,
+        default_value=form.default_value.data or None, enum_options=enum_json,
+        formula=formula_expr, result_type=result_type, position=len(mt.fields),
+    )
+    _apply_validation(field, form)
+    session.add(field)
+    session.flush()
+    if field.data_type not in FILE_TYPES:  # file/image are virtual (no column)
+        try:
+            schema_service.add_scalar_column(engine, mt.phys_name, field)
+        except Exception as exc:  # noqa: BLE001 - surface DDL errors to the designer
+            session.rollback()
+            flash(f"Could not add column: {exc}", "danger")
+            return redirect(url_for("designer.table_view", table_id=table_id))
+    if mt.display_field_id is None and form.data_type.data in ("string", "text"):
+        mt.display_field_id = field.id
+    session.commit()
+    if field.data_type == "formula":          # backfill existing rows
+        formula.recompute_table(session, engine, mt)
+    flash(f"Field '{phys}' added.", "success")
+    return redirect(url_for("designer.table_view", table_id=table_id))
+
+
+@bp.route("/tables/<int:table_id>/fields/<int:field_id>/delete", methods=["POST"])
+def field_delete(table_id, field_id):
+    session = _s()
+    field = session.get(MetaField, field_id)
+    mt = session.get(MetaTable, table_id)
+    engine = engine_for_table(mt) if mt else get_engine()
+    if not field or not mt:
+        flash("Field not found.", "danger")
+        return redirect(url_for("designer.table_view", table_id=table_id))
+    if _external_readonly(mt):
+        return redirect(url_for("designer.table_view", table_id=table_id))
+    # if this is a relation field, also remove the relation record
+    rel = session.scalar(select(MetaRelation).where(MetaRelation.from_field_id == field_id))
+    if field.data_type in FILE_TYPES:
+        # virtual field: no column to drop; remove its attachments + files
+        for att in session.scalars(select(Attachment).where(Attachment.field_id == field_id)):
+            file_store.delete(field_id, att.stored_name)
+            session.delete(att)
+    else:
+        try:
+            schema_service.drop_column(engine, mt.phys_name, field.phys_name)
+        except Exception as exc:  # noqa: BLE001
+            flash(f"Could not drop column: {exc}", "danger")
+            return redirect(url_for("designer.table_view", table_id=table_id))
+    if mt.display_field_id == field.id:
+        mt.display_field_id = None
+    if rel:
+        session.delete(rel)
+    session.delete(field)
+    session.commit()
+    flash("Field deleted.", "info")
+    return redirect(url_for("designer.table_view", table_id=table_id))
+
+
+@bp.route("/tables/<int:table_id>/fields/<int:field_id>/edit", methods=["GET", "POST"])
+def field_edit(table_id, field_id):
+    session = _s()
+    mt = session.get(MetaTable, table_id)
+    field = session.get(MetaField, field_id)
+    if not mt or not field or field.table_id != mt.id:
+        flash("Field not found.", "danger")
+        return redirect(url_for("designer.table_view", table_id=table_id))
+    engine = engine_for_table(mt)
+    if _external_readonly(mt):
+        return redirect(url_for("designer.table_view", table_id=table_id))
+    if field.data_type == RELATION_TYPE:
+        flash("Edit relation fields from the Relations page.", "info")
+        return redirect(url_for("designer.relations"))
+
+    form = FieldForm(obj=field)
+    if request.method == "GET":
+        form.data_type.data = field.data_type
+        if field.enum_options:
+            form.enum_options.data = "\n".join(json.loads(field.enum_options))
+
+    def _render():
+        return render_template("designer/field_form.html", form=form, table=mt, field=field)
+
+    if form.validate_on_submit():
+        try:
+            phys = validate_identifier(form.phys_name.data, kind="Column")
+        except IdentifierError as exc:
+            flash(str(exc), "danger")
+            return _render()
+        if phys in RESERVED_COLUMNS or any(f.phys_name == phys for f in mt.fields if f.id != field.id):
+            flash(f"Column '{phys}' is reserved or already exists.", "danger")
+            return _render()
+        enum_json = field.enum_options
+        if field.data_type in ("enum", "tags"):
+            opts = [ln.strip() for ln in (form.enum_options.data or "").splitlines() if ln.strip()]
+            if not opts:
+                flash("Choice/tags fields need at least one option.", "danger")
+                return _render()
+            enum_json = json.dumps(opts)
+
+        if field.data_type == "formula":
+            expr = (form.formula.data or "").strip()
+            err = _formula_error(session, mt, expr, exclude_field_id=field.id)
+            if err:
+                flash(f"Formula error: {err}", "danger")
+                return _render()
+            field.formula = expr
+            field.result_type = form.result_type.data or "number"
+
+        old_name = field.phys_name
+        field.phys_name = phys
+        field.label = form.label.data
+        field.length = form.length.data
+        field.precision = form.precision.data
+        field.scale = form.scale.data
+        field.nullable = form.nullable.data
+        field.is_unique = form.is_unique.data
+        field.default_value = form.default_value.data or None
+        field.enum_options = enum_json
+        _apply_validation(field, form)  # data_type stays unchanged
+        session.flush()
+        if field.data_type not in FILE_TYPES:  # virtual fields have no column
+            try:
+                schema_service.modify_column(engine, mt.phys_name, old_name, field)
+            except Exception as exc:  # noqa: BLE001 - surface DDL errors to the designer
+                session.rollback()
+                flash(f"Could not modify column: {exc}", "danger")
+                return _render()
+        session.commit()
+        if field.data_type == "formula":      # recompute with the new expression
+            formula.recompute_table(session, engine, mt)
+        flash(f"Field '{phys}' updated.", "success")
+        return redirect(url_for("designer.table_view", table_id=table_id))
+    return _render()
+
+
+@bp.route("/tables/<int:table_id>/fields/<int:field_id>/move/<direction>", methods=["POST"])
+def field_move(table_id, field_id, direction):
+    session = _s()
+    mt = session.get(MetaTable, table_id)
+    if mt:
+        _reorder(session, sorted(mt.fields, key=lambda f: (f.position, f.id)),
+                 field_id, direction)
+    return redirect(url_for("designer.table_view", table_id=table_id))
+
+
+@bp.route("/tables/<int:table_id>/display/<int:field_id>", methods=["POST"])
+def set_display_field(table_id, field_id):
+    session = _s()
+    mt = session.get(MetaTable, table_id)
+    if mt:
+        mt.display_field_id = field_id
+        session.commit()
+        flash("Display field updated.", "success")
+    return redirect(url_for("designer.table_view", table_id=table_id))
+
+
+@bp.route("/tables/<int:table_id>/delete", methods=["POST"])
+def table_delete(table_id):
+    session = _s()
+    mt = session.get(MetaTable, table_id)
+    if not mt:
+        return redirect(url_for("designer.dashboard"))
+    engine = engine_for_table(mt)
+    rels = session.scalars(
+        select(MetaRelation).where(
+            or_(MetaRelation.from_table_id == table_id, MetaRelation.to_table_id == table_id)
+        )
+    ).all()
+    if rels:
+        flash("Remove relations involving this table before deleting it.", "warning")
+        return redirect(url_for("designer.table_view", table_id=table_id))
+    phys, managed = mt.phys_name, mt.managed
+    session.delete(mt)  # cascades fields + forms
+    session.commit()
+    if managed:
+        schema_service.drop_physical_table(engine, phys)
+        flash(f"Table '{phys}' deleted.", "info")
+    else:                       # external: unmap only, never drop the real table
+        flash(f"External table '{phys}' unmapped (the real table was kept).", "info")
+    return redirect(url_for("designer.dashboard"))
+
+
+# --------------------------------------------------------------------------- #
+# Relations
+# --------------------------------------------------------------------------- #
+@bp.route("/relations")
+def relations():
+    session = _s()
+    tmap = {t.id: t for t in _tables(session)}
+    rels = session.scalars(select(MetaRelation)).all()
+    return render_template("designer/relations.html", relations=rels, tmap=tmap)
+
+
+@bp.route("/relations/new-m1", methods=["GET", "POST"])
+def relation_new_m1():
+    session = _s()
+    form = RelationM1Form()
+    choices = [(t.id, t.label) for t in _tables(session)]
+    form.from_table_id.choices = choices
+    form.to_table_id.choices = choices
+    if form.validate_on_submit():
+        from_t = session.get(MetaTable, form.from_table_id.data)
+        to_t = session.get(MetaTable, form.to_table_id.data)
+        if from_t.source_id != to_t.source_id:
+            flash("Relations can only connect tables in the same data source.", "danger")
+            return render_template("designer/relation_form.html", form=form, kind="m1")
+        if not from_t.managed:
+            flash("Can't add a foreign-key column to an external table.", "danger")
+            return render_template("designer/relation_form.html", form=form, kind="m1")
+        engine = engine_for_table(from_t)
+        try:
+            col = validate_identifier(form.field_name.data, kind="Column")
+        except IdentifierError as exc:
+            flash(str(exc), "danger")
+            return render_template("designer/relation_form.html", form=form, kind="m1")
+        if col in RESERVED_COLUMNS or any(f.phys_name == col for f in from_t.fields):
+            flash(f"Column '{col}' is reserved or already exists on {from_t.phys_name}.", "danger")
+            return render_template("designer/relation_form.html", form=form, kind="m1")
+        field = MetaField(
+            table_id=from_t.id, phys_name=col, label=form.name.data,
+            data_type=RELATION_TYPE, related_table_id=to_t.id,
+            nullable=form.nullable.data, on_delete=form.on_delete.data,
+            position=len(from_t.fields),
+        )
+        session.add(field)
+        session.flush()
+        try:
+            schema_service.add_relation_column(engine, from_t.phys_name, field, to_t.phys_name)
+        except Exception as exc:  # noqa: BLE001
+            session.rollback()
+            flash(f"Could not create relation: {exc}", "danger")
+            return render_template("designer/relation_form.html", form=form, kind="m1")
+        rel = MetaRelation(
+            name=form.name.data, kind="m1", from_table_id=from_t.id,
+            to_table_id=to_t.id, from_field_id=field.id, on_delete=form.on_delete.data,
+        )
+        session.add(rel)
+        session.commit()
+        flash("Relation created — choose which fields to show in user forms.", "success")
+        return redirect(url_for("designer.relation_edit", relation_id=rel.id))
+    return render_template("designer/relation_form.html", form=form, kind="m1")
+
+
+@bp.route("/relations/new-mn", methods=["GET", "POST"])
+def relation_new_mn():
+    session = _s()
+    form = RelationMNForm()
+    choices = [(t.id, t.label) for t in _tables(session)]
+    form.from_table_id.choices = choices
+    form.to_table_id.choices = choices
+    if form.validate_on_submit():
+        a = session.get(MetaTable, form.from_table_id.data)
+        b = session.get(MetaTable, form.to_table_id.data)
+        if a.source_id != b.source_id:
+            flash("Relations can only connect tables in the same data source.", "danger")
+            return render_template("designer/relation_form.html", form=form, kind="mn")
+        engine = engine_for_table(a)
+        jname = junction_name(a.phys_name, b.phys_name)
+        if schema_service.table_exists(engine, jname):
+            flash(f"Junction table '{jname}' already exists.", "danger")
+            return render_template("designer/relation_form.html", form=form, kind="mn")
+        left_col = f"{a.phys_name}_id"
+        right_col = f"{b.phys_name}_id"
+        if left_col == right_col:
+            right_col = f"{b.phys_name}_id_2"
+        try:
+            schema_service.create_junction_table(
+                engine, jname, a.phys_name, left_col, b.phys_name, right_col
+            )
+        except Exception as exc:  # noqa: BLE001
+            flash(f"Could not create junction table: {exc}", "danger")
+            return render_template("designer/relation_form.html", form=form, kind="mn")
+        rel = MetaRelation(
+            name=form.name.data, kind="mn", from_table_id=a.id, to_table_id=b.id,
+            junction_phys_name=jname,
+        )
+        session.add(rel)
+        session.commit()
+        flash("Relation created — choose which fields to show in user forms.", "success")
+        return redirect(url_for("designer.relation_edit", relation_id=rel.id))
+    return render_template("designer/relation_form.html", form=form, kind="mn")
+
+
+@bp.route("/relations/<int:relation_id>/edit", methods=["GET", "POST"])
+def relation_edit(relation_id):
+    session = _s()
+    rel = session.get(MetaRelation, relation_id)
+    if not rel:
+        flash("Relation not found.", "danger")
+        return redirect(url_for("designer.relations"))
+    from_t = session.get(MetaTable, rel.from_table_id)
+    to_t = session.get(MetaTable, rel.to_table_id)
+
+    form = RelationEditForm()
+    form.to_display_field_ids.choices = _field_choices(to_t)
+    form.from_display_field_ids.choices = _field_choices(from_t)
+
+    if form.validate_on_submit():
+        rel.name = form.name.data
+        rel.to_display_field_ids = _ids_json(form.to_display_field_ids.data)
+        rel.from_display_field_ids = (
+            _ids_json(form.from_display_field_ids.data) if rel.kind == "mn" else None
+        )
+        session.commit()
+        flash("Relation updated.", "success")
+        return redirect(url_for("designer.relations"))
+
+    if request.method == "GET":
+        form.name.data = rel.name
+        form.to_display_field_ids.data = _ids_list(rel.to_display_field_ids)
+        form.from_display_field_ids.data = _ids_list(rel.from_display_field_ids)
+    return render_template("designer/relation_edit.html", form=form, rel=rel,
+                           from_t=from_t, to_t=to_t)
+
+
+def _field_choices(meta_table):
+    if not meta_table:
+        return []
+    return [(f.id, f"{f.label} ({f.phys_name})") for f in meta_table.fields]
+
+
+def _ids_json(values):
+    ids = [int(v) for v in (values or [])]
+    return json.dumps(ids) if ids else None
+
+
+def _ids_list(json_text):
+    try:
+        return [int(x) for x in json.loads(json_text)] if json_text else []
+    except (ValueError, TypeError):
+        return []
+
+
+@bp.route("/relations/<int:relation_id>/delete", methods=["POST"])
+def relation_delete(relation_id):
+    session = _s()
+    rel = session.get(MetaRelation, relation_id)
+    if not rel:
+        return redirect(url_for("designer.relations"))
+    try:
+        if rel.kind == "m1" and rel.from_field_id:
+            field = session.get(MetaField, rel.from_field_id)
+            if field:
+                from_t = session.get(MetaTable, field.table_id)
+                if from_t and from_t.managed:    # external FK columns aren't ours to drop
+                    schema_service.drop_column(
+                        engine_for_table(from_t), from_t.phys_name, field.phys_name)
+                session.delete(field)
+        elif rel.kind == "mn" and rel.junction_phys_name:
+            from_t = session.get(MetaTable, rel.from_table_id)
+            schema_service.drop_physical_table(
+                engine_for_table(from_t), rel.junction_phys_name)
+    except Exception as exc:  # noqa: BLE001
+        flash(f"Could not drop relation: {exc}", "danger")
+        return redirect(url_for("designer.relations"))
+    # remove any form items referencing this relation
+    for item in session.scalars(
+        select(MetaFormField).where(MetaFormField.relation_id == relation_id)
+    ).all():
+        session.delete(item)
+    session.delete(rel)
+    session.commit()
+    flash("Relation deleted.", "info")
+    return redirect(url_for("designer.relations"))
+
+
+# --------------------------------------------------------------------------- #
+# Forms
+# --------------------------------------------------------------------------- #
+@bp.route("/forms")
+def forms():
+    session = _s()
+    tmap = {t.id: t for t in _tables(session)}
+    return render_template(
+        "designer/forms.html",
+        forms=session.scalars(select(MetaForm).order_by(MetaForm.title)).all(),
+        tmap=tmap,
+    )
+
+
+@bp.route("/forms/new", methods=["GET", "POST"])
+def form_new():
+    session = _s()
+    form = FormDefForm()
+    form.table_id.choices = [(t.id, t.label) for t in _tables(session)]
+    if form.validate_on_submit():
+        if session.scalar(select(MetaForm).where(MetaForm.name == form.name.data)):
+            flash("A form with that name already exists.", "danger")
+        else:
+            mf = MetaForm(name=form.name.data, title=form.title.data,
+                         table_id=form.table_id.data, description=form.description.data,
+                         purpose=(form.purpose.data or "data"))
+            session.add(mf)
+            session.commit()
+            flash("Form created. Add fields below.", "success")
+            return redirect(url_for("designer.form_edit", form_id=mf.id))
+    return render_template("designer/form_form.html", form=form, title="New form")
+
+
+@bp.route("/forms/<int:form_id>", methods=["GET", "POST"])
+def form_edit(form_id):
+    session = _s()
+    mf = session.get(MetaForm, form_id)
+    if not mf:
+        flash("Form not found.", "danger")
+        return redirect(url_for("designer.forms"))
+    item_form = _build_item_form(session, mf)
+    if item_form.validate_on_submit():
+        _add_form_item(session, mf, item_form)
+        return redirect(url_for("designer.form_edit", form_id=form_id))
+    field_map = {f.id: f for f in mf.table.fields}
+    rel_map = {r.id: r for r in _mn_relations_for(session, mf.table_id)}
+    return render_template(
+        "designer/form_edit.html", mf=mf, item_form=item_form,
+        field_map=field_map, rel_map=rel_map, type_label=type_label,
+    )
+
+
+def _mn_relations_for(session, table_id):
+    return session.scalars(
+        select(MetaRelation).where(
+            MetaRelation.kind == "mn",
+            or_(MetaRelation.from_table_id == table_id,
+                MetaRelation.to_table_id == table_id),
+        )
+    ).all()
+
+
+def _build_item_form(session, mf):
+    form = FormItemForm()
+    used = {i.field_id for i in mf.items if i.kind == "field"}
+    form.field_id.choices = [(0, "— choose —")] + [
+        (f.id, f"{f.label} ({f.phys_name})") for f in mf.table.fields if f.id not in used
+    ]
+    form.relation_id.choices = [(0, "— choose —")] + [
+        (r.id, r.name) for r in _mn_relations_for(session, mf.table_id)
+    ]
+    return form
+
+
+def _add_form_item(session, mf, form):
+    if form.kind.data == "section":
+        if not form.label_override.data:
+            flash("Give the section a heading (use the Label field).", "warning")
+            return
+        item = MetaFormField(
+            form_id=mf.id, kind="section",
+            label_override=form.label_override.data,
+            position=form.position.data or len(mf.items),
+        )
+    elif form.kind.data == "field":
+        if not form.field_id.data:
+            flash("Select a field to add.", "warning")
+            return
+        item = MetaFormField(
+            form_id=mf.id, kind="field", field_id=form.field_id.data,
+            label_override=form.label_override.data or None,
+            help_text=form.help_text.data or None, required=form.required.data,
+            readonly=form.readonly.data,
+            position=form.position.data or len(mf.items),
+        )
+    else:
+        if not form.relation_id.data:
+            flash("Select a relation to add.", "warning")
+            return
+        item = MetaFormField(
+            form_id=mf.id, kind="relation", relation_id=form.relation_id.data,
+            label_override=form.label_override.data or None,
+            help_text=form.help_text.data or None,
+            position=form.position.data or len(mf.items),
+        )
+    session.add(item)
+    session.commit()
+    flash("Form item added.", "success")
+
+
+@bp.route("/forms/<int:form_id>/items/<int:item_id>/delete", methods=["POST"])
+def form_item_delete(form_id, item_id):
+    session = _s()
+    item = session.get(MetaFormField, item_id)
+    if item:
+        session.delete(item)
+        session.commit()
+        flash("Item removed.", "info")
+    return redirect(url_for("designer.form_edit", form_id=form_id))
+
+
+@bp.route("/forms/<int:form_id>/items/<int:item_id>/edit", methods=["GET", "POST"])
+def form_item_edit(form_id, item_id):
+    session = _s()
+    item = session.get(MetaFormField, item_id)
+    if not item or item.form_id != form_id:
+        flash("Item not found.", "danger")
+        return redirect(url_for("designer.form_edit", form_id=form_id))
+    form = FormItemEditForm(obj=item)
+
+    mf = session.get(MetaField, item.field_id) if (item.kind == "field" and item.field_id) else None
+    is_relation = bool(mf and mf.data_type == RELATION_TYPE)
+    if is_relation:
+        target = session.get(MetaTable, mf.related_table_id)
+        form.parent_field_id.choices = [(0, "— none —")] + [
+            (f.id, f"{f.label} ({f.phys_name})") for f in item.form.table.fields
+            if f.data_type == RELATION_TYPE and f.id != mf.id]
+        form.filter_field_id.choices = [(0, "— auto —")] + [
+            (f.id, f"{f.label} ({f.phys_name})") for f in (target.fields if target else [])
+            if f.data_type == RELATION_TYPE]
+    else:
+        form.parent_field_id.choices = [(0, "—")]
+        form.filter_field_id.choices = [(0, "—")]
+
+    if form.validate_on_submit():
+        item.label_override = form.label_override.data or None
+        item.help_text = form.help_text.data or None
+        item.required = form.required.data
+        item.readonly = form.readonly.data
+        if is_relation:
+            item.parent_field_id = form.parent_field_id.data or None
+            item.filter_field_id = form.filter_field_id.data or None
+        session.commit()
+        flash("Item updated.", "success")
+        return redirect(url_for("designer.form_edit", form_id=form_id))
+
+    if request.method == "GET":
+        form.parent_field_id.data = item.parent_field_id or 0
+        form.filter_field_id.data = item.filter_field_id or 0
+    return render_template("designer/form_item_form.html", form=form, mf=item.form, item=item,
+                           is_relation=is_relation)
+
+
+@bp.route("/forms/<int:form_id>/items/<int:item_id>/move/<direction>", methods=["POST"])
+def form_item_move(form_id, item_id, direction):
+    session = _s()
+    mf = session.get(MetaForm, form_id)
+    if mf:
+        _reorder(session, sorted(mf.items, key=lambda i: (i.position, i.id)), item_id, direction)
+    return redirect(url_for("designer.form_edit", form_id=form_id))
+
+
+@bp.route("/forms/<int:form_id>/delete", methods=["POST"])
+def form_delete(form_id):
+    session = _s()
+    mf = session.get(MetaForm, form_id)
+    if mf:
+        session.delete(mf)
+        session.commit()
+        flash("Form deleted.", "info")
+    return redirect(url_for("designer.forms"))
+
+
+@bp.route("/forms/<int:form_id>/purpose", methods=["POST"])
+def form_purpose(form_id):
+    session = _s()
+    mf = session.get(MetaForm, form_id)
+    if mf and request.form.get("purpose") in ("data", "view"):
+        mf.purpose = request.form["purpose"]
+        session.commit()
+        flash("Form purpose updated.", "success")
+    return redirect(url_for("designer.form_edit", form_id=form_id))
+
+
+# --------------------------------------------------------------------------- #
+# Menus
+# --------------------------------------------------------------------------- #
+@bp.route("/menus")
+def menus():
+    session = _s()
+    roots = session.scalars(
+        select(MetaMenu).where(MetaMenu.parent_id.is_(None)).order_by(MetaMenu.position)
+    ).all()
+    return render_template("designer/menus.html", roots=roots)
+
+
+@bp.route("/menus/new", methods=["GET", "POST"])
+def menu_new():
+    return _menu_form(None)
+
+
+@bp.route("/menus/<int:menu_id>/edit", methods=["GET", "POST"])
+def menu_edit(menu_id):
+    return _menu_form(menu_id)
+
+
+def _menu_form(menu_id):
+    session = _s()
+    item = session.get(MetaMenu, menu_id) if menu_id else None
+    form = MenuForm(obj=item)
+    groups = session.scalars(
+        select(MetaMenu).where(MetaMenu.kind == "group").order_by(MetaMenu.label)
+    ).all()
+    form.parent_id.choices = [(0, "— top level —")] + [
+        (g.id, g.label) for g in groups if g.id != menu_id
+    ]
+    form.target_form_id.choices = [(0, "—")] + [
+        (f.id, f.title) for f in session.scalars(select(MetaForm)).all()
+    ]
+    form.target_table_id.choices = [(0, "—")] + [(t.id, t.label) for t in _tables(session)]
+    form.target_dashboard_id.choices = [(0, "—")] + [
+        (d.id, d.name) for d in session.scalars(
+            select(Dashboard).where(Dashboard.owner_user_id.is_(None)).order_by(Dashboard.name))]
+    if request.method == "GET" and item is not None:
+        form.target_dashboard_id.data = item.target_dashboard_id or 0
+
+    if form.validate_on_submit():
+        if item is None:
+            item = MetaMenu()
+            session.add(item)
+        item.label = form.label.data
+        item.kind = form.kind.data
+        item.parent_id = form.parent_id.data or None
+        item.target_form_id = form.target_form_id.data or None
+        item.target_table_id = form.target_table_id.data or None
+        item.target_dashboard_id = form.target_dashboard_id.data or None
+        item.position = form.position.data or 0
+        item.icon = form.icon.data or None
+        session.commit()
+        flash("Menu saved.", "success")
+        return redirect(url_for("designer.menus"))
+    return render_template("designer/menu_form.html", form=form,
+                           title="Edit menu" if item else "New menu")
+
+
+@bp.route("/menus/<int:menu_id>/move/<direction>", methods=["POST"])
+def menu_move(menu_id, direction):
+    session = _s()
+    item = session.get(MetaMenu, menu_id)
+    if item:
+        cond = (MetaMenu.parent_id.is_(None) if item.parent_id is None
+                else MetaMenu.parent_id == item.parent_id)
+        siblings = session.scalars(
+            select(MetaMenu).where(cond).order_by(MetaMenu.position, MetaMenu.id)
+        ).all()
+        _reorder(session, siblings, menu_id, direction)
+    return redirect(url_for("designer.menus"))
+
+
+@bp.route("/menus/<int:menu_id>/delete", methods=["POST"])
+def menu_delete(menu_id):
+    session = _s()
+    item = session.get(MetaMenu, menu_id)
+    if item:
+        session.delete(item)
+        session.commit()
+        flash("Menu item deleted.", "info")
+    return redirect(url_for("designer.menus"))
+
+
+# --------------------------------------------------------------------------- #
+# Schema export / import
+# --------------------------------------------------------------------------- #
+def _model_stats(session):
+    count = lambda model: session.scalar(select(func.count()).select_from(model))  # noqa: E731
+    return {"tables": count(MetaTable), "relations": count(MetaRelation),
+            "forms": count(MetaForm), "menus": count(MetaMenu)}
+
+
+def _backup_page(session, *, form=None, data_form=None, result=None, data_result=None):
+    return render_template(
+        "designer/schema.html", stats=_model_stats(session),
+        form=form or SchemaImportForm(), data_form=data_form or DataImportForm(),
+        result=result, data_result=data_result,
+    )
+
+
+@bp.route("/schema")
+def schema_home():
+    return _backup_page(_s())
+
+
+@bp.route("/schema/export.json")
+def schema_export():
+    payload = json.dumps(schema_io.export_schema(_s()), indent=2, default=str)
+    return Response(
+        payload, mimetype="application/json",
+        headers={"Content-Disposition": "attachment; filename=biggy-schema.json"},
+    )
+
+
+@bp.route("/schema/import", methods=["POST"])
+def schema_import():
+    session = _s()
+    form = SchemaImportForm()
+    result = None
+    if form.validate_on_submit():
+        try:
+            data = json.loads(form.file.data.read().decode("utf-8-sig"))
+        except (UnicodeDecodeError, ValueError, AttributeError):
+            flash("Could not read the file as JSON.", "danger")
+        else:
+            try:
+                result = schema_io.import_schema(
+                    session, get_engine(), data, replace=form.replace_existing.data
+                )
+                flash(
+                    "Imported {tables} table(s), {relations} relation(s), "
+                    "{forms} form(s), {menus} menu item(s).".format(**result),
+                    "success",
+                )
+            except schema_io.SchemaError as exc:
+                flash(str(exc), "warning")
+            except Exception as exc:  # noqa: BLE001 - surface DDL/import errors
+                flash(f"Import failed: {exc}", "danger")
+    return _backup_page(session, form=form, result=result)
+
+
+@bp.route("/data/export.json")
+def data_export():
+    payload = json.dumps(data_io.export_data(_s(), get_engine()), indent=2, default=str)
+    return Response(
+        payload, mimetype="application/json",
+        headers={"Content-Disposition": "attachment; filename=biggy-data.json"},
+    )
+
+
+@bp.route("/data/import", methods=["POST"])
+def data_import():
+    session = _s()
+    form = DataImportForm()
+    data_result = None
+    if form.validate_on_submit():
+        try:
+            data = json.loads(form.file.data.read().decode("utf-8-sig"))
+        except (UnicodeDecodeError, ValueError, AttributeError):
+            flash("Could not read the file as JSON.", "danger")
+        else:
+            try:
+                data_result = data_io.import_data(
+                    session, get_engine(), data, replace=form.replace_existing.data
+                )
+                msg = "Restored {rows} row(s) into {tables} table(s).".format(**data_result)
+                if data_result["skipped"]:
+                    msg += " Skipped unknown tables: " + ", ".join(data_result["skipped"]) + "."
+                flash(msg, "success")
+            except data_io.DataError as exc:
+                flash(str(exc), "warning")
+            except Exception as exc:  # noqa: BLE001 - surface import errors
+                flash(f"Data import failed: {exc}", "danger")
+    return _backup_page(session, data_form=form, data_result=data_result)
+
+
+# --------------------------------------------------------------------------- #
+# Example / demo models
+# --------------------------------------------------------------------------- #
+@bp.route("/examples")
+def examples_home():
+    return render_template("designer/examples.html", examples=examples.EXAMPLES)
+
+
+@bp.route("/examples/<key>/load", methods=["POST"])
+def example_load(key):
+    ex = examples.EXAMPLES.get(key)
+    if not ex:
+        flash("Unknown example.", "danger")
+        return redirect(url_for("designer.examples_home"))
+    session = _s()
+    engine = get_engine()
+    schema, data = ex["build"]()
+    try:
+        schema_io.import_schema(session, engine, schema, replace=True)
+        result = data_io.import_data(session, engine, data, replace=True)
+        flash(f"Loaded the '{ex['title']}' example "
+              f"({result['rows']} sample row(s)).", "success")
+    except Exception as exc:  # noqa: BLE001 - surface import errors
+        flash(f"Could not load example: {exc}", "danger")
+    return redirect(url_for("designer.examples_home"))
+
+
+# --------------------------------------------------------------------------- #
+# Per-table behaviour flags, permissions, audit log
+# --------------------------------------------------------------------------- #
+@bp.route("/tables/<int:table_id>/flags", methods=["POST"])
+def table_flags(table_id):
+    session = _s()
+    mt = session.get(MetaTable, table_id)
+    if not mt:
+        return redirect(url_for("designer.dashboard"))
+    engine = engine_for_table(mt)
+    mt.track_audit = bool(request.form.get("track_audit"))
+    mt.soft_delete = bool(request.form.get("soft_delete"))
+    mt.row_owned = bool(request.form.get("row_owned"))
+    session.flush()
+    try:
+        schema_service.ensure_record_columns(engine, mt)
+    except Exception as exc:  # noqa: BLE001 - surface DDL errors
+        session.rollback()
+        flash(f"Could not update table options: {exc}", "danger")
+        return redirect(url_for("designer.table_view", table_id=table_id))
+    session.commit()
+    flash("Table options updated.", "success")
+    return redirect(url_for("designer.table_view", table_id=table_id))
+
+
+@bp.route("/permissions", methods=["GET", "POST"])
+def permissions():
+    session = _s()
+    helpers.ensure_roles(session)
+    forms = session.scalars(select(MetaForm).order_by(MetaForm.title)).all()
+    roles = [r for r in session.scalars(select(Role).order_by(Role.name))
+             if r.name != ROLE_DESIGNER]
+    existing = {(p.role, p.form_id): p for p in session.scalars(select(MetaPermission))}
+    if request.method == "POST":
+        for f in forms:
+            for role in roles:
+                val = request.form.get(f"access_{role.name}_{f.id}")
+                if val is None and role.name == ROLE_USER:  # legacy field name → user role
+                    val = request.form.get(f"access_{f.id}")
+                if val not in ACCESS_LEVELS:
+                    val = ACCESS_WRITE
+                key = (role.name, f.id)
+                if key in existing:
+                    existing[key].access = val
+                else:
+                    session.add(MetaPermission(role=role.name, form_id=f.id, access=val))
+        session.commit()
+        flash("Permissions saved.", "success")
+        return redirect(url_for("designer.permissions"))
+    rows = [{"form": f, "access": {role.name: (existing[(role.name, f.id)].access
+                                               if (role.name, f.id) in existing else ACCESS_WRITE)
+                                   for role in roles}} for f in forms]
+    return render_template("designer/permissions.html", rows=rows, roles=roles, levels=ACCESS_LEVELS)
+
+
+@bp.route("/roles", methods=["GET", "POST"])
+def roles():
+    session = _s()
+    helpers.ensure_roles(session)
+    if request.method == "POST":
+        name = (request.form.get("name") or "").strip().lower()
+        label = (request.form.get("label") or "").strip() or name.title()
+        if not name or not name.replace("_", "").isalnum():
+            flash("Role name must be a simple identifier (letters/digits/underscore).", "warning")
+        elif session.scalar(select(Role).where(Role.name == name)):
+            flash("That role already exists.", "info")
+        else:
+            session.add(Role(name=name, label=label))
+            session.commit()
+            flash(f"Role '{name}' created.", "success")
+        return redirect(url_for("designer.roles"))
+    items = session.scalars(select(Role).order_by(Role.name)).all()
+    counts = {r.name: session.scalar(select(func.count()).select_from(AppUser)
+                                     .where(AppUser.role == r.name)) for r in items}
+    return render_template("designer/roles.html", roles=items, counts=counts)
+
+
+@bp.route("/tables/<int:table_id>/field-permissions", methods=["GET", "POST"])
+def field_permissions(table_id):
+    session = _s()
+    helpers.ensure_roles(session)
+    mt = session.get(MetaTable, table_id)
+    if not mt:
+        flash("Table not found.", "danger")
+        return redirect(url_for("designer.dashboard"))
+    roles = [r for r in session.scalars(select(Role).order_by(Role.name))
+             if r.name != ROLE_DESIGNER]
+    field_ids = [f.id for f in mt.fields]
+    existing = {(p.role, p.field_id): p for p in session.scalars(
+        select(MetaFieldPermission).where(MetaFieldPermission.field_id.in_(field_ids)))}
+    if request.method == "POST":
+        for f in mt.fields:
+            for role in roles:
+                val = request.form.get(f"facc_{role.name}_{f.id}", ACCESS_WRITE)
+                if val not in ACCESS_LEVELS:
+                    val = ACCESS_WRITE
+                key = (role.name, f.id)
+                if key in existing:
+                    existing[key].access = val
+                else:
+                    session.add(MetaFieldPermission(role=role.name, field_id=f.id, access=val))
+        session.commit()
+        flash("Field permissions saved.", "success")
+        return redirect(url_for("designer.field_permissions", table_id=table_id))
+    rows = [{"field": f, "access": {role.name: (existing[(role.name, f.id)].access
+                                               if (role.name, f.id) in existing else ACCESS_WRITE)
+                                    for role in roles}} for f in mt.fields]
+    return render_template("designer/field_permissions.html", table=mt, rows=rows,
+                           roles=roles, levels=ACCESS_LEVELS)
+
+
+@bp.route("/roles/<int:role_id>/delete", methods=["POST"])
+def role_delete(role_id):
+    session = _s()
+    r = session.get(Role, role_id)
+    if r and not r.builtin:
+        if session.scalar(select(func.count()).select_from(AppUser).where(AppUser.role == r.name)):
+            flash("That role is assigned to users — reassign them first.", "warning")
+        else:
+            session.execute(delete(MetaPermission).where(MetaPermission.role == r.name))
+            session.execute(delete(MetaFieldPermission).where(MetaFieldPermission.role == r.name))
+            session.delete(r)
+            session.commit()
+            flash("Role deleted.", "info")
+    return redirect(url_for("designer.roles"))
+
+
+@bp.route("/audit")
+def audit_log():
+    session = _s()
+    table = request.args.get("table")
+    stmt = select(AuditLog).order_by(AuditLog.id.desc()).limit(200)
+    if table:
+        stmt = stmt.where(AuditLog.table_phys == table)
+    logs = session.scalars(stmt).all()
+    names = {u.id: u.username for u in session.scalars(select(AppUser))}
+    tids = {t.phys_name: t.id for t in session.scalars(select(MetaTable))}
+    entries = [{
+        "table": lg.table_phys, "table_id": tids.get(lg.table_phys),
+        "row_pk": lg.row_pk, "action": lg.action,
+        "user": names.get(lg.user_id, "—"), "at": lg.at,
+        "changes": json.loads(lg.changes) if lg.changes else None,
+    } for lg in logs]
+    audited = [t.phys_name for t in _tables(session) if t.track_audit]
+    return render_template("designer/audit.html", entries=entries, tables=audited, table=table)
+
+
+# --------------------------------------------------------------------------- #
+# Read-only SQL console
+# --------------------------------------------------------------------------- #
+@bp.route("/query", methods=["GET", "POST"])
+def query():
+    session = _s()
+    form = SqlQueryForm()
+    tables = [t.phys_name for t in _tables(session)]
+    result = None  # {columns, rows, truncated}
+
+    if form.validate_on_submit():
+        clean, error = sql_console.validate_select(form.sql.data)
+        if error:
+            flash(error, "danger")
+        else:
+            export = request.form.get("action") == "export"
+            try:
+                cols, rows, truncated = sql_console.run_query(
+                    get_engine(), clean, limit=(sql_console.EXPORT_CAP if export else 500))
+            except Exception as exc:  # noqa: BLE001 - surface the DB error
+                flash(f"Query error: {exc}", "danger")
+            else:
+                if export:
+                    return Response(
+                        sql_console.to_csv(cols, rows), mimetype="text/csv",
+                        headers={"Content-Disposition": "attachment; filename=query.csv"})
+                result = {"columns": cols, "rows": rows, "truncated": truncated}
+
+    return render_template("designer/query.html", form=form, tables=tables, result=result)
+
+
+# --------------------------------------------------------------------------- #
+# Reports (group-by / aggregation) — designer sees all rows (no scoping)
+# --------------------------------------------------------------------------- #
+@bp.route("/report")
+def report():
+    session = _s()
+    tables = _tables(session)
+    if not tables:
+        flash("Create a table first.", "info")
+        return redirect(url_for("designer.dashboard"))
+    table_id = request.args.get("table_id", type=int)
+    table = session.get(MetaTable, table_id) if table_id else None
+    if table is None:
+        table = tables[0]
+    ctx = reporting.build(session, engine_for_table(table), table, request.args, base_filters=None)
+    if request.args.get("export") == "csv":
+        return Response(
+            reporting.to_csv(ctx["result"]), mimetype="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={table.phys_name}_report.csv"})
+    saved = session.scalars(select(ReportDef).where(
+        ReportDef.user_id == current_user.id, ReportDef.table_id == table.id)
+        .order_by(ReportDef.name)).all()
+    current_query = urlencode([(k, v) for k, v in request.args.items(multi=True) if k != "export"])
+    return render_template("designer/report.html",
+                           action=url_for("designer.report"), tables=tables,
+                           saved_reports=saved, current_query=current_query, **ctx)
+
+
+# --------------------------------------------------------------------------- #
+# Status workflows
+# --------------------------------------------------------------------------- #
+@bp.route("/workflows")
+def workflows():
+    session = _s()
+    items, used = [], set()
+    for w in session.scalars(select(Workflow).order_by(Workflow.id)):
+        used.add(w.field_id)
+        field = session.get(MetaField, w.field_id)
+        items.append({"wf": w, "field": field, "table": session.get(MetaTable, w.table_id),
+                      "states": json.loads(field.enum_options or "[]") if field else [],
+                      "n_transitions": len(workflow.transitions(w))})
+    candidates = []
+    for t in _tables(session):
+        ef = [f for f in t.fields if f.data_type == "enum" and f.id not in used]
+        if ef:
+            candidates.append({"table": t, "fields": ef})
+    return render_template("designer/workflows.html", items=items, candidates=candidates)
+
+
+@bp.route("/workflows", methods=["POST"])
+def workflow_create():
+    session = _s()
+    field_id = request.form.get("field_id", type=int)
+    field = session.get(MetaField, field_id) if field_id else None
+    if not field or field.data_type != "enum":
+        flash("Choose an enum field to build a workflow on.", "warning")
+        return redirect(url_for("designer.workflows"))
+    if session.scalar(select(Workflow).where(Workflow.field_id == field_id)):
+        flash("That field already has a workflow.", "info")
+        return redirect(url_for("designer.workflows"))
+    states = json.loads(field.enum_options or "[]")
+    wf = Workflow(table_id=field.table_id, field_id=field_id,
+                  initial_state=(states[0] if states else None),
+                  transitions="[]", layout="{}")
+    session.add(wf)
+    session.commit()
+    return redirect(url_for("designer.workflow_edit", wf_id=wf.id))
+
+
+@bp.route("/workflows/<int:wf_id>")
+def workflow_edit(wf_id):
+    session = _s()
+    wf = session.get(Workflow, wf_id)
+    if not wf:
+        flash("Workflow not found.", "danger")
+        return redirect(url_for("designer.workflows"))
+    field = session.get(MetaField, wf.field_id)
+    table = session.get(MetaTable, wf.table_id)
+    helpers.ensure_roles(session)
+    # all roles, incl. builtin designer/user — gating a transition to ["designer"]
+    # legitimately restricts it to designers (unlike the per-form permissions page)
+    roles = [r.name for r in session.scalars(select(Role).order_by(Role.name))]
+    graph = {
+        "states": json.loads(field.enum_options or "[]"),
+        "layout": workflow.layout(wf),
+        "transitions": workflow.transitions(wf),
+        "initial": wf.initial_state,
+        "roles": roles,
+        "save_url": url_for("designer.workflow_save", wf_id=wf.id),
+    }
+    return render_template("designer/workflow_edit.html", wf=wf, field=field, table=table,
+                           graph=graph)
+
+
+@bp.route("/workflows/<int:wf_id>", methods=["POST"])
+def workflow_save(wf_id):
+    session = _s()
+    wf = session.get(Workflow, wf_id)
+    if not wf:
+        return jsonify(ok=False, error="Not found."), 404
+    field = session.get(MetaField, wf.field_id)
+    states = set(json.loads(field.enum_options or "[]"))
+    helpers.ensure_roles(session)
+    valid_roles = {r.name for r in session.scalars(select(Role))}  # incl. custom roles
+    data = request.get_json(silent=True) or {}
+    trans = []
+    for t in data.get("transitions", []):
+        if isinstance(t, dict) and t.get("from") in states and t.get("to") in states:
+            roles = [r for r in (t.get("roles") or []) if r in valid_roles]
+            trans.append({"from": t["from"], "to": t["to"], "roles": roles})
+    layout = {}
+    for st, pos in (data.get("layout") or {}).items():
+        if st in states and isinstance(pos, dict):
+            try:
+                layout[st] = {"x": float(pos.get("x", 0)), "y": float(pos.get("y", 0))}
+            except (TypeError, ValueError):
+                pass
+    wf.transitions = json.dumps(trans)
+    wf.layout = json.dumps(layout)
+    wf.initial_state = data.get("initial") if data.get("initial") in states else None
+    session.commit()
+    return jsonify(ok=True)
+
+
+@bp.route("/workflows/<int:wf_id>/delete", methods=["POST"])
+def workflow_delete(wf_id):
+    session = _s()
+    wf = session.get(Workflow, wf_id)
+    if wf:
+        session.delete(wf)
+        session.commit()
+        flash("Workflow deleted.", "info")
+    return redirect(url_for("designer.workflows"))
+
+
+# --------------------------------------------------------------------------- #
+# Data sources (other databases)
+# --------------------------------------------------------------------------- #
+@bp.route("/sources")
+def sources():
+    session = _s()
+    items = session.scalars(select(DataSource).order_by(DataSource.name)).all()
+    counts = {d.id: session.scalar(select(func.count()).select_from(MetaTable)
+                                   .where(MetaTable.source_id == d.id)) for d in items}
+    return render_template("designer/datasources.html", items=items, counts=counts,
+                           form=DataSourceForm())
+
+
+@bp.route("/sources", methods=["POST"])
+def source_create():
+    session = _s()
+    form = DataSourceForm()
+    if not form.validate_on_submit():
+        flash("Invalid data source input.", "danger")
+        return redirect(url_for("designer.sources"))
+    session.add(DataSource(
+        name=form.name.data, driver=form.driver.data or "mysql+pymysql",
+        host=form.host.data or None, port=form.port.data, username=form.username.data or None,
+        password=form.password.data or None, database=form.database.data or None,
+        active=form.active.data))
+    session.commit()
+    flash("Data source added.", "success")
+    return redirect(url_for("designer.sources"))
+
+
+@bp.route("/sources/<int:source_id>", methods=["GET", "POST"])
+def source_edit(source_id):
+    session = _s()
+    ds = session.get(DataSource, source_id)
+    if not ds:
+        flash("Data source not found.", "danger")
+        return redirect(url_for("designer.sources"))
+    form = DataSourceForm(obj=ds)
+    if request.method == "GET":
+        form.password.data = ""           # never echo the secret
+    if form.validate_on_submit():
+        ds.name = form.name.data
+        ds.driver = form.driver.data or "mysql+pymysql"
+        ds.host = form.host.data or None
+        ds.port = form.port.data
+        ds.username = form.username.data or None
+        ds.database = form.database.data or None
+        ds.active = form.active.data
+        if form.password.data:            # blank keeps the existing password
+            ds.password = form.password.data
+        session.commit()
+        flash("Data source saved.", "success")
+        return redirect(url_for("designer.sources"))
+    return render_template("designer/datasource_form.html", form=form, ds=ds)
+
+
+@bp.route("/sources/<int:source_id>/test", methods=["POST"])
+def source_test(source_id):
+    session = _s()
+    ds = session.get(DataSource, source_id)
+    if ds:
+        from datetime import datetime, timezone
+        ok, detail = test_source(ds)
+        ds.last_check_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        ds.last_status = "OK" if ok else f"Failed: {detail}"[:255]
+        session.commit()
+        flash(ds.last_status, "success" if ok else "danger")
+    return redirect(url_for("designer.sources"))
+
+
+@bp.route("/sources/<int:source_id>/delete", methods=["POST"])
+def source_delete(source_id):
+    session = _s()
+    ds = session.get(DataSource, source_id)
+    if ds:
+        if session.scalar(select(MetaTable.id).where(MetaTable.source_id == source_id).limit(1)):
+            flash("Some tables still use this data source — move or remove them first.", "warning")
+            return redirect(url_for("designer.sources"))
+        session.delete(ds)
+        session.commit()
+        flash("Data source deleted.", "info")
+    return redirect(url_for("designer.sources"))
+
+
+# --------------------------------------------------------------------------- #
+# Integrations: connections (remote peers)
+# --------------------------------------------------------------------------- #
+@bp.route("/connections")
+def connections():
+    session = _s()
+    items = session.scalars(select(Connection).order_by(Connection.name)).all()
+    return render_template("designer/connections.html", items=items, form=ConnectionForm())
+
+
+@bp.route("/connections", methods=["POST"])
+def connection_create():
+    session = _s()
+    form = ConnectionForm()
+    if not form.validate_on_submit():
+        flash("Invalid connection input.", "danger")
+        return redirect(url_for("designer.connections"))
+    conn = Connection(name=form.name.data, base_url=form.base_url.data,
+                      token=form.token.data or None, active=form.active.data)
+    session.add(conn)
+    session.commit()
+    flash("Connection added.", "success")
+    return redirect(url_for("designer.connections"))
+
+
+@bp.route("/connections/<int:conn_id>", methods=["GET", "POST"])
+def connection_edit(conn_id):
+    session = _s()
+    conn = session.get(Connection, conn_id)
+    if not conn:
+        flash("Connection not found.", "danger")
+        return redirect(url_for("designer.connections"))
+    form = ConnectionForm(obj=conn)
+    if request.method == "GET":
+        form.token.data = ""  # never echo the secret
+    if form.validate_on_submit():
+        conn.name = form.name.data
+        conn.base_url = form.base_url.data
+        conn.active = form.active.data
+        if form.token.data:               # blank keeps the existing token
+            conn.token = form.token.data
+        session.commit()
+        flash("Connection saved.", "success")
+        return redirect(url_for("designer.connections"))
+    return render_template("designer/connection_form.html", form=form, conn=conn)
+
+
+@bp.route("/connections/<int:conn_id>/test", methods=["POST"])
+def connection_test(conn_id):
+    session = _s()
+    conn = session.get(Connection, conn_id)
+    if conn:
+        from datetime import datetime, timezone
+        ok, detail, tables = connectors.ping(conn)
+        conn.last_check_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        conn.last_status = ("OK — " + ", ".join(tables[:20])) if ok else f"Failed: {detail}"
+        session.commit()
+        flash(conn.last_status, "success" if ok else "danger")
+    return redirect(url_for("designer.connections"))
+
+
+@bp.route("/connections/<int:conn_id>/delete", methods=["POST"])
+def connection_delete(conn_id):
+    session = _s()
+    conn = session.get(Connection, conn_id)
+    if conn:
+        session.delete(conn)
+        session.commit()
+        flash("Connection deleted.", "info")
+    return redirect(url_for("designer.connections"))
+
+
+# --------------------------------------------------------------------------- #
+# Integrations: feeds (chain a local table to a remote peer)
+# --------------------------------------------------------------------------- #
+@bp.route("/feeds")
+def feeds_list():
+    session = _s()
+    items = [{"feed": f, "table": session.get(MetaTable, f.source_table_id),
+              "conn": session.get(Connection, f.connection_id)}
+             for f in session.scalars(select(Feed).order_by(Feed.source_table_id, Feed.id))]
+    return render_template("designer/feeds.html", items=items, tables=_tables(session),
+                           connections=session.scalars(
+                               select(Connection).order_by(Connection.name)).all())
+
+
+@bp.route("/feeds", methods=["POST"])
+def feed_create():
+    session = _s()
+    table = session.get(MetaTable, request.form.get("table_id", type=int))
+    conn = session.get(Connection, request.form.get("connection_id", type=int))
+    if not table or not conn:
+        flash("Pick a source table and a connection.", "warning")
+        return redirect(url_for("designer.feeds_list"))
+    feed = Feed(name=f"{table.label} → {conn.name}", source_table_id=table.id,
+                connection_id=conn.id, target_table=table.phys_name, mode="create",
+                event="create", active=True)
+    session.add(feed)
+    session.commit()
+    return redirect(url_for("designer.feed_edit", feed_id=feed.id))
+
+
+def _feed_choices(session, form, table):
+    fields = list(table.fields)
+    form.connection_id.choices = [(c.id, c.name) for c in session.scalars(
+        select(Connection).order_by(Connection.name))]
+    form.field_id.choices = [(0, "— none —")] + [
+        (f.id, f.label) for f in fields if f.data_type == "enum"]
+    form.cond_field_id.choices = [(0, "— none —")] + [(f.id, f.label) for f in fields]
+
+
+def _source_columns(table):
+    return ["id"] + [f.phys_name for f in table.fields
+                     if f.data_type not in (RELATION_TYPE, "file", "image")]
+
+
+@bp.route("/feeds/<int:feed_id>", methods=["GET", "POST"])
+def feed_edit(feed_id):
+    session = _s()
+    feed = session.get(Feed, feed_id)
+    if not feed:
+        flash("Feed not found.", "danger")
+        return redirect(url_for("designer.feeds_list"))
+    table = session.get(MetaTable, feed.source_table_id)
+    form = FeedForm(obj=feed)
+    _feed_choices(session, form, table)
+
+    if request.method == "GET":
+        form.event.data = feed.event or ""
+        form.mode.data = feed.mode or "create"
+        form.cond_op.data = feed.cond_op or ""
+        form.field_id.data = feed.field_id or 0
+        form.cond_field_id.data = feed.cond_field_id or 0
+        form.connection_id.data = feed.connection_id
+
+    if form.validate_on_submit():
+        feed.name = form.name.data
+        feed.active = form.active.data
+        feed.connection_id = form.connection_id.data
+        feed.target_table = form.target_table.data
+        feed.mode = form.mode.data
+        feed.match_target_field = form.match_target_field.data or None
+        feed.event = form.event.data or None
+        feed.field_id = form.field_id.data or None
+        feed.from_state = form.from_state.data or None
+        feed.to_state = form.to_state.data or None
+        feed.cond_field_id = form.cond_field_id.data or None
+        feed.cond_op = form.cond_op.data or None
+        feed.cond_value = form.cond_value.data or None
+        feed.schedule_minutes = form.schedule_minutes.data or None
+        feed.allow_manual = form.allow_manual.data
+        feed.skip_api_writes = form.skip_api_writes.data
+        targets = request.form.getlist("map_target")
+        sources = request.form.getlist("map_source")
+        feed.field_map = json.dumps([{"target": t.strip(), "source": s.strip()}
+                                     for t, s in zip(targets, sources)
+                                     if t.strip() and s.strip()])
+        session.commit()
+        flash("Feed saved.", "success")
+        return redirect(url_for("designer.feeds_list"))
+
+    conn = session.get(Connection, feed.connection_id)
+    remote = [f["name"] for f in connectors.remote_fields(conn, feed.target_table)] if conn else []
+    return render_template("designer/feed_form.html", form=form, feed=feed, table=table,
+                           field_map=json.loads(feed.field_map or "[]"),
+                           source_columns=_source_columns(table), remote_fields=remote)
+
+
+@bp.route("/feeds/<int:feed_id>/run", methods=["POST"])
+def feed_run(feed_id):
+    session = _s()
+    feed = session.get(Feed, feed_id)
+    if feed:
+        pushed = feeds.run_scheduled(session, get_engine(), only_feed_id=feed.id)
+        flash(f"Pushed {pushed} row(s).", "success")
+    return redirect(url_for("designer.feeds_list"))
+
+
+@bp.route("/feeds/<int:feed_id>/delete", methods=["POST"])
+def feed_delete(feed_id):
+    session = _s()
+    feed = session.get(Feed, feed_id)
+    if feed:
+        session.delete(feed)
+        session.commit()
+        flash("Feed deleted.", "info")
+    return redirect(url_for("designer.feeds_list"))
+
+
+# --------------------------------------------------------------------------- #
+# Integrations: inbound webhooks (receive events from external systems)
+# --------------------------------------------------------------------------- #
+def _mint_webhook_token():
+    """Return ``(raw, token_hash, prefix)`` for a new webhook secret."""
+    import secrets
+
+    from ..api.tokens import hash_token
+    raw = "whk_" + secrets.token_urlsafe(32)
+    return raw, hash_token(raw), raw[:12]
+
+
+def _webhook_url(raw):
+    return url_for("hooks.receive", token=raw, _external=True)
+
+
+@bp.route("/webhooks")
+def webhooks():
+    session = _s()
+    items = [{"wh": w, "table": session.get(MetaTable, w.target_table_id)}
+             for w in session.scalars(
+                 select(Webhook).order_by(Webhook.target_table_id, Webhook.id))]
+    return render_template("designer/webhooks.html", items=items, tables=_tables(session))
+
+
+@bp.route("/webhooks", methods=["POST"])
+def webhook_create():
+    session = _s()
+    table = session.get(MetaTable, request.form.get("table_id", type=int))
+    if not table:
+        flash("Pick a target table.", "warning")
+        return redirect(url_for("designer.webhooks"))
+    raw, token_hash, prefix = _mint_webhook_token()
+    wh = Webhook(name=f"Inbound → {table.label}", target_table_id=table.id,
+                 token_hash=token_hash, prefix=prefix, mode="create", active=True)
+    session.add(wh)
+    session.commit()
+    web_session["wh_new_url"] = _webhook_url(raw)   # shown once on the edit page
+    return redirect(url_for("designer.webhook_edit", webhook_id=wh.id))
+
+
+def _webhook_target_columns(table):
+    return [f.phys_name for f in table.fields
+            if f.data_type not in (RELATION_TYPE, "file", "image")]
+
+
+@bp.route("/webhooks/<int:webhook_id>", methods=["GET", "POST"])
+def webhook_edit(webhook_id):
+    session = _s()
+    wh = session.get(Webhook, webhook_id)
+    if not wh:
+        flash("Webhook not found.", "danger")
+        return redirect(url_for("designer.webhooks"))
+    table = session.get(MetaTable, wh.target_table_id)
+    form = WebhookForm(obj=wh)
+    form.user_id.choices = [(0, "— system (no owner) —")] + [
+        (u.id, u.username) for u in session.scalars(select(AppUser).order_by(AppUser.username))]
+
+    if request.method == "GET":
+        form.mode.data = wh.mode or "create"
+        form.user_id.data = wh.user_id or 0
+        form.secret.data = ""                       # never echo the secret
+
+    if form.validate_on_submit():
+        wh.name = form.name.data
+        wh.active = form.active.data
+        wh.mode = form.mode.data
+        wh.match_field = form.match_field.data or None
+        wh.user_id = form.user_id.data or None
+        if form.secret.data:                        # blank keeps the existing secret
+            wh.secret = form.secret.data
+        wh.max_body_bytes = form.max_body_bytes.data if form.max_body_bytes.data is not None else None
+        wh.rate_limit = form.rate_limit.data if form.rate_limit.data is not None else None
+        wh.rate_window = form.rate_window.data if form.rate_window.data is not None else None
+        targets = request.form.getlist("map_target")
+        sources = request.form.getlist("map_source")
+        wh.field_map = json.dumps([{"target": t.strip(), "source": s.strip()}
+                                   for t, s in zip(targets, sources)
+                                   if t.strip() and s.strip()])
+        session.commit()
+        flash("Webhook saved.", "success")
+        return redirect(url_for("designer.webhooks"))
+
+    cfg = current_app.config
+    return render_template("designer/webhook_form.html", form=form, wh=wh, table=table,
+                           field_map=json.loads(wh.field_map or "[]"),
+                           target_columns=_webhook_target_columns(table),
+                           new_url=web_session.pop("wh_new_url", None),
+                           has_secret=bool(wh.secret),
+                           defaults={"body": cfg.get("WEBHOOK_MAX_BODY_BYTES"),
+                                     "rate": cfg.get("WEBHOOK_RATE_LIMIT"),
+                                     "window": cfg.get("WEBHOOK_RATE_WINDOW")})
+
+
+@bp.route("/webhooks/<int:webhook_id>/rotate", methods=["POST"])
+def webhook_rotate(webhook_id):
+    session = _s()
+    wh = session.get(Webhook, webhook_id)
+    if wh:
+        raw, token_hash, prefix = _mint_webhook_token()
+        wh.token_hash, wh.prefix = token_hash, prefix
+        session.commit()
+        web_session["wh_new_url"] = _webhook_url(raw)
+        flash("Token rotated — the old URL no longer works.", "success")
+    return redirect(url_for("designer.webhook_edit", webhook_id=webhook_id))
+
+
+@bp.route("/webhooks/<int:webhook_id>/delete", methods=["POST"])
+def webhook_delete(webhook_id):
+    session = _s()
+    wh = session.get(Webhook, webhook_id)
+    if wh:
+        session.delete(wh)
+        session.commit()
+        flash("Webhook deleted.", "info")
+    return redirect(url_for("designer.webhooks"))
+
+
+# --------------------------------------------------------------------------- #
+# Integrations: pull sources (poll a remote source → upsert into a local table)
+# --------------------------------------------------------------------------- #
+@bp.route("/pulls")
+def pulls():
+    session = _s()
+    items = [{"src": p, "table": session.get(MetaTable, p.target_table_id),
+              "conn": session.get(Connection, p.connection_id) if p.connection_id else None}
+             for p in session.scalars(select(PullSource).order_by(PullSource.id))]
+    return render_template("designer/pull_sources.html", items=items, tables=_tables(session))
+
+
+@bp.route("/pulls", methods=["POST"])
+def pull_create():
+    session = _s()
+    table = session.get(MetaTable, request.form.get("table_id", type=int))
+    if not table:
+        flash("Pick a target table.", "warning")
+        return redirect(url_for("designer.pulls"))
+    src = PullSource(name=f"Pull → {table.label}", target_table_id=table.id,
+                     kind="peer", mode="upsert", active=True)
+    session.add(src)
+    session.commit()
+    return redirect(url_for("designer.pull_edit", source_id=src.id))
+
+
+def _pull_choices(session, form):
+    form.connection_id.choices = [(0, "— none —")] + [(c.id, c.name) for c in session.scalars(
+        select(Connection).order_by(Connection.name))]
+    form.user_id.choices = [(0, "— system (no owner) —")] + [
+        (u.id, u.username) for u in session.scalars(select(AppUser).order_by(AppUser.username))]
+
+
+def _pull_config_load(form, cfg):
+    """Prefill the advanced form fields + the raw-JSON escape hatch from ``config``."""
+    a = cfg.get("auth") or {}
+    form.auth_type.data = a.get("type") or "none"
+    form.auth_header.data, form.auth_username.data = a.get("header") or "", a.get("username") or ""
+    form.auth_param.data = a.get("param") or ""
+    req = cfg.get("request") or {}
+    form.http_method.data = req.get("method") or "GET"
+    form.request_body.data = req.get("body") or ""
+    pg = cfg.get("pagination") or {}
+    form.pagination_style.data = pg.get("style") or "none"
+    form.page_param.data, form.size_param.data = pg.get("param") or "", pg.get("size_param") or ""
+    form.page_start.data, form.next_path.data = pg.get("start"), pg.get("next_path") or ""
+    form.max_pages.data = pg.get("max_pages")
+    form.cursor_type.data = (cfg.get("cursor") or {}).get("type") or ""
+    f = cfg.get("filter") or {}
+    form.filter_field.data, form.filter_op.data = f.get("field") or "", f.get("op") or ""
+    form.filter_value.data = f.get("value") or ""
+    # raw = everything the structured fields don't manage (request.params/headers, transforms, …)
+    leftover = {k: v for k, v in cfg.items()
+                if k not in ("auth", "pagination", "cursor", "filter")}
+    r = {k: v for k, v in req.items() if k not in ("method", "body")}
+    leftover["request"] = r if r else leftover.pop("request", None)
+    leftover = {k: v for k, v in leftover.items() if v}
+    form.config_raw.data = json.dumps(leftover, indent=2) if leftover else ""
+
+
+def _pull_config_save(form):
+    """Assemble the config JSON: parse the raw escape hatch, then overlay structured fields."""
+    try:
+        cfg = json.loads(form.config_raw.data) if (form.config_raw.data or "").strip() else {}
+        if not isinstance(cfg, dict):
+            cfg = {}
+    except ValueError:
+        cfg = {}
+    if form.auth_type.data and form.auth_type.data != "none":
+        auth = {"type": form.auth_type.data}
+        for key, fld in (("header", form.auth_header), ("username", form.auth_username),
+                         ("param", form.auth_param)):
+            if fld.data:
+                auth[key] = fld.data
+        cfg["auth"] = auth
+    else:
+        cfg.pop("auth", None)
+    req = cfg.get("request") or {}
+    req["method"] = form.http_method.data or "GET"
+    if form.request_body.data:
+        req["body"] = form.request_body.data
+    else:
+        req.pop("body", None)
+    cfg["request"] = req
+    if form.pagination_style.data and form.pagination_style.data != "none":
+        pg = {"style": form.pagination_style.data}
+        for key, fld in (("param", form.page_param), ("size_param", form.size_param),
+                         ("start", form.page_start), ("next_path", form.next_path),
+                         ("max_pages", form.max_pages)):
+            if fld.data not in (None, ""):
+                pg[key] = fld.data
+        cfg["pagination"] = pg
+    else:
+        cfg.pop("pagination", None)
+    if form.cursor_type.data:
+        cfg["cursor"] = {"type": form.cursor_type.data}
+    else:
+        cfg.pop("cursor", None)
+    if form.filter_field.data and form.filter_op.data:
+        cfg["filter"] = {"field": form.filter_field.data, "op": form.filter_op.data,
+                         "value": form.filter_value.data or ""}
+    else:
+        cfg.pop("filter", None)
+    cfg = {k: v for k, v in cfg.items() if v not in (None, {}, "")}
+    return json.dumps(cfg) if cfg else None
+
+
+@bp.route("/pulls/<int:source_id>", methods=["GET", "POST"])
+def pull_edit(source_id):
+    session = _s()
+    src = session.get(PullSource, source_id)
+    if not src:
+        flash("Pull source not found.", "danger")
+        return redirect(url_for("designer.pulls"))
+    table = session.get(MetaTable, src.target_table_id)
+    form = PullSourceForm(obj=src)
+    _pull_choices(session, form)
+
+    if request.method == "GET":
+        form.kind.data = src.kind or "peer"
+        form.mode.data = src.mode or "upsert"
+        form.connection_id.data = src.connection_id or 0
+        form.user_id.data = src.user_id or 0
+        form.headers.data = ""                       # never echo the secret headers
+        form.auth_secret.data = ""                   # never echo the secret
+        try:
+            _pull_config_load(form, json.loads(src.config) if src.config else {})
+        except ValueError:
+            _pull_config_load(form, {})
+
+    if form.validate_on_submit():
+        src.name = form.name.data
+        src.active = form.active.data
+        src.kind = form.kind.data
+        src.connection_id = form.connection_id.data or None
+        src.remote_table = form.remote_table.data or None
+        src.url = form.url.data or None
+        if form.headers.data:                        # blank keeps existing headers
+            src.headers = form.headers.data
+        if form.auth_secret.data:                    # blank keeps existing secret
+            src.auth_secret = form.auth_secret.data
+        src.records_path = form.records_path.data or None
+        src.mode = form.mode.data
+        src.match_field = form.match_field.data or None
+        src.cursor_field = form.cursor_field.data or None
+        src.page_size = form.page_size.data or None
+        src.schedule_minutes = form.schedule_minutes.data or None
+        src.user_id = form.user_id.data or None
+        src.config = _pull_config_save(form)
+        targets = request.form.getlist("map_target")
+        sources = request.form.getlist("map_source")
+        src.field_map = json.dumps([{"target": t.strip(), "source": s.strip()}
+                                    for t, s in zip(targets, sources)
+                                    if t.strip() and s.strip()])
+        session.commit()
+        flash("Pull source saved.", "success")
+        return redirect(url_for("designer.pulls"))
+
+    conn = session.get(Connection, src.connection_id) if src.connection_id else None
+    remote = [f["name"] for f in connectors.remote_fields(conn, src.remote_table)] \
+        if conn and src.remote_table else []
+    local_cols = [f.phys_name for f in table.fields
+                  if f.data_type not in (RELATION_TYPE, "file", "image")]
+    return render_template("designer/pull_source_form.html", form=form, src=src, table=table,
+                           field_map=json.loads(src.field_map or "[]"),
+                           local_columns=local_cols, remote_fields=remote,
+                           has_headers=bool(src.headers))
+
+
+@bp.route("/pulls/<int:source_id>/run", methods=["POST"])
+def pull_run(source_id):
+    session = _s()
+    src = session.get(PullSource, source_id)
+    if src:
+        n = pull.run_one(session, get_engine(), src)
+        flash(f"Pulled {n} record(s).", "success")
+    return redirect(url_for("designer.pulls"))
+
+
+@bp.route("/pulls/<int:source_id>/delete", methods=["POST"])
+def pull_delete(source_id):
+    session = _s()
+    src = session.get(PullSource, source_id)
+    if src:
+        session.delete(src)
+        session.commit()
+        flash("Pull source deleted.", "info")
+    return redirect(url_for("designer.pulls"))
+
+
+# --------------------------------------------------------------------------- #
+# Shared dashboards (designer-built; owner_user_id NULL)
+# --------------------------------------------------------------------------- #
+@bp.route("/dashboards")
+def dashboards_list():
+    session = _s()
+    items = session.scalars(select(Dashboard).where(Dashboard.owner_user_id.is_(None))
+                            .order_by(Dashboard.position, Dashboard.id)).all()
+    return render_template("designer/dashboards.html", items=items, form=DashboardForm())
+
+
+@bp.route("/dashboards", methods=["POST"])
+def dashboard_create():
+    session = _s()
+    name = (request.form.get("name") or "").strip()
+    if not name:
+        flash("Name a dashboard.", "warning")
+        return redirect(url_for("designer.dashboards_list"))
+    dash = Dashboard(name=name, owner_user_id=None)
+    session.add(dash)
+    session.commit()
+    return redirect(url_for("designer.dashboard_edit", dash_id=dash.id))
+
+
+def _widget_choices(session, form):
+    form.table_id.choices = [(0, "— none (text tile) —")] + [
+        (t.id, t.label) for t in _tables(session)]
+
+
+@bp.route("/dashboards/<int:dash_id>", methods=["GET", "POST"])
+def dashboard_edit(dash_id):
+    session = _s()
+    dash = session.get(Dashboard, dash_id)
+    if not dash or dash.owner_user_id is not None:
+        flash("Dashboard not found.", "danger")
+        return redirect(url_for("designer.dashboards_list"))
+    form = DashboardForm(obj=dash)
+    if request.method == "GET":
+        form.columns.data = str(dash.columns or 2)
+    if form.validate_on_submit():
+        dash.name = form.name.data
+        dash.description = form.description.data or None
+        dash.columns = int(form.columns.data or 2)
+        session.commit()
+        flash("Dashboard saved.", "success")
+        return redirect(url_for("designer.dashboard_edit", dash_id=dash.id))
+    wform = DashboardWidgetForm()
+    _widget_choices(session, wform)
+    return render_template("designer/dashboard_form.html", dash=dash, form=form, wform=wform,
+                           widgets=dash.widgets, view_url=url_for("user.dashboard_view", dash_id=dash.id))
+
+
+@bp.route("/dashboards/<int:dash_id>/delete", methods=["POST"])
+def dashboard_delete(dash_id):
+    session = _s()
+    dash = session.get(Dashboard, dash_id)
+    if dash and dash.owner_user_id is None:
+        session.delete(dash)
+        session.commit()
+        flash("Dashboard deleted.", "info")
+    return redirect(url_for("designer.dashboards_list"))
+
+
+def _save_widget(session, w, form):
+    w.title = form.title.data or None
+    w.kind = form.kind.data
+    w.table_id = form.table_id.data or None
+    w.query = form.query.data or None
+    w.chart_type = form.chart_type.data or "bar"
+    w.content = form.content.data or None
+    w.width = int(form.width.data or 1)
+    w.limit = form.limit.data or 5
+
+
+@bp.route("/dashboards/<int:dash_id>/widgets", methods=["POST"])
+def widget_add(dash_id):
+    session = _s()
+    dash = session.get(Dashboard, dash_id)
+    if not dash:
+        return redirect(url_for("designer.dashboards_list"))
+    form = DashboardWidgetForm()
+    _widget_choices(session, form)
+    if form.validate_on_submit():
+        pos = (max([x.position for x in dash.widgets], default=-1)) + 1
+        w = DashboardWidget(dashboard_id=dash.id, position=pos)
+        _save_widget(session, w, form)
+        session.add(w)
+        session.commit()
+        flash("Widget added.", "success")
+    return redirect(url_for("designer.dashboard_edit", dash_id=dash_id))
+
+
+@bp.route("/dashboards/widgets/<int:widget_id>", methods=["GET", "POST"])
+def widget_edit(widget_id):
+    session = _s()
+    w = session.get(DashboardWidget, widget_id)
+    if not w:
+        flash("Widget not found.", "danger")
+        return redirect(url_for("designer.dashboards_list"))
+    form = DashboardWidgetForm(obj=w)
+    _widget_choices(session, form)
+    if request.method == "GET":
+        form.table_id.data = w.table_id or 0
+        form.width.data = str(w.width or 1)
+    if form.validate_on_submit():
+        _save_widget(session, w, form)
+        session.commit()
+        flash("Widget saved.", "success")
+        return redirect(url_for("designer.dashboard_edit", dash_id=w.dashboard_id))
+    return render_template("designer/widget_form.html", form=form, w=w)
+
+
+@bp.route("/dashboards/widgets/<int:widget_id>/delete", methods=["POST"])
+def widget_delete(widget_id):
+    session = _s()
+    w = session.get(DashboardWidget, widget_id)
+    dash_id = w.dashboard_id if w else None
+    if w:
+        session.delete(w)
+        session.commit()
+        flash("Widget removed.", "info")
+    return redirect(url_for("designer.dashboard_edit", dash_id=dash_id) if dash_id
+                    else url_for("designer.dashboards_list"))
+
+
+@bp.route("/dashboards/widgets/<int:widget_id>/move", methods=["POST"])
+def widget_move(widget_id):
+    session = _s()
+    w = session.get(DashboardWidget, widget_id)
+    if w:
+        sibs = sorted(session.get(Dashboard, w.dashboard_id).widgets, key=lambda x: x.position)
+        i = sibs.index(w)
+        j = i - 1 if request.form.get("dir") == "up" else i + 1
+        if 0 <= j < len(sibs):
+            sibs[i].position, sibs[j].position = sibs[j].position, sibs[i].position
+            session.commit()
+    return redirect(url_for("designer.dashboard_edit", dash_id=w.dashboard_id) if w
+                    else url_for("designer.dashboards_list"))
+
+
+# --------------------------------------------------------------------------- #
+# Triggers & notifications
+# --------------------------------------------------------------------------- #
+@bp.route("/triggers")
+def triggers():
+    session = _s()
+    items = [{"rule": r, "table": session.get(MetaTable, r.table_id)}
+             for r in session.scalars(select(TriggerRule).order_by(TriggerRule.table_id,
+                                                                   TriggerRule.id))]
+    return render_template("designer/triggers.html", items=items, tables=_tables(session))
+
+
+@bp.route("/triggers", methods=["POST"])
+def trigger_create():
+    session = _s()
+    table = session.get(MetaTable, request.form.get("table_id", type=int))
+    if not table:
+        flash("Choose a table.", "warning")
+        return redirect(url_for("designer.triggers"))
+    tr = TriggerRule(table_id=table.id, name="New rule", event="update", active=True,
+                     notify_target="actor")
+    session.add(tr)
+    session.commit()
+    return redirect(url_for("designer.trigger_edit", rule_id=tr.id))
+
+
+def _trigger_choices(session, form, table):
+    fields = list(table.fields)
+    form.field_id.choices = [(0, "— none —")] + [
+        (f.id, f.label) for f in fields if f.data_type == "enum"]
+    form.cond_field_id.choices = [(0, "— none —")] + [(f.id, f.label) for f in fields]
+    form.set_field_id.choices = [(0, "— none —")] + [
+        (f.id, f.label) for f in fields if f.data_type not in (RELATION_TYPE, "file", "image")]
+    form.notify_user_id.choices = [(0, "— none —")] + [
+        (u.id, u.username) for u in session.scalars(select(AppUser).order_by(AppUser.username))]
+
+
+@bp.route("/triggers/<int:rule_id>", methods=["GET", "POST"])
+def trigger_edit(rule_id):
+    session = _s()
+    tr = session.get(TriggerRule, rule_id)
+    if not tr:
+        flash("Trigger not found.", "danger")
+        return redirect(url_for("designer.triggers"))
+    table = session.get(MetaTable, tr.table_id)
+    form = TriggerRuleForm(obj=tr)
+    _trigger_choices(session, form, table)
+
+    if request.method == "GET":
+        form.event.data = tr.event
+        form.notify_target.data = tr.notify_target or "actor"
+        form.cond_op.data = tr.cond_op or ""
+        form.field_id.data = tr.field_id or 0
+        form.cond_field_id.data = tr.cond_field_id or 0
+        form.set_field_id.data = tr.set_field_id or 0
+        form.notify_user_id.data = tr.notify_user_id or 0
+
+    if form.validate_on_submit():
+        tr.name = form.name.data
+        tr.active = form.active.data
+        tr.event = form.event.data
+        tr.field_id = form.field_id.data or None
+        tr.from_state = form.from_state.data or None
+        tr.to_state = form.to_state.data or None
+        tr.cond_field_id = form.cond_field_id.data or None
+        tr.cond_op = form.cond_op.data or None
+        tr.cond_value = form.cond_value.data or None
+        tr.in_app = form.in_app.data
+        tr.notify_target = form.notify_target.data or None
+        tr.notify_user_id = form.notify_user_id.data or None
+        tr.message = form.message.data or None
+        tr.email_to = form.email_to.data or None
+        tr.email_subject = form.email_subject.data or None
+        tr.email_body = form.email_body.data or None
+        tr.webhook_url = form.webhook_url.data or None
+        tr.set_field_id = form.set_field_id.data or None
+        tr.set_value = form.set_value.data or None
+        tr.schedule_minutes = form.schedule_minutes.data or None
+        session.commit()
+        flash("Trigger saved.", "success")
+        return redirect(url_for("designer.triggers"))
+    return render_template("designer/trigger_form.html", form=form, rule=tr, table=table)
+
+
+@bp.route("/triggers/<int:rule_id>/delete", methods=["POST"])
+def trigger_delete(rule_id):
+    session = _s()
+    tr = session.get(TriggerRule, rule_id)
+    if tr:
+        session.delete(tr)
+        session.commit()
+        flash("Trigger deleted.", "info")
+    return redirect(url_for("designer.triggers"))
+
+
+# --------------------------------------------------------------------------- #
+# Scheduled jobs — one view over every time-driven trigger, feed and report
+# --------------------------------------------------------------------------- #
+@bp.route("/scheduled")
+def scheduled_jobs():
+    session = _s()
+    jobs = []
+    for r in session.scalars(select(TriggerRule).where(
+            TriggerRule.event == "scheduled", TriggerRule.schedule_minutes.is_not(None))):
+        t = session.get(MetaTable, r.table_id)
+        jobs.append({"kind": "Trigger", "name": r.name, "where": t.label if t else "?",
+                     "every": r.schedule_minutes, "active": r.active, "last": r.last_run_at,
+                     "run_url": url_for("designer.scheduled_run_trigger", rule_id=r.id),
+                     "edit_url": url_for("designer.trigger_edit", rule_id=r.id)})
+    for f in session.scalars(select(Feed).where(Feed.schedule_minutes.is_not(None))):
+        t = session.get(MetaTable, f.source_table_id)
+        jobs.append({"kind": "Feed", "name": f.name, "where": t.label if t else "?",
+                     "every": f.schedule_minutes, "active": f.active, "last": f.last_run_at,
+                     "run_url": url_for("designer.feed_run", feed_id=f.id),
+                     "edit_url": url_for("designer.feed_edit", feed_id=f.id)})
+    for p in session.scalars(select(PullSource).where(PullSource.schedule_minutes.is_not(None))):
+        t = session.get(MetaTable, p.target_table_id)
+        jobs.append({"kind": "Pull", "name": p.name, "where": t.label if t else "?",
+                     "every": p.schedule_minutes, "active": p.active, "last": p.last_run_at,
+                     "run_url": url_for("designer.pull_run", source_id=p.id),
+                     "edit_url": url_for("designer.pull_edit", source_id=p.id)})
+    for rp in session.scalars(select(ReportDef).where(ReportDef.schedule_minutes.is_not(None))):
+        t = session.get(MetaTable, rp.table_id)
+        jobs.append({"kind": "Report", "name": rp.name, "where": t.label if t else "?",
+                     "every": rp.schedule_minutes, "active": True, "last": rp.last_run_at,
+                     "run_url": url_for("designer.scheduled_run_report", report_id=rp.id),
+                     "edit_url": url_for("user.report", table_id=rp.table_id)})
+    return render_template("designer/scheduled_jobs.html", jobs=jobs)
+
+
+@bp.route("/scheduled/run-all", methods=["POST"])
+def scheduled_run_all():
+    s = scheduler.run_due(_s(), get_engine())
+    flash("Ran due jobs — triggers: {triggers}, feeds: {feeds}, pulls: {pulls}, "
+          "reports: {reports}.".format(**s), "success")
+    return redirect(url_for("designer.scheduled_jobs"))
+
+
+@bp.route("/scheduled/trigger/<int:rule_id>/run", methods=["POST"])
+def scheduled_run_trigger(rule_id):
+    n = scheduler.run_one_trigger(_s(), rule_id)
+    flash(f"Ran scheduled trigger over {n} row(s).", "success")
+    return redirect(url_for("designer.scheduled_jobs"))
+
+
+@bp.route("/scheduled/report/<int:report_id>/run", methods=["POST"])
+def scheduled_run_report(report_id):
+    n = scheduler.run_one_report(_s(), report_id)
+    flash(f"Sent report to {n} recipient(s).", "success")
+    return redirect(url_for("designer.scheduled_jobs"))

@@ -1,0 +1,164 @@
+{% extends "user/_base.html" %}
+{% from "_macros.html" import delete_form, record_link, typed_value with context %}
+{% block title %}{{ mf.title }} · Biggy{% endblock %}
+{% block inner %}
+{% set active = conditions|length + (1 if q else 0) %}
+<div class="toolbar">
+  <h1 style="margin:0">{{ mf.title }}</h1>
+  <span style="flex:1"></span>
+  {% if has_enum %}<a class="btn" href="{{ url_for('user.form_kanban', form_id=mf.id) }}">Board</a>{% endif %}
+  {% if has_dates %}<a class="btn" href="{{ url_for('user.form_calendar', form_id=mf.id) }}">Calendar</a>{% endif %}
+  <a class="btn" href="{{ url_for('user.report', table_id=mf.table.id) }}">Report</a>
+  <a class="btn" href="{{ url_for('user.export_list_csv', form_id=mf.id, **args_pg) }}">Export CSV</a>
+  {% if has_trash and can_edit %}
+    <a class="btn" href="{{ url_for('user.form_trash', form_id=mf.id) }}">Trash</a>
+  {% endif %}
+  {% if can_edit %}
+    <a class="btn primary" data-sc="new" href="{{ url_for('user.record_new', form_id=mf.id) }}">+ Add new</a>
+  {% endif %}
+</div>
+
+<div class="toolbar" style="margin-bottom:.5rem;flex-wrap:wrap;gap:.4rem">
+  {% if saved_views %}
+    <span class="muted">Saved views:</span>
+    {% for v in saved_views %}
+      <span class="badge" style="display:inline-flex;align-items:center;gap:.3rem">
+        <a href="{{ url_for('user.view_apply', form_id=mf.id, vid=v.id) }}">{{ v.name }}</a>
+        <form method="post" action="{{ url_for('user.view_delete', form_id=mf.id, vid=v.id) }}" class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn sm" title="Delete view" style="padding:0 .35rem">×</button>
+        </form>
+      </span>
+    {% endfor %}
+  {% endif %}
+  <span style="flex:1"></span>
+  <form method="post" action="{{ url_for('user.view_save', form_id=mf.id) }}" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="query" value="{{ current_query }}">
+    <input type="text" name="name" placeholder="Save current view as…" required>
+    <button class="btn sm" type="submit">Save view</button>
+  </form>
+</div>
+
+<details class="panel" {% if active %}open{% endif %}>
+  <summary><strong>Filters</strong>{% if active %} <span class="badge">{{ active }}</span>{% endif %}</summary>
+  <form method="get" id="filter-form" style="margin-top:.75rem">
+    <div class="field" style="margin-bottom:.75rem">
+      <label>Quick search</label>
+      <input type="text" name="q" value="{{ q }}" placeholder="Search {{ mf.title }}…">
+    </div>
+    <div id="conditions"></div>
+    <div class="toolbar" style="margin-top:.5rem">
+      <button type="button" class="btn" id="add-condition">+ Add condition</button>
+      <button type="submit" class="btn primary">Apply</button>
+      <a class="btn" href="{{ url_for('user.form_list', form_id=mf.id) }}">Clear</a>
+    </div>
+    {% if sort %}<input type="hidden" name="sort" value="{{ sort }}">
+    <input type="hidden" name="order" value="{{ order }}">{% endif %}
+  </form>
+</details>
+
+<script type="application/json" id="filter-meta">{{ filter_meta|tojson }}</script>
+<script type="application/json" id="filter-order">{{ filter_order|tojson }}</script>
+<script type="application/json" id="filter-conditions">{{ conditions|tojson }}</script>
+<script src="{{ url_for('static', filename='filters.js') }}" defer></script>
+
+<div class="panel">
+  <div class="toolbar" style="margin-bottom:.5rem">
+    <button class="btn danger sm" form="bulk-form" id="bulk-delete"
+            formaction="{{ url_for('user.bulk_delete', form_id=mf.id) }}"
+            {% if not can_edit %}style="display:none"{% endif %}>Delete selected</button>
+    <button class="btn sm" form="bulk-form" id="bulk-export"
+            formaction="{{ url_for('user.bulk_export', form_id=mf.id) }}">Export selected</button>
+    {% if has_feeds %}
+      <button class="btn sm" form="bulk-form" id="bulk-send"
+              formaction="{{ url_for('user.feed_send', form_id=mf.id) }}">Send to tools</button>
+    {% endif %}
+    <span class="muted" id="bulk-count"></span>
+    <span style="flex:1"></span>
+    <button type="button" class="btn sm" id="columns-btn">Columns ▾</button>
+    <label class="muted">Per page
+      <select name="per_page" form="filter-form" onchange="this.form.submit()">
+        {% for n in allowed_per_page %}
+          <option value="{{ n }}" {% if n == per_page %}selected{% endif %}>{{ n }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+
+  <form method="post" id="bulk-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="next" value="{{ request.full_path }}">
+    <table class="grid" id="list-table">
+      <tr>
+        <th class="col-check"><input type="checkbox" id="select-all" title="Select all"></th>
+        {% for c in columns %}
+          {% set nxt = 'desc' if (sort == c.column and order == 'asc') else 'asc' %}
+          <th data-col="{{ c.column }}"><a href="{{ url_for('user.form_list', form_id=mf.id, sort=c.column, order=nxt, **args_sort) }}">
+            {{ c.label }}{% if sort == c.column %} {{ '▲' if order == 'asc' else '▼' }}{% endif %}</a></th>
+        {% endfor %}
+        <th>Actions</th>
+      </tr>
+      {% for row in rows %}
+        {% set rid = row[pk_col] %}
+        <tr>
+          <td class="col-check"><input type="checkbox" name="ids" value="{{ rid }}"></td>
+          {% for c in columns %}
+            {% set v = row.get(c.column) %}
+            {% set editable = can_edit and c.kind == 'field' and not c.readonly and c.column != display_col
+                              and c.meta.data_type not in ('json', 'tags', 'autonumber', 'formula') %}
+            {% set wf_cell = c.column in wf_cols %}
+            <td data-col="{{ c.column }}"
+                {%- if editable %} data-editable="1" data-type="{{ c.meta.data_type }}"
+                data-value="{{ '1' if v is sameas true else '0' if v is sameas false else (v if v is not none else '') }}"
+                data-url="{{ url_for('user.cell_update', form_id=mf.id, pk=rid) }}"
+                {% if c.meta.data_type == 'enum' %}
+                  {% if wf_cell %}data-enum="{{ wf_cell_options.get(rid, {}).get(c.column, []) | tojson | forceescape }}" data-noblank="1"
+                  {% else %}data-enum="{{ c.meta.enum_options or '[]' }}"{% endif %}
+                {% endif %}
+                title="Click to edit"{% endif %}>
+              {% if c.column in m1_targets %}
+                {% if v is not none %}{{ record_link(m1_targets[c.column], v, label_maps[c.column].get(v, v)) }}
+                {% else %}<span class="muted">—</span>{% endif %}
+              {% elif v is none %}<span class="muted">—</span>
+              {% elif v is sameas true %}yes{% elif v is sameas false %}no
+              {% elif c.column == display_col %}{{ record_link(view_table_id, rid, v) }}
+              {% elif c.meta.data_type in ('email','url','phone','currency','percent','json','tags') %}{{ typed_value(c.meta.data_type, v) }}
+              {% else %}{{ v }}{% endif %}
+            </td>
+          {% endfor %}
+          <td class="actions">
+            {% if can_view(view_table_id) %}
+              <a class="btn sm" href="{{ url_for('user.record_view', table_id=view_table_id, pk=rid) }}">View</a>
+            {% endif %}
+            {% if can_edit %}
+              <a class="btn sm" href="{{ url_for('user.record_edit', form_id=mf.id, pk=rid) }}">Edit</a>
+              <a class="btn sm" href="{{ url_for('user.record_clone', form_id=mf.id, pk=rid) }}">Clone</a>
+              <a class="btn danger sm" href="{{ url_for('user.record_delete_confirm', form_id=mf.id, pk=rid) }}">Delete</a>
+            {% else %}<span class="muted">—</span>{% endif %}
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="{{ columns|length + 2 }}" class="muted">No records.</td></tr>
+      {% endfor %}
+    </table>
+  </form>
+
+  {% if pages > 1 %}
+  <div class="pager">
+    {% if page > 1 %}
+      <a class="btn sm" href="{{ url_for('user.form_list', form_id=mf.id, page=page-1, **args_pg) }}">‹ Prev</a>
+    {% endif %}
+    <span class="muted">Page {{ page }} of {{ pages }} · {{ total }} records</span>
+    {% if page < pages %}
+      <a class="btn sm" href="{{ url_for('user.form_list', form_id=mf.id, page=page+1, **args_pg) }}">Next ›</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<div id="columns-panel" data-form-id="{{ mf.id }}" hidden></div>
+<script src="{{ url_for('static', filename='columns.js') }}" defer></script>
+<script src="{{ url_for('static', filename='bulklist.js') }}" defer></script>
+<script src="{{ url_for('static', filename='inline.js') }}" defer></script>
+{% endblock %}

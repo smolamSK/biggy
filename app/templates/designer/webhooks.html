@@ -1,0 +1,43 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import delete_form, obj_link %}
+{% block title %}Webhooks · Biggy{% endblock %}
+{% block inner %}
+<h1>Inbound webhooks</h1>
+<p class="muted">Receive events from external systems: another tool POSTs JSON to a Biggy
+  URL and it becomes a record (created or upserted). The inbound mirror of
+  <a href="{{ url_for('designer.feeds_list') }}">Feeds</a>.</p>
+
+<div class="panel">
+  <table class="grid">
+    <tr><th>Name</th><th>→ Target table</th><th>Mode</th><th>Active</th><th>Last received</th><th></th></tr>
+    {% for it in items %}
+      <tr>
+        <td><a href="{{ url_for('designer.webhook_edit', webhook_id=it.wh.id) }}">{{ it.wh.name }}</a></td>
+        <td class="muted">{% if it.table %}{{ obj_link('designer.table_view', 'table_id', it.table.id, it.table.label) }}{% else %}?{% endif %}</td>
+        <td>{{ it.wh.mode }}{% if it.wh.mode == 'upsert' and it.wh.match_field %} on <code>{{ it.wh.match_field }}</code>{% endif %}</td>
+        <td>{{ 'yes' if it.wh.active else 'no' }}</td>
+        <td class="muted">{{ it.wh.last_received_at.strftime('%Y-%m-%d %H:%M') if it.wh.last_received_at else '—' }}</td>
+        <td class="actions">
+          <a class="btn sm" href="{{ url_for('designer.webhook_edit', webhook_id=it.wh.id) }}">Edit</a>
+          {{ delete_form(url_for('designer.webhook_delete', webhook_id=it.wh.id), 'Delete', 'Delete this webhook?') }}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="muted">No webhooks yet.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<h2>New webhook</h2>
+<div class="panel">
+  <form method="post" action="{{ url_for('designer.webhook_create') }}" class="toolbar" style="margin:0">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Into table
+      <select name="table_id">
+        {% for t in tables %}<option value="{{ t.id }}">{{ t.label }}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="btn primary" type="submit">Create webhook</button>
+  </form>
+</div>
+{% endblock %}

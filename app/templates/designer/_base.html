@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block mode %}<span class="mode-tag">Designer</span>{% endblock %}
+
+{% macro navlink(endpoint, label) %}
+  <a class="child{{ ' active' if request.endpoint == endpoint }}"
+     href="{{ url_for(endpoint) }}">{{ label }}</a>
+{% endmacro %}
+
+{% macro group(id, label) %}
+  <details class="menu-group" data-menu-id="{{ id }}" open>
+    <summary class="group-label">{{ label }}</summary>
+    {{ caller() }}
+  </details>
+{% endmacro %}
+
+{% block sidebar %}
+<nav class="sidebar">
+  <a class="{{ 'active' if request.endpoint == 'designer.dashboard' }}"
+     href="{{ url_for('designer.dashboard') }}">Dashboard</a>
+
+  {% call group('dz-model', 'Model') %}
+    {{ navlink('designer.relations', 'Relations') }}
+    {{ navlink('designer.diagram', 'Diagram') }}
+    {{ navlink('designer.workflows', 'Workflows') }}
+    {{ navlink('designer.adopt_home', 'Adopt tables') }}
+  {% endcall %}
+
+  {% call group('dz-ui', 'Interface') %}
+    {{ navlink('designer.forms', 'Forms') }}
+    {{ navlink('designer.menus', 'Menus') }}
+    {{ navlink('designer.dashboards_list', 'Dashboards') }}
+  {% endcall %}
+
+  {% call group('dz-data', 'Data') %}
+    {{ navlink('designer.query', 'SQL') }}
+    {{ navlink('designer.report', 'Reports') }}
+    {{ navlink('designer.sources', 'Data sources') }}
+  {% endcall %}
+
+  {% call group('dz-integrations', 'Integrations') %}
+    {{ navlink('designer.connections', 'Connections') }}
+    {{ navlink('designer.feeds_list', 'Feeds') }}
+    {{ navlink('designer.webhooks', 'Webhooks') }}
+    {{ navlink('designer.pulls', 'Pull sources') }}
+  {% endcall %}
+
+  {% call group('dz-admin', 'Admin') %}
+    {{ navlink('designer.triggers', 'Triggers') }}
+    {{ navlink('designer.scheduled_jobs', 'Scheduled jobs') }}
+    {{ navlink('designer.roles', 'Roles') }}
+    {{ navlink('designer.permissions', 'Permissions') }}
+    {{ navlink('designer.audit_log', 'Audit log') }}
+    {{ navlink('designer.schema_home', 'Backup') }}
+    {{ navlink('designer.examples_home', 'Examples') }}
+  {% endcall %}
+
+  {% call group('dz-tables', 'Tables') %}
+    {% for t in designer_tables %}
+      <a class="child{{ ' active' if request.endpoint == 'designer.table_view'
+                        and request.view_args and request.view_args.get('table_id') == t.id }}"
+         href="{{ url_for('designer.table_view', table_id=t.id) }}">{{ t.label }}</a>
+    {% else %}
+      <span class="muted child">No tables yet</span>
+    {% endfor %}
+    {{ navlink('designer.table_new', '＋ New table') }}
+  {% endcall %}
+</nav>
+{% endblock %}
+{% block content %}{% block inner %}{% endblock %}{% endblock %}

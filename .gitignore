@@ -1,0 +1,12 @@
+.venv/
+.env
+.localdb/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.log
+
+# runtime data + local tooling (not source)
+instance/
+.claude/
+*.sqlite

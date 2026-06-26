@@ -1,0 +1,32 @@
+{% extends "user/_base.html" %}
+{% from "_macros.html" import record_link with context %}
+{% block title %}Search · Biggy{% endblock %}
+{% block inner %}
+<h1>Search{% if q %}: <span class="muted">{{ q }}</span>{% endif %}</h1>
+
+<form method="get" class="panel" style="margin-bottom:1rem">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search all records…" autofocus
+         style="min-width:18rem">
+  <button class="btn primary" type="submit">Search</button>
+</form>
+
+{% if q %}
+  {% if groups %}
+    {% for g in groups %}
+      <div class="panel">
+        <h2 style="margin:.2rem 0">{{ g.label }} <span class="muted">({{ g.total }})</span></h2>
+        <ul style="margin:.3rem 0;padding-left:1.2rem">
+          {% for it in g.records %}<li>{{ record_link(g.table_id, it.pk, it.label) }}</li>{% endfor %}
+          {% if g.total > g.records|length %}
+            <li class="muted">… and {{ g.total - g.records|length }} more</li>
+          {% endif %}
+        </ul>
+      </div>
+    {% endfor %}
+  {% else %}
+    <p class="muted">No matches in any viewable table.</p>
+  {% endif %}
+{% else %}
+  <p class="muted">Type a term to search across every table that has a view form you can read.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "designer/_base.html" %}
+{% block title %}Examples · Biggy{% endblock %}
+{% block inner %}
+<h1>Example models</h1>
+<p class="muted">Load a ready-made model with sample data to explore Biggy. Loading an example
+  <strong>replaces the current model and all its data</strong>.</p>
+
+<div class="cards">
+  {% for key, ex in examples.items() %}
+    <div class="card">
+      <h3 style="margin:.2rem 0">{{ ex.title }}</h3>
+      <p class="muted" style="min-height:3.2em">{{ ex.description }}</p>
+      <form method="post" action="{{ url_for('designer.example_load', key=key) }}"
+            onsubmit="return confirm('Load the {{ ex.title }} example? This replaces the current model and data.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn primary" type="submit">Load</button>
+      </form>
+    </div>
+  {% endfor %}
+</div>
+
+<p class="help" style="margin-top:1rem">The same models are available as JSON under the project's
+  <code>examples/</code> folder, and can be imported manually via
+  <a href="{{ url_for('designer.schema_home') }}">Backup</a>.</p>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}New table · Biggy{% endblock %}
+{% block inner %}
+<h1>New table</h1>
+<div class="panel" style="max-width:560px">
+  <form method="post">
+    {{ form.hidden_tag() }}
+    {{ render_field(form.phys_name) }}
+    <div class="help">Lower-case identifier, e.g. <code>customer</code>. This becomes the real DB table.</div>
+    {{ render_field(form.label) }}
+    {{ render_field(form.description) }}
+    {% if form.source_id.choices | length > 1 %}{{ render_field(form.source_id) }}{% endif %}
+    {{ render_field(form.pk_mode) }}
+    <div class="pill-row">
+      <div style="flex:2">{{ render_field(form.pk_name) }}</div>
+      <div style="flex:1">{{ render_field(form.pk_type) }}</div>
+      <div style="flex:1">{{ render_field(form.pk_length) }}</div>
+    </div>
+    <p class="help">Leave the primary key on <em>Auto-increment id</em> unless you need a natural key
+      (e.g. a <code>code</code> column you enter yourself).</p>
+    <button class="btn primary" type="submit">Create table</button>
+    <a class="btn" href="{{ url_for('designer.dashboard') }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "designer/_base.html" %}
+{% block title %}Diagram · Biggy{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">Schema diagram</h1>
+  <span class="muted">drag a box to move · drag the canvas to pan · scroll to zoom</span>
+  <span style="flex:1"></span>
+  <button class="btn sm" id="er-zoom-out" type="button" title="Zoom out">−</button>
+  <button class="btn sm" id="er-zoom-in" type="button" title="Zoom in">+</button>
+  <button class="btn sm" id="er-fit" type="button">Fit</button>
+  <button class="btn sm" id="er-reset" type="button">Reset layout</button>
+</div>
+
+{% if graph.tables %}
+<div id="er-canvas">
+  <div id="er-world">
+    <svg id="er-edges" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+</div>
+<script type="application/json" id="er-graph">{{ graph|tojson }}</script>
+<script src="{{ url_for('static', filename='diagram.js') }}" defer></script>
+{% else %}
+<div class="panel"><p class="muted">No tables yet — create some tables and relations first.</p></div>
+{% endif %}
+{% endblock %}

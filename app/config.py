@@ -1,0 +1,67 @@
+"""Application configuration, loaded from environment / .env file."""
+import os
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+def _as_bool(value, default=False):
+    if value is None:
+        return default
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+class Config:
+    """Base config read from environment variables."""
+
+    SECRET_KEY = os.environ.get("SECRET_KEY", "dev-insecure-change-me")
+
+    # --- Database connection (configurable; default = local MariaDB) ---
+    # A full DATABASE_URL takes precedence if provided.
+    DATABASE_URL = os.environ.get("DATABASE_URL")
+    DB_DRIVER = os.environ.get("DB_DRIVER", "mysql+pymysql")
+    DB_HOST = os.environ.get("DB_HOST", "127.0.0.1")
+    DB_PORT = int(os.environ.get("DB_PORT", "3306"))
+    DB_USER = os.environ.get("DB_USER", "biggy")
+    DB_PASSWORD = os.environ.get("DB_PASSWORD", "")
+    DB_NAME = os.environ.get("DB_NAME", "biggy")
+
+    # Cap uploaded file size (CSV import, attachments)
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024
+
+    # Where uploaded attachments are stored. Defaults to <instance>/uploads
+    # (set in create_app) unless overridden here.
+    UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER")
+
+    # Notification delivery (all optional; email is skipped unless MAIL_SERVER set)
+    MAIL_SERVER = os.environ.get("MAIL_SERVER")
+    MAIL_PORT = int(os.environ.get("MAIL_PORT", "25"))
+    MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
+    MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
+    MAIL_USE_TLS = _as_bool(os.environ.get("MAIL_USE_TLS"))
+    MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER", "biggy@localhost")
+    NOTIFY_WEBHOOK_TIMEOUT = int(os.environ.get("NOTIFY_WEBHOOK_TIMEOUT", "5"))
+
+    # Inbound-webhook abuse limits (defaults; each webhook may override in the UI)
+    WEBHOOK_MAX_BODY_BYTES = int(os.environ.get("WEBHOOK_MAX_BODY_BYTES", str(64 * 1024)))
+    WEBHOOK_RATE_LIMIT = int(os.environ.get("WEBHOOK_RATE_LIMIT", "120"))  # per window, 0 = off
+    WEBHOOK_RATE_WINDOW = int(os.environ.get("WEBHOOK_RATE_WINDOW", "60"))  # window seconds
+
+    # Scheduler: run due jobs (scheduled triggers / feeds / report digests).
+    # Off by default — driven by `flask run-jobs` (cron). Enable to also run an
+    # in-process background ticker (single-process deployments only).
+    SCHEDULER_ENABLED = _as_bool(os.environ.get("SCHEDULER_ENABLED"))
+    SCHEDULER_TICK_SECONDS = int(os.environ.get("SCHEDULER_TICK_SECONDS", "60"))
+
+    # Display symbol for the 'currency' field type
+    CURRENCY_SYMBOL = os.environ.get("CURRENCY_SYMBOL", "$")
+
+    # Session / cookie hardening
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    WTF_CSRF_TIME_LIMIT = None
+
+    @staticmethod
+    def init_app(app):
+        pass

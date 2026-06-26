@@ -1,0 +1,57 @@
+{% extends "user/_base.html" %}
+{% block title %}Delete · Biggy{% endblock %}
+{% block inner %}
+<h1>Delete {{ mf.table.label }}: <span class="muted">{{ label }}</span>?</h1>
+
+<div class="panel" style="max-width:680px">
+  {% if hard %}
+    <p>This <strong>permanently deletes</strong> the record. This cannot be undone.</p>
+  {% else %}
+    <p>This moves the record to <strong>Trash</strong> (restorable). It will be
+      <strong>removed from all related objects</strong>: its links are dropped and references to it
+      are cleared.</p>
+  {% endif %}
+
+  {% macro affected(label, count, what, items) %}
+    <div class="panel" style="margin:.5rem 0; padding:.6rem .8rem">
+      <strong>{{ label }}</strong> — {{ count }} record(s), <span class="muted">{{ what }}</span>
+      {% if items %}
+        <ul style="margin:.35rem 0 0; padding-left:1.2rem">
+          {% for it in items %}<li>{{ it }}</li>{% endfor %}
+          {% if count > items|length %}<li class="muted">… and {{ count - items|length }} more</li>{% endif %}
+        </ul>
+      {% endif %}
+    </div>
+  {% endmacro %}
+
+  {% if impact.children or impact.links %}
+    <h3>Affected related objects</h3>
+    {% for c in impact.children %}
+      {{ affected(c.label, c.count,
+          ('also deleted (cascade)' if c.action == 'CASCADE'
+           else 'blocks deletion' if c.action == 'RESTRICT'
+           else 'deleted (required reference)' if c.action == 'delete'
+           else 'reference set to empty'), c.samples) }}
+    {% endfor %}
+    {% for l in impact.links %}
+      {{ affected(l.label ~ ' (links)', l.count, 'links removed', l.samples) }}
+    {% endfor %}
+  {% else %}
+    <p class="muted">No related objects are affected.</p>
+  {% endif %}
+
+  {% if impact.blocked %}
+    <div class="flash danger" style="margin-top:1rem">
+      Cannot delete: related records restrict it (on-delete = RESTRICT). Remove or reassign them first.
+    </div>
+    <a class="btn" href="{{ next or url_for('user.form_list', form_id=mf.id) }}">Back</a>
+  {% else %}
+    <form method="post" action="{{ action }}" style="margin-top:1rem">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+      <button class="btn danger" type="submit">{{ 'Delete permanently' if hard else 'Delete' }}</button>
+      <a class="btn" href="{{ next or url_for('user.form_list', form_id=mf.id) }}">Cancel</a>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

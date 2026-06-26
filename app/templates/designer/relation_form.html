@@ -1,0 +1,24 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}New relation · Biggy{% endblock %}
+{% block inner %}
+<h1>New {{ 'many-to-one' if kind == 'm1' else 'many-to-many' }} relation</h1>
+<div class="panel" style="max-width:560px">
+  <form method="post">
+    {{ form.hidden_tag() }}
+    {{ render_field(form.name) }}
+    {{ render_field(form.from_table_id) }}
+    {{ render_field(form.to_table_id) }}
+    {% if kind == 'm1' %}
+      {{ render_field(form.field_name) }}
+      <div class="help">Name of the foreign-key column added to the "from" table, e.g. <code>customer_id</code>.</div>
+      {{ render_field(form.on_delete) }}
+      {{ render_field(form.nullable) }}
+    {% else %}
+      <p class="help">A junction table linking both tables will be created automatically.</p>
+    {% endif %}
+    <button class="btn primary" type="submit">Create relation</button>
+    <a class="btn" href="{{ url_for('designer.relations') }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

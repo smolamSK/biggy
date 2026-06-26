@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}Setup · Biggy{% endblock %}
+{% block content %}
+<div class="center-card">
+  <div class="panel">
+    <h1>Welcome to Biggy</h1>
+    <p class="muted">First-run setup. This creates the metadata tables and your designer account.</p>
+
+    <h2>Database connection</h2>
+    <p class="muted">Target: <code>{{ db_url }}</code></p>
+    {% if conn_ok %}
+      <div class="flash success">{{ conn_msg }}</div>
+    {% else %}
+      <div class="flash danger">Connection failed: {{ conn_msg }}</div>
+      <p class="muted">Edit <code>.env</code> and ensure MariaDB is running, then reload.</p>
+    {% endif %}
+
+    <h2>Create designer account</h2>
+    <form method="post">
+      {{ form.hidden_tag() }}
+      {{ render_field(form.username) }}
+      {{ render_field(form.password) }}
+      {{ render_field(form.confirm) }}
+      <button class="btn primary" type="submit" {{ 'disabled' if not conn_ok }}>Complete setup</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

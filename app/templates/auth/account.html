@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}Account · Biggy{% endblock %}
+{% block content %}
+<div class="center-card">
+  <div class="panel">
+    <h1>Change password</h1>
+    <form method="post">
+      {{ form.hidden_tag() }}
+      {{ render_field(form.current) }}
+      {{ render_field(form.new) }}
+      {{ render_field(form.confirm) }}
+      <button class="btn primary" type="submit">Change password</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

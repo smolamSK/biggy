@@ -1,0 +1,90 @@
+{% extends "user/_base.html" %}
+{% block title %}Import data · Biggy{% endblock %}
+{% block inner %}
+<h1>Import data</h1>
+
+<div class="panel">
+  <form method="get" action="{{ url_for('user.import_home') }}" class="toolbar" style="margin:0">
+    <label style="font-weight:600">Table</label>
+    <select name="table_id" onchange="this.form.submit()">
+      <option value="">— choose a table —</option>
+      {% for t in tables %}
+        <option value="{{ t.id }}" {{ 'selected' if table and t.id == table.id }}>{{ t.label }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn" type="submit">Open</button>
+  </form>
+</div>
+
+{% if table %}
+  <h2>{{ table.label }} <span class="muted">({{ table.phys_name }})</span></h2>
+
+  <div class="panel">
+    <p>Download the blank template, fill in one row per record, then upload it below.
+      The <code>id</code> column is assigned automatically — don't include it.</p>
+    <a class="btn" href="{{ url_for('user.import_template', table_id=table.id) }}">⬇ Download CSV template</a>
+  </div>
+
+  <div class="panel">
+    <h3>Columns</h3>
+    <table class="grid">
+      <tr><th>Column</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+      {% for c in columns %}
+        <tr>
+          <td><code>{{ c.name }}</code></td>
+          <td>{{ c.type }}</td>
+          <td>{{ 'yes' if c.required else '' }}</td>
+          <td class="muted">{{ c.note }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <div class="panel">
+    <h3>Upload CSV</h3>
+    <form method="post" action="{{ url_for('user.import_run', table_id=table.id) }}"
+          enctype="multipart/form-data">
+      {{ form.hidden_tag() }}
+      <div class="field">{{ form.file() }}
+        {% for e in form.file.errors %}<div class="err">{{ e }}</div>{% endfor %}
+      </div>
+      <div class="field">
+        <label>{{ form.mode.label.text }}</label>{{ form.mode() }}
+      </div>
+      <div class="field" id="key-field">
+        <label>{{ form.key_column.label.text }}</label>{{ form.key_column() }}
+        <div class="help">Used only in upsert mode — a row whose key matches an existing
+          record updates it; otherwise it is inserted. Keys are <code>id</code> and unique columns.</div>
+      </div>
+      <div class="field checkline">{{ form.skip_invalid() }}
+        <label style="margin:0">{{ form.skip_invalid.label.text }}</label>
+      </div>
+      <button class="btn primary" type="submit">Import</button>
+    </form>
+  </div>
+
+  {% if result %}
+  <div class="panel">
+    <h3>Result</h3>
+    <p>Imported <strong>{{ result.imported }}</strong>, updated
+      <strong>{{ result.updated }}</strong> of {{ result.total }} row(s).</p>
+    {% if result.ignored_headers %}
+      <p class="muted">Ignored unknown columns: {{ result.ignored_headers|join(', ') }}</p>
+    {% endif %}
+    {% if result.errors %}
+      <h4>{{ result.errors|length }} row(s) with problems</h4>
+      <table class="grid">
+        <tr><th>Row</th><th>Problem</th></tr>
+        {% for rownum, msg in result.errors %}
+          <tr><td>{{ rownum or '—' }}</td><td>{{ msg }}</td></tr>
+        {% endfor %}
+      </table>
+      {% if result.imported == 0 %}
+        <p class="muted">Nothing was imported. Fix these rows, or tick
+          "import valid rows…" to load the rest.</p>
+      {% endif %}
+    {% endif %}
+  </div>
+  {% endif %}
+{% endif %}
+{% endblock %}
