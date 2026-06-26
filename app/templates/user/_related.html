@@ -1,7 +1,9 @@
-{# Shared related-records list. Renders one child table (m1 children of the
-   current record): toolbar + Add button + grid + per-row Edit/Delete. Used by
-   the edit form (user/record_form.html) and the read-only view (user/view.html).
-   Context dict `r` is built by routes._related_lists. #}
+{# Shared record-detail sub-panels used by both the edit form
+   (user/record_form.html) and the read-only view (user/view.html):
+   - related_table(r): one m1 child table — toolbar + Add + grid + Edit/Delete.
+     `r` is built by routes._related_lists.
+   - history_table(history): the audit-log trail. `history` is built by
+     routes._history. #}
 {% from "_macros.html" import record_link with context %}
 
 {% macro related_table(r) %}
@@ -27,6 +29,22 @@
       </tr>
     {% else %}
       <tr><td colspan="{{ r.columns|length + 1 }}" class="muted">None yet.</td></tr>
+    {% endfor %}
+  </table>
+{% endmacro %}
+
+{% macro history_table(history) %}
+  <table class="grid">
+    <tr><th>When</th><th>Action</th><th>By</th><th>Changes</th></tr>
+    {% for h in history %}
+      <tr>
+        <td class="muted">{{ h.at }}</td>
+        <td><span class="badge">{{ h.action }}</span></td>
+        <td>{{ h.user }}</td>
+        <td>{% if h.changes %}{% for col, pair in h.changes.items() %}
+          <div><code>{{ col }}</code>: {{ pair[0] if pair[0] is not none else '∅' }} → {{ pair[1] if pair[1] is not none else '∅' }}</div>
+        {% endfor %}{% endif %}</td>
+      </tr>
     {% endfor %}
   </table>
 {% endmacro %}

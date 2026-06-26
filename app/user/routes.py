@@ -1145,9 +1145,10 @@ def record_view(table_id, pk):
     send_form_id = view_form.id if _manual_feeds(session, table_id) else None
     related = _related_lists(session, engine, view_form, pk, user_id, is_designer,
                              parent_url=url_for("user.record_view", table_id=table_id, pk=pk))
+    history = _history(session, view_form, pk) if table.track_audit else []
     return render_template("user/view.html", table=table, pk=pk, label=label, items=items,
                            edit_url=edit_url, deleted=bool(row.get("deleted_at")),
-                           send_form_id=send_form_id, related=related)
+                           send_form_id=send_form_id, related=related, history=history)
 
 
 def _view_items(session, engine, view_form, built, row):

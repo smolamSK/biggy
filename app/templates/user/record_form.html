@@ -71,23 +71,7 @@
   </div>
 {% endmacro %}
 
-{% from "user/_related.html" import related_table with context %}
-
-{% macro history_table() %}
-  <table class="grid">
-    <tr><th>When</th><th>Action</th><th>By</th><th>Changes</th></tr>
-    {% for h in history %}
-      <tr>
-        <td class="muted">{{ h.at }}</td>
-        <td><span class="badge">{{ h.action }}</span></td>
-        <td>{{ h.user }}</td>
-        <td>{% if h.changes %}{% for col, pair in h.changes.items() %}
-          <div><code>{{ col }}</code>: {{ pair[0] if pair[0] is not none else '∅' }} → {{ pair[1] if pair[1] is not none else '∅' }}</div>
-        {% endfor %}{% endif %}</td>
-      </tr>
-    {% endfor %}
-  </table>
-{% endmacro %}
+{% from "user/_related.html" import related_table, history_table with context %}
 
 {% if related or history %}
   <div class="tabs-wrap" data-tabs>
@@ -106,7 +90,7 @@
       <div class="tab-panel" id="tab-rel-{{ loop.index }}">{{ related_table(r) }}</div>
     {% endfor %}
     {% if history %}
-      <div class="tab-panel" id="tab-history">{{ history_table() }}</div>
+      <div class="tab-panel" id="tab-history">{{ history_table(history) }}</div>
     {% endif %}
   </div>
 {% else %}

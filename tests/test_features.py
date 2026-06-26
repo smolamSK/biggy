@@ -175,6 +175,8 @@ def test_view_page_shows_related_tabs(app, client):
     cust_tid = _make_table(client, app, "customer", "Customer", "name")
     cust_fid = _make_form(client, app, "customer_form", "Customers", cust_tid)
     _make_form_p(client, app, "customer_view", "Customer", cust_tid, "view")
+    _ok(client.post(f"/designer/tables/{cust_tid}/flags", data=dict(track_audit="y"),
+                    follow_redirects=True))
     _make_table(client, app, "order", "Order", "code")
     with app.app_context():
         order_tid = SessionLocal().scalar(select(MetaTable).where(MetaTable.phys_name == "order")).id
@@ -198,6 +200,7 @@ def test_view_page_shows_related_tabs(app, client):
     assert "Order (1)" in html                                     # related tab labelled with child + count
     assert "O-1" in html                                           # the child row is listed
     assert f"/u/view/{cust_tid}/{cid}" in html                     # child actions return to the view page
+    assert 'data-tab="tab-history"' in html and "History (" in html  # audit history tab on the view page
 
 
 def test_delete_impact_and_soft_dissociation(app, client):

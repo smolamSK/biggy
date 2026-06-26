@@ -1,6 +1,6 @@
 {% extends "user/_base.html" %}
 {% from "_macros.html" import record_link, typed_value with context %}
-{% from "user/_related.html" import related_table with context %}
+{% from "user/_related.html" import related_table, history_table with context %}
 {% block title %}{{ label }} · Biggy{% endblock %}
 {% block inner %}
 <div class="toolbar">
@@ -59,18 +59,24 @@
 </div>
 {% endset %}
 
-{% if related %}
+{% if related or history %}
   <div class="tabs-wrap" data-tabs>
     <div class="tabs" role="tablist">
       <button type="button" class="tab active" data-tab="tab-details">Details</button>
       {% for r in related %}
         <button type="button" class="tab" data-tab="tab-rel-{{ loop.index }}">{{ r.label }} ({{ r.total }})</button>
       {% endfor %}
+      {% if history %}
+        <button type="button" class="tab" data-tab="tab-history">History ({{ history|length }})</button>
+      {% endif %}
     </div>
     <div class="tab-panel active" id="tab-details">{{ details }}</div>
     {% for r in related %}
       <div class="tab-panel" id="tab-rel-{{ loop.index }}">{{ related_table(r) }}</div>
     {% endfor %}
+    {% if history %}
+      <div class="tab-panel" id="tab-history">{{ history_table(history) }}</div>
+    {% endif %}
   </div>
   <script src="{{ url_for('static', filename='tabs.js') }}" defer></script>
 {% else %}
