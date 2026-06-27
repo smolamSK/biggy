@@ -3861,6 +3861,7 @@ def test_approval_workflow(app, client):
     tid = _make_table(client, app, "change_req", "Change", "title")
     _add_field(client, tid, "status", "enum", enum_options="draft\nsubmitted\napproved\nrejected")
     fid = _make_form(client, app, "change_form", "Changes", tid)
+    _make_form_p(client, app, "change_view", "Change", tid, "view")
     status_fid = _fid(app, "change_req", "status")
 
     with app.app_context():
@@ -3914,6 +3915,13 @@ def test_approval_workflow(app, client):
         from app import approvals
         assert not approvals.can_act(s, req, bob_u)              # requester can't self-approve
         assert approvals.can_act(s, req, mgr_u)
+
+    # the record view shows the Approvals panel (with a working Approve button for the approver)
+    vh = mgr.get(f"/u/view/{tid}/{pk}").get_data(as_text=True)
+    assert "Approvals" in vh and "submitted" in vh and "approved" in vh
+    assert "step 1 of 2" in vh and 'value="approve"' in vh
+    vb = bob.get(f"/u/view/{tid}/{pk}").get_data(as_text=True)
+    assert "Approvals" in vb and 'value="approve"' not in vb    # requester sees status, no buttons
 
     # manager sees it in the inbox and approves -> advances to position 2 (still held)
     assert "approved" in mgr.get("/u/approvals").get_data(as_text=True)

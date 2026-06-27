@@ -260,10 +260,12 @@ def requests_for_record(session, table_phys, pk):
         steps = steps_for(session, req.workflow_id, req.from_state, req.to_state)
         actions = session.scalars(select(ApprovalAction).where(
             ApprovalAction.request_id == req.id).order_by(ApprovalAction.id)).all()
+        positions = sorted({s.position for s in steps})
         out.append({
             "req": req,
             "n_steps": len(steps),
-            "positions": sorted({s.position for s in steps}),
+            "positions": positions,
+            "n_positions": len(positions),
             "actions": [{"user": names.get(a.user_id, "—"), "decision": a.decision,
                          "comment": a.comment, "at": a.at, "position": a.position}
                         for a in actions],
