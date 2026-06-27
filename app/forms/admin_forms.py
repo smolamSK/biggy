@@ -397,3 +397,50 @@ class TriggerRuleForm(FlaskForm):
     set_field_id = SelectField("Set field", coerce=int, validate_choice=False,
                                validators=[Optional()])
     set_value = StringField("To value (or now / today)", validators=[Optional(), Length(max=255)])
+
+
+class SlaPolicyForm(FlaskForm):
+    """An SLA policy (target + clock control + breach escalation). Selects set in the route."""
+    name = StringField("Name", validators=[DataRequired(), Length(max=120)])
+    active = BooleanField("Active", default=True)
+    target_minutes = IntegerField("Target (minutes)", validators=[DataRequired()])
+    warn_minutes = IntegerField("Warn when N minutes remain (blank = default)",
+                                validators=[Optional()])
+    # clock control
+    status_field_id = SelectField("Status field (drives the clock)", coerce=int,
+                                  validate_choice=False, validators=[Optional()])
+    start_on_create = BooleanField("Start the clock when the record is created", default=True)
+    start_states = StringField("Running states (comma-separated; blank = any not paused/stopped)",
+                               validators=[Optional(), Length(max=255)])
+    pause_states = StringField("Paused states (comma-separated)",
+                               validators=[Optional(), Length(max=255)])
+    stop_states = StringField("Stopped/Done states (comma-separated)",
+                              validators=[Optional(), Length(max=255)])
+    # applies-when condition
+    cond_field_id = SelectField("Only if field", coerce=int, validate_choice=False,
+                                validators=[Optional()])
+    cond_op = SelectField("Operator", choices=_COND_OPS, validate_choice=False,
+                          validators=[Optional()])
+    cond_value = StringField("Value", validators=[Optional(), Length(max=255)])
+    # write-back
+    state_field_id = SelectField("Write SLA state to field", coerce=int,
+                                 validate_choice=False, validators=[Optional()])
+    due_field_id = SelectField("Write deadline to field", coerce=int,
+                               validate_choice=False, validators=[Optional()])
+    # breach escalation
+    breach_in_app = BooleanField("On breach: send an in-app notification")
+    breach_notify_target = SelectField("Notify", choices=[
+        ("", "— none —"), ("owner", "The record owner"), ("user", "A specific user")],
+        validate_choice=False, validators=[Optional()])
+    breach_notify_user_id = SelectField("User", coerce=int, validate_choice=False,
+                                        validators=[Optional()])
+    breach_message = StringField("Message (use {field} placeholders)",
+                                 validators=[Optional(), Length(max=255)])
+    breach_email_to = StringField("Email to (address or {field})",
+                                  validators=[Optional(), Length(max=255)])
+    breach_email_subject = StringField("Email subject", validators=[Optional(), Length(max=255)])
+    breach_email_body = TextAreaField("Email body", validators=[Optional()])
+    breach_set_field_id = SelectField("Set field", coerce=int, validate_choice=False,
+                                      validators=[Optional()])
+    breach_set_value = StringField("To value (or now / today)",
+                                   validators=[Optional(), Length(max=255)])

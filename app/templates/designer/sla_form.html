@@ -1,0 +1,60 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}SLA policy · {{ table.label }}{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">SLA policy — {{ table.label }}</h1>
+  <span style="flex:1"></span>
+  <a class="btn" href="{{ url_for('designer.sla_policies') }}">Back</a>
+</div>
+
+<div class="panel" style="max-width:680px">
+  <form method="post">
+    {{ form.hidden_tag() }}
+    {{ render_field(form.name) }}
+    <div class="field checkline">{{ form.active() }} <label style="margin:0">{{ form.active.label.text }}</label></div>
+    {{ render_field(form.target_minutes) }}
+    {{ render_field(form.warn_minutes) }}
+
+    <h3>Clock control</h3>
+    <p class="help">The clock measures 24×7 wall-clock time (paused spans excluded). Pick the
+      status field that drives it, then list which of its values mean <em>running</em>,
+      <em>paused</em> (clock frozen) and <em>stopped/done</em> (target met if before the deadline).</p>
+    {{ render_field(form.status_field_id) }}
+    <div class="field checkline">{{ form.start_on_create() }} <label style="margin:0">{{ form.start_on_create.label.text }}</label></div>
+    {{ render_field(form.start_states) }}
+    {{ render_field(form.pause_states) }}
+    {{ render_field(form.stop_states) }}
+
+    <h3>Only if (optional condition)</h3>
+    {{ render_field(form.cond_field_id) }}
+    {{ render_field(form.cond_op) }}
+    {{ render_field(form.cond_value) }}
+
+    <h3>Show the live status</h3>
+    <p class="help">The engine keeps these record fields updated, so SLA state appears in lists,
+      filters, reports and can drive triggers. State values:
+      <code>on_track</code> / <code>due_soon</code> / <code>paused</code> / <code>met</code> / <code>breached</code>.</p>
+    {{ render_field(form.state_field_id) }}
+    {{ render_field(form.due_field_id) }}
+
+    <h3>On breach — in-app</h3>
+    <div class="field checkline">{{ form.breach_in_app() }} <label style="margin:0">{{ form.breach_in_app.label.text }}</label></div>
+    {{ render_field(form.breach_notify_target) }}
+    {{ render_field(form.breach_notify_user_id) }}
+    {{ render_field(form.breach_message) }}
+
+    <h3>On breach — email</h3>
+    {{ render_field(form.breach_email_to) }}
+    {{ render_field(form.breach_email_subject) }}
+    {{ render_field(form.breach_email_body) }}
+
+    <h3>On breach — set a field</h3>
+    {{ render_field(form.breach_set_field_id) }}
+    {{ render_field(form.breach_set_value) }}
+
+    <button class="btn primary" type="submit">Save</button>
+    <a class="btn" href="{{ url_for('designer.sla_policies') }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

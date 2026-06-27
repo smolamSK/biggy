@@ -54,6 +54,10 @@ class Config:
     SCHEDULER_ENABLED = _as_bool(os.environ.get("SCHEDULER_ENABLED"))
     SCHEDULER_TICK_SECONDS = int(os.environ.get("SCHEDULER_TICK_SECONDS", "60"))
 
+    # SLA engine: when a policy leaves warn_minutes blank, this is the "due soon"
+    # threshold (minutes before the deadline) for the on_track→due_soon state.
+    SLA_DEFAULT_WARN_MINUTES = int(os.environ.get("SLA_DEFAULT_WARN_MINUTES", "30"))
+
     # Dependency / impact map (topology view). Depth is user-adjustable in the UI,
     # clamped to MAX_DEPTH; MAX_NODES bounds query fan-out for a single map.
     TOPOLOGY_DEFAULT_DEPTH = int(os.environ.get("TOPOLOGY_DEFAULT_DEPTH", "2"))

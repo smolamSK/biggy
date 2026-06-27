@@ -5,7 +5,7 @@ import io
 import json
 import os
 import re
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import func, select, text
 
@@ -19,8 +19,11 @@ from app.metadata.models import (
     MetaFormField,
     MetaPermission,
     MetaTable,
+    Notification,
     ReportDef,
     SavedView,
+    SlaClock,
+    SlaPolicy,
 )
 
 
@@ -3180,7 +3183,7 @@ def test_run_jobs_cli_and_ticker(app, client):
     assert "Ran jobs" in app.test_cli_runner().invoke(args=["sync"]).output   # alias still works
     # tick_once runs a pass within an app context and reports the job kinds
     summary = scheduler.tick_once(app)
-    assert set(summary) == {"triggers", "feeds", "pulls", "reports"}
+    assert set(summary) == {"triggers", "feeds", "pulls", "reports", "sla"}
 
 
 def test_scheduled_trigger_roundtrip(app, client):
@@ -3716,3 +3719,114 @@ def test_schema_reference_example_imports(app, client):
                                "table_name='sales_order' AND column_name='customer_id' "
                                "AND table_schema=DATABASE()")).scalar()
         assert n == 1
+
+
+def _col(table_phys, pk, col):
+    with get_engine().connect() as c:
+        return c.execute(text(f"SELECT {col} FROM {table_phys} WHERE id=:i"), {"i": pk}).scalar()
+
+
+def test_sla_engine(app, client):
+    _setup(client)
+    tid = _make_table(client, app, "ticket", "Ticket", "title")
+    _add_field(client, tid, "status", "enum", enum_options="open\nwaiting\nresolved")
+    _add_field(client, tid, "sla_state", "string", length=20)
+    _add_field(client, tid, "due", "datetime")
+    fid = _make_form(client, app, "ticket_form", "Tickets", tid)
+    status_fid = _fid(app, "ticket", "status")
+    state_fid = _fid(app, "ticket", "sla_state")
+    due_fid = _fid(app, "ticket", "due")
+
+    with app.app_context():
+        s = SessionLocal()
+        s.add(SlaPolicy(table_id=tid, name="Resolve", active=True, target_minutes=60,
+                        status_field_id=status_fid, start_on_create=True,
+                        pause_states="waiting", stop_states="resolved",
+                        state_field_id=state_fid, due_field_id=due_fid,
+                        breach_email_to="ops@example.com", breach_message="breached {title}"))
+        # a second, condition-gated policy that should never start a clock here
+        s.add(SlaPolicy(table_id=tid, name="VIP", active=True, target_minutes=10,
+                        status_field_id=status_fid, start_on_create=True,
+                        cond_field_id=status_fid, cond_op="eq", cond_value="zzz"))
+        s.commit()
+        pol = s.scalar(select(SlaPolicy).where(SlaPolicy.name == "Resolve"))
+        vip = s.scalar(select(SlaPolicy).where(SlaPolicy.name == "VIP"))
+        pol_id, vip_id = pol.id, vip.id
+
+    # create a ticket → a running clock + write-back to sla_state/due; gated policy is skipped
+    _ok(client.post(f"/u/forms/{fid}/new",
+                    data={"title": "T1", "status": "open"}, follow_redirects=True))
+    with app.app_context():
+        s = SessionLocal()
+        clk = s.scalar(select(SlaClock).where(SlaClock.policy_id == pol_id))
+        assert clk and clk.state == "running" and clk.due_at is not None
+        assert s.scalar(select(SlaClock).where(SlaClock.policy_id == vip_id)) is None  # gated out
+    assert _col("ticket", 1, "sla_state") == "on_track"
+    assert _col("ticket", 1, "due") is not None
+
+    # move to a paused state → clock freezes, write-back flips to 'paused'
+    _ok(client.post(f"/u/forms/{fid}/1/edit",
+                    data={"title": "T1", "status": "waiting"}, follow_redirects=True))
+    with app.app_context():
+        clk = SessionLocal().scalar(select(SlaClock).where(SlaClock.policy_id == pol_id))
+        assert clk.state == "paused" and clk.remaining_seconds is not None
+    assert _col("ticket", 1, "sla_state") == "paused"
+
+    # resume → running again with a fresh deadline
+    _ok(client.post(f"/u/forms/{fid}/1/edit",
+                    data={"title": "T1", "status": "open"}, follow_redirects=True))
+    with app.app_context():
+        clk = SessionLocal().scalar(select(SlaClock).where(SlaClock.policy_id == pol_id))
+        assert clk.state == "running" and clk.due_at is not None
+    assert _col("ticket", 1, "sla_state") == "on_track"
+
+    # resolve before the deadline → met
+    _ok(client.post(f"/u/forms/{fid}/1/edit",
+                    data={"title": "T1", "status": "resolved"}, follow_redirects=True))
+    with app.app_context():
+        clk = SessionLocal().scalar(select(SlaClock).where(SlaClock.policy_id == pol_id))
+        assert clk.state == "met"
+    assert _col("ticket", 1, "sla_state") == "met"
+
+    # second ticket, force its deadline into the past, then sweep → breached + escalation
+    _ok(client.post(f"/u/forms/{fid}/new",
+                    data={"title": "T2", "status": "open"}, follow_redirects=True))
+    with app.app_context():
+        s = SessionLocal()
+        clk2 = s.scalar(select(SlaClock).where(SlaClock.policy_id == pol_id,
+                                               SlaClock.row_pk == "2"))
+        clk2.due_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=5)
+        s.commit()
+        from app import scheduler
+        summary = scheduler.run_due(SessionLocal(), get_engine())
+        assert summary["sla"] >= 1
+        s = SessionLocal()
+        clk2 = s.scalar(select(SlaClock).where(SlaClock.policy_id == pol_id,
+                                               SlaClock.row_pk == "2"))
+        assert clk2.state == "breached" and clk2.breach_notified
+        n = s.scalar(select(Notification).where(Notification.event == "sla_breach",
+                                                Notification.channel == "email"))
+        assert n is not None                                  # breach escalation recorded
+    assert _col("ticket", 2, "sla_state") == "breached"
+
+    # the SLA panel renders on the record view
+    _make_form_p(client, app, "ticket_view", "Ticket", tid, "view")
+    vh = client.get(f"/u/view/{tid}/2").get_data(as_text=True)
+    assert "SLA" in vh and "breached" in vh
+
+    # designer pages render
+    _ok(client.get("/designer/sla-policies"))
+    _ok(client.get(f"/designer/sla-policies/{pol_id}"))
+
+    # schema export/import round-trips the policy with remapped field ids
+    exp = client.get("/designer/schema/export.json")
+    _ok(exp)
+    _ok(client.post("/designer/schema/import",
+                    data={"file": (io.BytesIO(exp.get_data()), "s.json"), "replace_existing": "y"},
+                    content_type="multipart/form-data"))
+    with app.app_context():
+        s = SessionLocal()
+        p = s.scalar(select(SlaPolicy).where(SlaPolicy.name == "Resolve"))
+        assert p is not None
+        f = s.get(MetaField, p.status_field_id)
+        assert f is not None and f.phys_name == "status"      # field ref remapped, not dangling

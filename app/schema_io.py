@@ -36,6 +36,8 @@ from .metadata.models import (
     PullSource,
     Role,
     Sequence,
+    SlaClock,
+    SlaPolicy,
     TriggerRule,
     Webhook,
     Workflow,
@@ -79,6 +81,16 @@ _TRIGGER_COLS = ["id", "table_id", "name", "active", "event", "field_id", "from_
                  "to_state", "cond_field_id", "cond_op", "cond_value", "in_app",
                  "notify_target", "notify_user_id", "message", "email_to", "email_subject",
                  "email_body", "webhook_url", "set_field_id", "set_value", "schedule_minutes"]
+_SLA_POLICY_COLS = ["id", "table_id", "name", "active", "target_minutes", "warn_minutes",
+                    "status_field_id", "start_on_create", "start_states", "pause_states",
+                    "stop_states", "cond_field_id", "cond_op", "cond_value", "state_field_id",
+                    "due_field_id", "breach_in_app", "breach_notify_target",
+                    "breach_notify_user_id", "breach_message", "breach_email_to",
+                    "breach_email_subject", "breach_email_body", "breach_set_field_id",
+                    "breach_set_value"]
+# fields on SlaPolicy that reference a MetaField id and must be remapped via fmap
+_SLA_FIELD_REFS = ("status_field_id", "cond_field_id", "state_field_id", "due_field_id",
+                   "breach_set_field_id")
 # Connections export without their token (a secret re-entered after import).
 _CONNECTION_COLS = ["id", "name", "base_url", "active"]
 _FEED_COLS = ["id", "name", "active", "source_table_id", "connection_id", "target_table",
@@ -126,6 +138,8 @@ def export_schema(session):
                       for w in session.scalars(select(Workflow).order_by(Workflow.id))],
         "trigger_rules": [_dump(tr, _TRIGGER_COLS)
                           for tr in session.scalars(select(TriggerRule).order_by(TriggerRule.id))],
+        "sla_policies": [_dump(p, _SLA_POLICY_COLS)
+                         for p in session.scalars(select(SlaPolicy).order_by(SlaPolicy.id))],
         "roles": [_dump(r, _ROLE_COLS)
                   for r in session.scalars(select(Role).order_by(Role.id))],
         "field_permissions": [_dump(p, _FIELDPERM_COLS)
@@ -220,9 +234,10 @@ def wipe_model(session, engine):
     for eng, names in drops.values():
         _drop_physical(eng, names)
     session.execute(update(MetaMenu).values(parent_id=None))
-    for model in (TriggerRule, Feed, Webhook, PullSource, Connection, DashboardWidget, Dashboard,
-                  MetaFieldPermission, CompositeUnique, Sequence, Workflow, MetaPermission,
-                  MetaMenu, MetaRelation, MetaFormField, MetaForm, MetaField, MetaTable, DataSource):
+    for model in (SlaClock, SlaPolicy, TriggerRule, Feed, Webhook, PullSource, Connection,
+                  DashboardWidget, Dashboard, MetaFieldPermission, CompositeUnique, Sequence,
+                  Workflow, MetaPermission, MetaMenu, MetaRelation, MetaFormField, MetaForm,
+                  MetaField, MetaTable, DataSource):
         session.execute(delete(model))
     session.commit()
 
@@ -468,6 +483,17 @@ def import_schema(session, engine, data, replace=False):
                 email_body=tr.get("email_body"), webhook_url=tr.get("webhook_url"),
                 set_field_id=fmap.get(tr.get("set_field_id")), set_value=tr.get("set_value"),
                 schedule_minutes=tr.get("schedule_minutes")))
+
+        # 9b. SLA policies (remap table + every field reference; clocks are runtime, not imported)
+        for sp in data.get("sla_policies", []):
+            table_id = tmap.get(sp.get("table_id"))
+            if not table_id:
+                continue
+            kwargs = {c: sp.get(c) for c in _SLA_POLICY_COLS if c not in ("id", "table_id")}
+            for ref in _SLA_FIELD_REFS:
+                kwargs[ref] = fmap.get(sp.get(ref))
+            kwargs.setdefault("target_minutes", 60)
+            session.add(SlaPolicy(table_id=table_id, **kwargs))
 
         # 10. roles (upsert by name) + field permissions (remap field_id)
         have_roles = {r.name for r in session.scalars(select(Role))}

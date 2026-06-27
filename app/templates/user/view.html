@@ -19,6 +19,27 @@
   {% if edit_url %}<a class="btn primary" href="{{ edit_url }}">Edit</a>{% endif %}
 </div>
 
+{% if sla_clocks %}
+<div class="panel" style="display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;max-width:680px">
+  <strong>SLA</strong>
+  {% for c in sla_clocks %}
+    {% set hue = 'red' if c.token == 'breached' else ('amber' if c.token in ('due_soon', 'paused')
+                 else ('green' if c.token in ('on_track', 'met') else 'gray')) %}
+    <span style="display:inline-flex;align-items:center;gap:.35rem">
+      <span class="muted">{{ c.name }}</span>
+      <span class="chip c-{{ hue }}">{{ c.token|replace('_', ' ') }}</span>
+      {% if c.due_at %}
+        <span class="muted" style="font-size:var(--fs-xs)">due {{ c.due_at.strftime('%Y-%m-%d %H:%M') }}
+          {%- if c.remaining_seconds is not none %} ·
+            {%- if c.remaining_seconds >= 0 %} {{ c.remaining_seconds // 60 }}m left
+            {%- else %} overdue {{ (-c.remaining_seconds) // 60 }}m{% endif %}
+          {%- endif %}</span>
+      {% endif %}
+    </span>
+  {% endfor %}
+</div>
+{% endif %}
+
 {% set details %}
 <div class="panel" style="max-width:680px">
   <table class="grid">

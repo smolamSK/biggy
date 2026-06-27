@@ -25,7 +25,7 @@ from urllib.parse import parse_qsl
 from sqlalchemy import select
 from werkzeug.datastructures import MultiDict
 
-from . import feeds, pull, record_service, reporting, triggers
+from . import feeds, pull, record_service, reporting, sla, triggers
 from .db import SessionLocal, engine_for_table, get_engine
 from .metadata.models import AppUser, MetaTable, Notification, ReportDef, TriggerRule
 
@@ -121,7 +121,7 @@ def _run_report(session, report):
 def run_due(session, engine, now=None):
     """Run every due scheduled trigger, feed and report. Returns a counts summary."""
     now = now or _now()
-    summary = {"triggers": 0, "feeds": 0, "pulls": 0, "reports": 0}
+    summary = {"triggers": 0, "feeds": 0, "pulls": 0, "reports": 0, "sla": 0}
 
     # 1. scheduled triggers
     for rule in session.scalars(select(TriggerRule).where(
@@ -149,6 +149,12 @@ def run_due(session, engine, now=None):
         summary["pulls"] = pull.run_scheduled(SessionLocal(), engine)
     except Exception as exc:  # noqa: BLE001
         _log_error("pull", "scheduled pulls", exc)
+
+    # 2c. SLA breach sweep (global; runs every pass — granularity = the cron cadence)
+    try:
+        summary["sla"] = sla.run_breach_sweep(session, now)
+    except Exception as exc:  # noqa: BLE001
+        _log_error("sla", "breach sweep", exc)
 
     # 3. scheduled report digests
     for report in session.scalars(select(ReportDef).where(

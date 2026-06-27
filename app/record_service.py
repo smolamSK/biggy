@@ -52,6 +52,11 @@ def _fire(session, engine, meta_table, event, pk, old_row, user_id):
         feeds.run_for_event(session, engine, meta_table, event, pk, old_row, user_id)
     except Exception:  # noqa: BLE001 - feeds must never break the write
         pass
+    from . import sla
+    try:
+        sla.run_for_event(session, engine, meta_table, event, pk, old_row, user_id)
+    except Exception:  # noqa: BLE001 - SLA must never break the write
+        pass
 
 
 _DEFAULT_TOKENS = {"now", "today", "current_user", "me"}

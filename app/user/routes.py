@@ -24,7 +24,7 @@ from flask import (
 from flask_login import current_user, login_required
 from sqlalchemy import select
 
-from .. import dashboards, data_service, feeds, file_store, list_export, record_service, reporting, topology, workflow
+from .. import dashboards, data_service, feeds, file_store, list_export, record_service, reporting, sla, topology, workflow
 from .. import filters as filt
 from .. import importer
 from ..api import tokens as api_tokens
@@ -1147,9 +1147,11 @@ def record_view(table_id, pk):
     related = _related_lists(session, engine, view_form, pk, user_id, is_designer,
                              parent_url=url_for("user.record_view", table_id=table_id, pk=pk))
     history = _history(session, view_form, pk) if table.track_audit else []
+    sla_clocks = sla.clocks_for_record(session, table_id, table.phys_name, pk)
     return render_template("user/view.html", table=table, pk=pk, label=label, items=items,
                            edit_url=edit_url, deleted=bool(row.get("deleted_at")),
-                           send_form_id=send_form_id, related=related, history=history)
+                           send_form_id=send_form_id, related=related, history=history,
+                           sla_clocks=sla_clocks)
 
 
 @bp.route("/topology/<int:table_id>/<pk>")

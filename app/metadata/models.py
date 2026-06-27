@@ -691,3 +691,76 @@ class DashboardWidget(Base):
     limit: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
     position: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
+class SlaPolicy(Base):
+    """A service-level target on a table, enforced by :mod:`app.sla`.
+
+    A per-record clock starts/pauses/stops from the record's ``status_field``
+    value (matched against the comma-separated ``*_states`` lists) and measures
+    24×7 wall-clock time (paused spans excluded) against ``target_minutes``. The
+    live state is written back to ``state_field``/``due_field`` so it shows in
+    lists/reports and can drive [[TriggerRule]]s. Breaches are detected by the
+    scheduler sweep and escalate via the same action columns as a trigger.
+    Mirrors [[TriggerRule]]; per-record state lives in [[SlaClock]].
+    """
+    __tablename__ = "app_sla_policy"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    table_id: Mapped[int] = mapped_column(
+        ForeignKey("app_meta_table.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    target_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+    warn_minutes: Mapped[int | None] = mapped_column(Integer)  # null ⇒ SLA_DEFAULT_WARN_MINUTES
+    # clock control: a status (enum) field + comma-separated state lists
+    status_field_id: Mapped[int | None] = mapped_column(Integer)
+    start_on_create: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    start_states: Mapped[str | None] = mapped_column(String(255))
+    pause_states: Mapped[str | None] = mapped_column(String(255))
+    stop_states: Mapped[str | None] = mapped_column(String(255))
+    # optional applies-when condition on the (new) row
+    cond_field_id: Mapped[int | None] = mapped_column(Integer)
+    cond_op: Mapped[str | None] = mapped_column(String(20))
+    cond_value: Mapped[str | None] = mapped_column(String(255))
+    # write-back: keep these record fields updated with live SLA state / deadline
+    state_field_id: Mapped[int | None] = mapped_column(Integer)   # enum: on_track|due_soon|paused|met|breached
+    due_field_id: Mapped[int | None] = mapped_column(Integer)     # datetime: the deadline
+    # breach escalation (same shape as a trigger's actions)
+    breach_in_app: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    breach_notify_target: Mapped[str | None] = mapped_column(String(10))  # owner|actor|user
+    breach_notify_user_id: Mapped[int | None] = mapped_column(Integer)
+    breach_message: Mapped[str | None] = mapped_column(String(255))
+    breach_email_to: Mapped[str | None] = mapped_column(String(255))
+    breach_email_subject: Mapped[str | None] = mapped_column(String(255))
+    breach_email_body: Mapped[str | None] = mapped_column(Text)
+    breach_set_field_id: Mapped[int | None] = mapped_column(Integer)
+    breach_set_value: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
+class SlaClock(Base):
+    """Per-record SLA timing state for one [[SlaPolicy]] (operational, not exported).
+
+    ``state`` is running|paused|met|breached|stopped. While running, ``due_at`` is
+    the absolute deadline; on pause it is converted to ``remaining_seconds`` and
+    restored (pushed out) on resume — that is how 24×7 pause/resume works.
+    """
+    __tablename__ = "app_sla_clock"
+    __table_args__ = (UniqueConstraint("policy_id", "table_phys", "row_pk",
+                                       name="uq_sla_clock"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    policy_id: Mapped[int] = mapped_column(
+        ForeignKey("app_sla_policy.id", ondelete="CASCADE"), nullable=False
+    )
+    table_phys: Mapped[str] = mapped_column(String(64), nullable=False)
+    row_pk: Mapped[str] = mapped_column(String(255), nullable=False)
+    state: Mapped[str] = mapped_column(String(10), default="running", nullable=False)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime)
+    due_at: Mapped[datetime | None] = mapped_column(DateTime)
+    remaining_seconds: Mapped[int | None] = mapped_column(Integer)
+    breached_at: Mapped[datetime | None] = mapped_column(DateTime)
+    breach_notified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)

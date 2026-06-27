@@ -193,7 +193,7 @@ def _register_cli(app):
 
         summary = scheduler.run_due(SessionLocal(), get_engine())
         click.echo("Ran jobs — triggers: {triggers}, feeds: {feeds}, pulls: {pulls}, "
-                   "reports: {reports}.".format(**summary))
+                   "reports: {reports}, sla: {sla}.".format(**summary))
 
     @app.cli.command("sync")
     def sync():
@@ -203,7 +203,7 @@ def _register_cli(app):
 
         summary = scheduler.run_due(SessionLocal(), get_engine())
         click.echo("Ran jobs — triggers: {triggers}, feeds: {feeds}, pulls: {pulls}, "
-                   "reports: {reports}.".format(**summary))
+                   "reports: {reports}, sla: {sla}.".format(**summary))
 
     @app.cli.command("dump-examples")
     @click.argument("directory", default="examples")

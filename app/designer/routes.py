@@ -45,6 +45,7 @@ from ..forms.admin_forms import (
     RelationMNForm,
     DataImportForm,
     SchemaImportForm,
+    SlaPolicyForm,
     SqlQueryForm,
     TableForm,
     TriggerRuleForm,
@@ -83,6 +84,7 @@ from ..metadata.models import (
     ROLE_DESIGNER,
     ROLE_USER,
     Role,
+    SlaPolicy,
     TriggerRule,
     Webhook,
     Workflow,
@@ -2304,6 +2306,110 @@ def trigger_delete(rule_id):
         session.commit()
         flash("Trigger deleted.", "info")
     return redirect(url_for("designer.triggers"))
+
+
+# --------------------------------------------------------------------------- #
+# SLA policies
+# --------------------------------------------------------------------------- #
+@bp.route("/sla-policies")
+def sla_policies():
+    session = _s()
+    items = [{"policy": p, "table": session.get(MetaTable, p.table_id)}
+             for p in session.scalars(select(SlaPolicy).order_by(SlaPolicy.table_id,
+                                                                 SlaPolicy.id))]
+    return render_template("designer/sla_policies.html", items=items, tables=_tables(session))
+
+
+@bp.route("/sla-policies", methods=["POST"])
+def sla_policy_create():
+    session = _s()
+    table = session.get(MetaTable, request.form.get("table_id", type=int))
+    if not table:
+        flash("Choose a table.", "warning")
+        return redirect(url_for("designer.sla_policies"))
+    policy = SlaPolicy(table_id=table.id, name="New SLA", target_minutes=60, active=True,
+                       start_on_create=True)
+    session.add(policy)
+    session.commit()
+    return redirect(url_for("designer.sla_policy_edit", policy_id=policy.id))
+
+
+def _sla_choices(session, form, table):
+    fields = list(table.fields)
+    enums = [(f.id, f.label) for f in fields if f.data_type == "enum"]
+    dates = [(f.id, f.label) for f in fields if f.data_type in ("datetime", "date")]
+    settable = [(f.id, f.label) for f in fields
+                if f.data_type not in (RELATION_TYPE, "file", "image")]
+    form.status_field_id.choices = [(0, "— none —")] + enums
+    form.state_field_id.choices = [(0, "— none —")] + settable
+    form.due_field_id.choices = [(0, "— none —")] + dates
+    form.cond_field_id.choices = [(0, "— none —")] + [(f.id, f.label) for f in fields]
+    form.breach_set_field_id.choices = [(0, "— none —")] + settable
+    form.breach_notify_user_id.choices = [(0, "— none —")] + [
+        (u.id, u.username) for u in session.scalars(select(AppUser).order_by(AppUser.username))]
+
+
+@bp.route("/sla-policies/<int:policy_id>", methods=["GET", "POST"])
+def sla_policy_edit(policy_id):
+    session = _s()
+    policy = session.get(SlaPolicy, policy_id)
+    if not policy:
+        flash("SLA policy not found.", "danger")
+        return redirect(url_for("designer.sla_policies"))
+    table = session.get(MetaTable, policy.table_id)
+    form = SlaPolicyForm(obj=policy)
+    _sla_choices(session, form, table)
+
+    if request.method == "GET":
+        form.cond_op.data = policy.cond_op or ""
+        form.breach_notify_target.data = policy.breach_notify_target or ""
+        for fld, val in [("status_field_id", policy.status_field_id),
+                         ("state_field_id", policy.state_field_id),
+                         ("due_field_id", policy.due_field_id),
+                         ("cond_field_id", policy.cond_field_id),
+                         ("breach_set_field_id", policy.breach_set_field_id),
+                         ("breach_notify_user_id", policy.breach_notify_user_id)]:
+            getattr(form, fld).data = val or 0
+
+    if form.validate_on_submit():
+        policy.name = form.name.data
+        policy.active = form.active.data
+        policy.target_minutes = form.target_minutes.data
+        policy.warn_minutes = form.warn_minutes.data
+        policy.status_field_id = form.status_field_id.data or None
+        policy.start_on_create = form.start_on_create.data
+        policy.start_states = form.start_states.data or None
+        policy.pause_states = form.pause_states.data or None
+        policy.stop_states = form.stop_states.data or None
+        policy.cond_field_id = form.cond_field_id.data or None
+        policy.cond_op = form.cond_op.data or None
+        policy.cond_value = form.cond_value.data or None
+        policy.state_field_id = form.state_field_id.data or None
+        policy.due_field_id = form.due_field_id.data or None
+        policy.breach_in_app = form.breach_in_app.data
+        policy.breach_notify_target = form.breach_notify_target.data or None
+        policy.breach_notify_user_id = form.breach_notify_user_id.data or None
+        policy.breach_message = form.breach_message.data or None
+        policy.breach_email_to = form.breach_email_to.data or None
+        policy.breach_email_subject = form.breach_email_subject.data or None
+        policy.breach_email_body = form.breach_email_body.data or None
+        policy.breach_set_field_id = form.breach_set_field_id.data or None
+        policy.breach_set_value = form.breach_set_value.data or None
+        session.commit()
+        flash("SLA policy saved.", "success")
+        return redirect(url_for("designer.sla_policies"))
+    return render_template("designer/sla_form.html", form=form, policy=policy, table=table)
+
+
+@bp.route("/sla-policies/<int:policy_id>/delete", methods=["POST"])
+def sla_policy_delete(policy_id):
+    session = _s()
+    policy = session.get(SlaPolicy, policy_id)
+    if policy:
+        session.delete(policy)
+        session.commit()
+        flash("SLA policy deleted.", "info")
+    return redirect(url_for("designer.sla_policies"))
 
 
 # --------------------------------------------------------------------------- #

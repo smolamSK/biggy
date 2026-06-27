@@ -1,0 +1,50 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import delete_form, obj_link %}
+{% block title %}SLA policies · Biggy{% endblock %}
+{% block inner %}
+<h1>SLA policies</h1>
+<p class="muted">Put a service-level target on a table. A per-record clock starts/pauses/stops
+  from the record's status, the live state is written back to fields you choose, and breaches
+  are detected by the scheduler (<code>flask run-jobs</code> / the ticker) and escalated.</p>
+
+<div class="panel">
+  <table class="grid">
+    <tr><th>Table</th><th>Name</th><th>Target</th><th>Status field</th><th>On breach</th><th>Active</th><th></th></tr>
+    {% for it in items %}
+      <tr>
+        <td>{% if it.table %}{{ obj_link('designer.table_view', 'table_id', it.table.id, it.table.label) }}{% else %}—{% endif %}</td>
+        <td><a href="{{ url_for('designer.sla_policy_edit', policy_id=it.policy.id) }}">{{ it.policy.name }}</a></td>
+        <td>{{ it.policy.target_minutes }} min</td>
+        <td class="muted">{{ it.policy.stop_states or '—' }}</td>
+        <td class="muted">
+          {%- set a = [] -%}
+          {%- if it.policy.breach_in_app %}{% set _ = a.append('in-app') %}{% endif -%}
+          {%- if it.policy.breach_email_to %}{% set _ = a.append('email') %}{% endif -%}
+          {%- if it.policy.breach_set_field_id %}{% set _ = a.append('set-field') %}{% endif -%}
+          {{ a|join(', ') or '—' }}
+        </td>
+        <td>{{ 'yes' if it.policy.active else 'no' }}</td>
+        <td class="actions">
+          <a class="btn sm" href="{{ url_for('designer.sla_policy_edit', policy_id=it.policy.id) }}">Edit</a>
+          {{ delete_form(url_for('designer.sla_policy_delete', policy_id=it.policy.id), 'Delete', 'Delete this SLA policy?') }}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="muted">No SLA policies yet.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<h2>New SLA policy</h2>
+<div class="panel">
+  <form method="post" class="toolbar" style="margin:0">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>On table
+      <select name="table_id">
+        {% for t in tables %}<option value="{{ t.id }}">{{ t.label }}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="btn primary" type="submit">Create policy</button>
+  </form>
+</div>
+{% endblock %}
