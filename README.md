@@ -13,8 +13,8 @@ connection is configurable; the default target is a local MariaDB.
 ## Stack
 
 Flask + Jinja + HTMX (server-rendered, no JS build step), SQLAlchemy 2 (Core for dynamic DDL +
-reflection, ORM for the metadata), PyMySQL driver, Flask-Login (accounts + `designer`/`user` roles),
-Flask-WTF/WTForms.
+reflection, ORM for the metadata), PyMySQL driver, Flask-Login (accounts + `designer`/`user` roles,
+TOTP 2FA, OIDC SSO), Flask-WTF/WTForms, `cryptography` (secrets at rest), `qrcode` (MFA enrollment).
 
 ## Requirements
 
@@ -123,6 +123,8 @@ CREATE DATABASE biggy_test; GRANT ALL ON biggy_test.* TO 'biggy'@'127.0.0.1';
   objects — never string-interpolated from request input. All data **values** are bound parameters.
 - CSRF protection on all mutating forms; passwords hashed; Designer mode and user management guarded
   by a `designer` role.
+- Optional **two-factor (TOTP)** and **OIDC single sign-on**; integration secrets and TOTP seeds are
+  **encrypted at rest** (Fernet). See [Setup & operations](docs/setup-and-operations.md) for setup.
 
 ## Layout
 
@@ -133,6 +135,8 @@ app/
   record_service.py data_service.py formula.py # write chokepoint; CRUD/search; formulas
   forms/ builder.py admin_forms.py             # dynamic + fixed forms
   workflow.py triggers.py reporting.py dashboards.py  # workflows; rules; reports + charts
+  approvals.py sla.py topology.py jobs.py      # approval workflows; SLA engine; impact map; atomic job claim
+  crypto.py oidc.py totp.py                    # secrets at rest; OIDC SSO; TOTP two-factor
   connectors.py feeds.py hooks/ pull.py scheduler.py  # integrations: push out / in / poll / schedule
   api/ routes.py serialization.py tokens.py openapi.py  # REST API + OpenAPI + bulk
   schema_io.py adopt.py                        # JSON schema/data import-export; adopt external tables
@@ -162,5 +166,12 @@ The model and screens extend well past the core CRUD loop. Built in:
 - A token-authenticated **REST API** (`/api/v1`) with an auto **OpenAPI** spec +
   docs and **bulk** endpoints; **chaining** between instances (connections + feeds),
   inbound **webhooks**, and **pull** connectors (poll a peer or REST API).
+- **CMDB / ITSM**: a data-level **impact map** (a record's dependency/impact graph), an
+  **SLA engine** (per-record clocks with pause/resume, breach detection + escalation),
+  and **approval workflows** (multi-step sign-off held on a workflow transition).
+- **Enterprise auth & ops**: **TOTP two-factor** (QR enrollment + backup codes), **OIDC
+  single sign-on** (link-existing or JIT), **bulk user import**, integration **secrets
+  encrypted at rest**, multi-worker-safe scheduling + a DB-backed rate limiter, and a
+  **Docker**/compose stack.
 - Schema/data **export & import** (JSON) to copy an app between databases — and to
   [author a whole app by hand](docs/schema-json-format.md).

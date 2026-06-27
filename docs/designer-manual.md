@@ -66,7 +66,10 @@ Other table-level controls:
 - **Many-to-many** — creates a junction table linking two tables.
 
 For each relation you can choose which fields **label** the related record in
-pickers. See the whole model visually under *Model → Diagram* (an ER diagram).
+pickers. See the whole model visually under *Model → Diagram* (an ER diagram). At the
+data level, users can open an **Impact map** of any record from its view page — a
+node-link graph of what it depends on and what depends on it, built from these
+relations (no setup needed).
 
 ## Forms
 
@@ -108,10 +111,22 @@ These features are optional — add them as your app grows.
   condition), run actions: an in-app notification, an email, a webhook, or **set a
   field**. Messages use `{field}` placeholders. *Scheduled* triggers run over every
   matching row — pair a condition with a *set-field* so a row isn't actioned twice.
+- **SLA policies** (*Admin → SLA policies*) — put a service-level target on a table.
+  A per-record clock starts/pauses/stops from a **status field** (you list the running
+  / paused / done states) and measures 24×7 time against the target; the live state and
+  deadline are **written back to fields you pick** (so they show in lists/reports and
+  can drive triggers). The scheduler detects **breaches** and escalates (in-app / email
+  / set a field). A live SLA panel appears on the record's view page.
+- **Approvals** (*Admin → Approvals*) — require multi-step **sign-off on a workflow
+  transition**. Add approver **steps** (a role or a specific user) to a transition;
+  same *position* runs in parallel (all must approve), different positions run in
+  sequence. Requesting that transition then **holds** the record until everyone signs
+  off (or one rejects). Pairs with **Workflows**; approvers act from the record's
+  Approvals panel or the approvals inbox.
 - **Scheduled jobs** (*Admin → Scheduled jobs*) — one view of every time-driven job
-  (scheduled triggers, feeds, and report digests) with last-run status and **Run
-  now**. They run from `flask run-jobs` (cron) or the in-process ticker — see the
-  [Setup & operations](setup-and-operations.md) guide.
+  (scheduled triggers, feeds, report digests, SLA breach sweeps) with last-run status
+  and **Run now**. They run from `flask run-jobs` (cron) or the in-process ticker — see
+  the [Setup & operations](setup-and-operations.md) guide.
 - **Reports** (*Data → Reports*) — group-by + count/sum/avg with an optional chart;
   **save**, **pin** to home, **email on a schedule**, or **add to a dashboard**.
 - **Dashboards** (*Interface → Dashboards*) — build shared pages of **chart**, **KPI
@@ -119,7 +134,11 @@ These features are optional — add them as your app grows.
   into the nav with a **dashboard** menu item. (Users also build personal dashboards
   in User mode.)
 - **Access control** (*Admin → Roles*, *Permissions*) — define roles, set
-  per-form access (none / read / write), and set **per-field** permissions.
+  per-form access (none / read / write), and set **per-field** permissions. Manage
+  accounts under **Users** (top bar): create/edit users, **bulk import** (paste
+  `username,role[,password]` lines), and **reset a user's two-factor**. Two-factor
+  (2FA) and single sign-on (SSO) are set up in the
+  [Setup & operations](setup-and-operations.md) guide.
 - **Integrations** (*Integrations*):
   - **Connections + Feeds** — chain Biggy apps: define a **connection** to a remote
     app (base URL + API token), then a **feed** mapping a local table to a remote

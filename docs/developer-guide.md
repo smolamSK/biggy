@@ -71,7 +71,9 @@ are mapped, never issued DDL.
 - **In (push):** `hooks/` blueprint (`POST /hooks/<token>`).
 - **In (pull):** `pull` (poll a peer/REST source on a schedule).
 - **Schedule:** `scheduler.run_due` runs due scheduled triggers + feeds + pulls +
-  report digests; driven by `flask run-jobs` or the in-process ticker.
+  report digests + **SLA breach sweeps**, each **atomically claimed** (`jobs.claim_due`)
+  so multiple workers can't double-run; driven by `flask run-jobs` or the in-process
+  ticker (now multi-worker-safe).
 
 ### Reporting, dashboards, API
 `reporting` (group-by + `chart_data`) feeds `static/charts.js` and `dashboards`
@@ -79,6 +81,30 @@ are mapped, never issued DDL.
 `serialization`, `tokens`, and `openapi` (auto-generated spec at `/api/v1/openapi.json`,
 docs at `/api/v1/docs`). `schema_io` exports/imports the whole model as JSON
 (see [Schema JSON format](schema-json-format.md)).
+
+### CMDB / ITSM
+- **`topology`** — `graph_for` walks real relations (incoming/outgoing m1 + mn) from a
+  record to a bounded depth → the data-level **impact map** (`user/topology.html` +
+  `static/topology.js`, hand-rolled SVG). Read-only.
+- **`sla`** — per-table SLA policies; a per-record clock (start/pause/stop from a status
+  field) writes its state + deadline back through the low-level `data_service` (no
+  `_fire` recursion). `run_breach_sweep` runs inside `scheduler.run_due` and escalates
+  with the trigger primitives.
+- **`approvals`** — approval steps on a workflow transition. `plan_diversions` (pure)
+  pops an approval-required transition out of a write **before** `workflow.check` in all
+  four write paths; `act` records decisions and applies the move via `record_service`
+  when every step signs off. Inbox + record panel + nav badge.
+
+### Multi-worker & security
+- **`jobs.claim_due`** — an atomic `UPDATE … WHERE last_run_at <= cutoff` (rowcount==1)
+  gates every scheduled job; the webhook rate limiter is DB-backed (`app_rate_hit`). A
+  `Dockerfile` + `docker-compose.yml` ship the production stack.
+- **`crypto.EncryptedText`** — a SQLAlchemy `TypeDecorator` (Fernet) encrypts secret
+  columns at rest, transparent to the ORM; `flask encrypt-secrets` backfills legacy rows.
+- **Auth** beyond local password: **TOTP 2FA** (`totp` — two-step login, backup codes,
+  `REQUIRE_MFA`) and **OIDC SSO** (`oidc` — authorization-code flow; the ID token's RS256
+  signature is verified against the provider JWKS with `cryptography`). OIDC/connector
+  HTTP goes through a swappable transport, so the IdP/peer is stubbed in tests.
 
 ---
 
@@ -103,6 +129,9 @@ app/
   formula.py             safe AST formula evaluator + lookup()/rollup() + ripple
   importer.py filters.py coerce values; list/report filter clauses
   workflow.py triggers.py  status graphs; event rules + notifications
+  approvals.py sla.py topology.py  approvals on transitions; SLA clocks; record impact-map
+  jobs.py crypto.py        atomic cross-worker job claim; EncryptedText (secrets at rest)
+  oidc.py totp.py          OIDC single sign-on; TOTP two-factor
   connectors.py feeds.py   outbound HTTP + feed engine
   pull.py scheduler.py     inbound polling; the job runner + ticker
   reporting.py dashboards.py  group-by/charts; dashboard tiles
@@ -120,11 +149,13 @@ tests/   unit + integration (biggy_test); conftest.py fixtures
 ### Data model (`app_*` tables)
 Metadata: `app_meta_table/field/relation/form/form_field/menu`, `app_workflow`,
 `app_trigger_rule`, `app_unique`, `app_sequence`, `app_data_source`. Access/identity:
-`app_user`, `app_role`, `app_meta_permission`, `app_field_permission`, `app_api_token`.
+`app_user` (also `totp_secret`/`mfa_enabled`/`mfa_backup_codes`/`oidc_subject` for
+2FA/SSO), `app_role`, `app_meta_permission`, `app_field_permission`, `app_api_token`.
 Runtime/UX: `app_audit_log`, `app_attachment`, `app_saved_view`, `app_notification`,
-`app_report`, `app_dashboard`, `app_dashboard_widget`. Integrations: `app_connection`,
-`app_feed`, `app_webhook`, `app_pull_source`. (User data tables are separate, created
-by the designer.)
+`app_report`, `app_dashboard`, `app_dashboard_widget`. ITSM/CMDB: `app_sla_policy`,
+`app_sla_clock`, `app_approval_step`, `app_approval_request`, `app_approval_action`.
+Integrations/ops: `app_connection`, `app_feed`, `app_webhook`, `app_pull_source`,
+`app_rate_hit`. (User data tables are separate, created by the designer.)
 
 ---
 
@@ -169,6 +200,15 @@ Extend `dashboards.render` (a new `kind` branch) + `DashboardWidget` + the
 - **Roles** (`designer`/`user` + custom), per-form and per-field permissions, row
   ownership, soft-delete. API requests act *as* the token's user, so the same checks
   apply.
+- **Sign-in:** local password, optional **TOTP 2FA** (second factor checked *before*
+  `login_user`; `REQUIRE_MFA` forces enrollment) and optional **OIDC SSO** (state +
+  nonce, ID-token signature/`iss`/`aud`/`exp`/`nonce` verified; link-existing by default,
+  JIT optional).
+- **Secrets at rest:** connection/data-source/webhook/pull secrets and the TOTP secret
+  are Fernet-encrypted (`crypto.EncryptedText`, key from `BIGGY_ENCRYPTION_KEY` or
+  `SECRET_KEY`). Backup codes are stored hashed.
+- **Multi-worker safety:** scheduled jobs are atomically claimed (`jobs.claim_due`) and
+  the rate limiter is DB-backed, so duplicates can't occur across workers.
 
 ## Testing
 
@@ -176,7 +216,9 @@ Extend `dashboards.render` (a new `kind` branch) + `DashboardWidget` + the
   (skipped if unavailable); a second `biggy_test2` and a temp SQLite source exercise
   multi-source / portability. Fixtures in `conftest.py`.
 - The connectors **loopback transport** (`connectors.set_transport`) routes outbound
-  HTTP through a test client, so feeds/pull/chaining are tested without sockets.
+  HTTP through a test client, so feeds/pull/chaining are tested without sockets;
+  `oidc.set_transport` likewise stubs the IdP (discovery/JWKS/token), so SSO — including
+  RSA-signed ID-token verification — is tested with no network.
 - `record_service`, `schema_io`, and the field-type pipeline are the highest-leverage
   things to test when you change them.
 
