@@ -117,12 +117,13 @@ def mfa():
             shown_codes = plain
             flash("New backup codes generated — the old ones no longer work.", "success")
 
-    secret = uri = None
+    secret = uri = qr = None
     if not user.mfa_enabled:
         secret = web_session.get("_mfa_setup_secret") or totp.new_secret()
         web_session["_mfa_setup_secret"] = secret
         uri = totp.provisioning_uri(secret, user.username)
-    return render_template("auth/mfa.html", user=user, form=form, secret=secret, uri=uri,
+        qr = totp.qr_svg(uri)
+    return render_template("auth/mfa.html", user=user, form=form, secret=secret, uri=uri, qr=qr,
                            shown_codes=shown_codes,
                            backup_remaining=totp.backup_count(user.mfa_backup_codes))
 

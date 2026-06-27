@@ -4115,6 +4115,7 @@ def _enroll_mfa(app, client):
     """Enable MFA for the logged-in user; return (secret, backup_codes)."""
     from app import totp
     page = client.get("/auth/mfa").get_data(as_text=True)
+    assert "<svg" in page                            # the setup page renders a scannable QR
     secret = re.search(r"secret=([A-Z2-7]+)", page).group(1)
     resp = client.post("/auth/mfa", data={"action": "enable", "code": totp.now_code(secret)},
                        follow_redirects=True).get_data(as_text=True)

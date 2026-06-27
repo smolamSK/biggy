@@ -33,8 +33,12 @@
     {% else %}
       <p class="muted">Add your account to an authenticator app (Google Authenticator, Authy,
         1Password, …), then enter the 6-digit code it shows to confirm.</p>
+      {% if qr %}
+        <div style="width:180px;max-width:100%;margin:.5rem 0">{{ qr|safe }}</div>
+        <p class="muted">Scan the QR code with your authenticator app — or set it up manually:</p>
+      {% endif %}
       <ol>
-        <li>Scan or paste this setup URI into your app:
+        <li>Paste this setup URI into your app:
           <pre style="white-space:pre-wrap;word-break:break-all;margin:.3rem 0">{{ uri }}</pre></li>
         <li>Or enter the key manually: <code>{{ secret }}</code></li>
       </ol>

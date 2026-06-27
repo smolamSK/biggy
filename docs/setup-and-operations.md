@@ -203,8 +203,8 @@ password makes an SSO-only account). Register the redirect URI over HTTPS in pro
 ### Two-factor authentication (MFA)
 
 Users can enable **TOTP** two-factor (Google Authenticator / Authy / 1Password / …) for
-their own account under **Account → Two-factor**: add the shown `otpauth://` URI (or the
-key) to an authenticator app and confirm a 6-digit code. Login then asks for the code as a
+their own account under **Account → Two-factor**: **scan the QR code** (or paste the
+`otpauth://` URI / key) into an authenticator app and confirm a 6-digit code. Login then asks for the code as a
 second step; one-time **backup codes** are issued for recovery. A designer can **reset a
 user's MFA** from the user-edit page (lost device).
 

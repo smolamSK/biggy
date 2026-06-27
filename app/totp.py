@@ -60,6 +60,27 @@ def provisioning_uri(secret, username, issuer="Biggy"):
             f"&issuer={quote(issuer)}&digits={_DIGITS}&period={_STEP}")
 
 
+def qr_svg(data):
+    """Inline SVG QR code for ``data`` (server-rendered, no network), or ``None``.
+
+    Generated locally with ``qrcode`` so the secret never leaves the host. Falls back
+    to ``None`` if the library is unavailable — the page then shows the URI + key.
+    """
+    if not data:
+        return None
+    try:
+        import io
+        import qrcode
+        import qrcode.image.svg
+
+        buf = io.BytesIO()
+        qrcode.make(data, image_factory=qrcode.image.svg.SvgPathImage).save(buf)
+        svg = buf.getvalue().decode("utf-8")
+        return svg.split("?>", 1)[-1].strip() if svg.startswith("<?xml") else svg
+    except Exception:  # noqa: BLE001 - the QR is a convenience; never break enrollment
+        return None
+
+
 # --------------------------------------------------------------------------- #
 # Backup codes (one-time; stored hashed)
 # --------------------------------------------------------------------------- #
