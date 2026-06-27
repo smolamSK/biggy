@@ -8,6 +8,7 @@ import json
 from flask import (
     Blueprint,
     Response,
+    abort,
     current_app,
     flash,
     jsonify,
@@ -63,6 +64,7 @@ from ..metadata.models import (
     ACCESS_LEVELS,
     ACCESS_WRITE,
     AppUser,
+    ApprovalStep,
     Attachment,
     AuditLog,
     CompositeUnique,
@@ -2410,6 +2412,76 @@ def sla_policy_delete(policy_id):
         session.commit()
         flash("SLA policy deleted.", "info")
     return redirect(url_for("designer.sla_policies"))
+
+
+# --------------------------------------------------------------------------- #
+# Approval steps (attached to workflow transitions)
+# --------------------------------------------------------------------------- #
+@bp.route("/approvals")
+def approvals():
+    session = _s()
+    items = []
+    for w in session.scalars(select(Workflow).order_by(Workflow.id)):
+        n_steps = session.scalar(select(func.count()).select_from(ApprovalStep)
+                                 .where(ApprovalStep.workflow_id == w.id)) or 0
+        items.append({"wf": w, "field": session.get(MetaField, w.field_id),
+                      "table": session.get(MetaTable, w.table_id),
+                      "n_transitions": len(workflow.transitions(w)), "n_steps": n_steps})
+    return render_template("designer/approvals.html", items=items)
+
+
+@bp.route("/approvals/<int:workflow_id>")
+def approval_steps(workflow_id):
+    session = _s()
+    wf = session.get(Workflow, workflow_id)
+    if not wf:
+        flash("Workflow not found.", "danger")
+        return redirect(url_for("designer.approvals"))
+    steps = session.scalars(select(ApprovalStep).where(ApprovalStep.workflow_id == wf.id)
+                            .order_by(ApprovalStep.position, ApprovalStep.id)).all()
+    by_trans = {}
+    for s in steps:
+        by_trans.setdefault((s.from_state, s.to_state), []).append(s)
+    return render_template("designer/approval_steps.html", wf=wf,
+                           table=session.get(MetaTable, wf.table_id),
+                           field=session.get(MetaField, wf.field_id),
+                           transitions=workflow.transitions(wf), by_trans=by_trans,
+                           roles=[r.name for r in session.scalars(select(Role).order_by(Role.name))],
+                           users=session.scalars(select(AppUser).order_by(AppUser.username)).all())
+
+
+@bp.route("/approvals/<int:workflow_id>/steps", methods=["POST"])
+def approval_step_add(workflow_id):
+    session = _s()
+    wf = session.get(Workflow, workflow_id)
+    if not wf:
+        abort(404)
+    frm, to = request.form.get("from_state"), request.form.get("to_state")
+    if not frm or not to:
+        flash("Pick a transition.", "warning")
+        return redirect(url_for("designer.approval_steps", workflow_id=workflow_id))
+    session.add(ApprovalStep(
+        workflow_id=wf.id, from_state=frm, to_state=to,
+        position=request.form.get("position", type=int) or 1,
+        name=request.form.get("name") or None,
+        approver_role=request.form.get("approver_role") or None,
+        approver_user_id=request.form.get("approver_user_id", type=int) or None))
+    session.commit()
+    flash("Approval step added.", "success")
+    return redirect(url_for("designer.approval_steps", workflow_id=workflow_id))
+
+
+@bp.route("/approval-steps/<int:step_id>/delete", methods=["POST"])
+def approval_step_delete(step_id):
+    session = _s()
+    step = session.get(ApprovalStep, step_id)
+    wfid = step.workflow_id if step else None
+    if step:
+        session.delete(step)
+        session.commit()
+        flash("Approval step deleted.", "info")
+    return redirect(url_for("designer.approval_steps", workflow_id=wfid) if wfid
+                    else url_for("designer.approvals"))
 
 
 # --------------------------------------------------------------------------- #

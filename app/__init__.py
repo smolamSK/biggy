@@ -119,9 +119,10 @@ def _register_context(app):
         from .db import SessionLocal
         from .metadata.models import MetaTable, Notification
 
-        nav, designer_tables, unread = [], [], 0
+        nav, designer_tables, unread, pending_appr = [], [], 0, 0
         try:
             if current_user.is_authenticated:
+                from . import approvals
                 session = SessionLocal()
                 nav = [m for m in menu_tree()
                        if menu_visible(session, current_user, m)]
@@ -132,8 +133,9 @@ def _register_context(app):
                 unread = session.scalar(select(func.count()).select_from(Notification).where(
                     Notification.channel == "in_app", Notification.user_id == current_user.id,
                     Notification.status == "unread")) or 0
+                pending_appr = approvals.pending_count_for_user(session, current_user)
         except Exception:  # noqa: BLE001 - never break rendering on menu/table errors
-            nav, designer_tables, unread = [], [], 0
+            nav, designer_tables, unread, pending_appr = [], [], 0, 0
 
         def can_see(item):
             try:
@@ -151,7 +153,7 @@ def _register_context(app):
         return {"nav_menu": nav, "current_user": current_user,
                 "menu_url": menu_url, "designer_tables": designer_tables,
                 "menu_can_see": can_see, "can_view": can_view,
-                "unread_notifications": unread}
+                "unread_notifications": unread, "pending_approvals": pending_appr}
 
 
 def _register_cli(app):

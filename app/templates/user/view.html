@@ -40,6 +40,43 @@
 </div>
 {% endif %}
 
+{% if approval_reqs %}
+<div class="panel" style="max-width:680px">
+  <strong>Approvals</strong>
+  {% for r in approval_reqs %}
+    {% set req = r.req %}
+    {% set hue = 'amber' if req.state == 'pending' else ('green' if req.state == 'approved'
+                 else ('red' if req.state == 'rejected' else 'gray')) %}
+    <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--line)">
+      <span class="chip c-{{ hue }}">{{ req.state }}</span>
+      <strong>{{ req.from_state }} → {{ req.to_state }}</strong>
+      {% if req.state == 'pending' and r.n_positions > 1 %}
+        <span class="muted">step {{ req.current_position }} of {{ r.n_positions }}</span>{% endif %}
+      {% if r.actions %}
+        <table class="grid" style="margin-top:.4rem">
+          <tr><th>By</th><th>Decision</th><th>Comment</th><th>When</th></tr>
+          {% for a in r.actions %}
+            <tr><td>{{ a.user }}</td>
+              <td><span class="chip c-{{ 'green' if a.decision == 'approve' else 'red' }}">{{ a.decision }}</span></td>
+              <td>{{ a.comment or '' }}</td><td class="muted">{{ a.at }}</td></tr>
+          {% endfor %}
+        </table>
+      {% endif %}
+      {% if can_approve.get(req.id) %}
+        <form method="post" action="{{ url_for('user.approval_act', request_id=req.id) }}"
+              class="toolbar" style="margin-top:.4rem;flex-wrap:wrap">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="next" value="{{ request.path }}">
+          <input type="text" name="comment" placeholder="Comment (optional)" style="flex:1;min-width:12rem">
+          <button class="btn sm primary" name="decision" value="approve" type="submit">Approve</button>
+          <button class="btn sm danger" name="decision" value="reject" type="submit">Reject</button>
+        </form>
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 {% set details %}
 <div class="panel" style="max-width:680px">
   <table class="grid">

@@ -1,0 +1,25 @@
+{% extends "designer/_base.html" %}
+{% block title %}Approvals · Biggy{% endblock %}
+{% block inner %}
+<h1>Approvals</h1>
+<p class="muted">Require multi-step sign-off on a workflow transition. A transition needs
+  approval once it has one or more steps. Pick a workflow to manage its transitions' steps.</p>
+
+<div class="panel">
+  <table class="grid">
+    <tr><th>Table</th><th>Status field</th><th>Transitions</th><th>Steps</th><th></th></tr>
+    {% for it in items %}
+      <tr>
+        <td>{{ it.table.label if it.table else '—' }}</td>
+        <td>{{ it.field.label if it.field else '—' }}</td>
+        <td class="muted">{{ it.n_transitions }}</td>
+        <td>{{ it.n_steps }}</td>
+        <td class="actions"><a class="btn sm" href="{{ url_for('designer.approval_steps', workflow_id=it.wf.id) }}">Manage steps</a></td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="muted">No workflows yet. Create one in
+        <a href="{{ url_for('designer.workflows') }}">Model → Workflows</a>, then add approval steps to its transitions.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

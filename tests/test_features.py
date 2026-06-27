@@ -12,6 +12,10 @@ from sqlalchemy import func, select, text
 from app.db import SessionLocal, get_engine
 from app import data_service, file_store
 from app.metadata.models import (
+    AppUser,
+    ApprovalAction,
+    ApprovalRequest,
+    ApprovalStep,
     Attachment,
     AuditLog,
     MetaField,
@@ -24,6 +28,7 @@ from app.metadata.models import (
     SavedView,
     SlaClock,
     SlaPolicy,
+    Workflow,
 )
 
 
@@ -3830,3 +3835,127 @@ def test_sla_engine(app, client):
         assert p is not None
         f = s.get(MetaField, p.status_field_id)
         assert f is not None and f.phys_name == "status"      # field ref remapped, not dangling
+
+
+def _login_client(app, username):
+    c = app.test_client()
+    _ok(c.post("/auth/login", data=dict(username=username, password="pw123456"),
+               follow_redirects=True))
+    return c
+
+
+def _pk_of(app, table_phys, title):
+    with app.app_context():
+        with get_engine().connect() as c:
+            return c.execute(text(f"SELECT id FROM {table_phys} WHERE title=:t"),
+                             {"t": title}).scalar()
+
+
+def test_approval_workflow(app, client):
+    _setup(client)
+    tid = _make_table(client, app, "change_req", "Change", "title")
+    _add_field(client, tid, "status", "enum", enum_options="draft\nsubmitted\napproved\nrejected")
+    fid = _make_form(client, app, "change_form", "Changes", tid)
+    status_fid = _fid(app, "change_req", "status")
+
+    with app.app_context():
+        s = SessionLocal()
+        s.add(Workflow(table_id=tid, field_id=status_fid, initial_state="draft",
+                       transitions=json.dumps([
+                           {"from": "draft", "to": "submitted", "roles": []},
+                           {"from": "submitted", "to": "approved", "roles": []},
+                           {"from": "submitted", "to": "rejected", "roles": []}])))
+        s.commit()
+        wf_id = s.scalar(select(Workflow.id).where(Workflow.field_id == status_fid))
+
+    for r in ("manager", "director"):
+        _ok(client.post("/designer/roles", data={"name": r, "label": r.title()},
+                        follow_redirects=True))
+    for u, r in (("mgr", "manager"), ("dir", "director"), ("bob", "user")):
+        _ok(client.post("/auth/users/new",
+                        data=dict(username=u, password="pw123456", role=r, is_active="y"),
+                        follow_redirects=True))
+    mgr, dir_, bob = (_login_client(app, "mgr"), _login_client(app, "dir"),
+                      _login_client(app, "bob"))
+
+    # two sequential approval steps on submitted -> approved (via the designer route)
+    for pos, name, role in ((1, "Manager", "manager"), (2, "Director", "director")):
+        _ok(client.post(f"/designer/approvals/{wf_id}/steps",
+                        data={"from_state": "submitted", "to_state": "approved",
+                              "position": str(pos), "name": name, "approver_role": role},
+                        follow_redirects=True))
+    _ok(client.get("/designer/approvals"))
+    _ok(client.get(f"/designer/approvals/{wf_id}"))
+
+    # bob creates + submits (draft->submitted is a direct transition)
+    _ok(bob.post(f"/u/forms/{fid}/new", data={"title": "C1", "status": "draft"},
+                 follow_redirects=True))
+    pk = _pk_of(app, "change_req", "C1")
+    _ok(bob.post(f"/u/forms/{fid}/{pk}/edit", data={"title": "C1", "status": "submitted"},
+                 follow_redirects=True))
+    assert _col("change_req", pk, "status") == "submitted"
+
+    # bob requests submitted -> approved : HELD, a pending request is created
+    _ok(bob.post(f"/u/forms/{fid}/{pk}/edit", data={"title": "C1", "status": "approved"},
+                 follow_redirects=True))
+    assert _col("change_req", pk, "status") == "submitted"        # not moved
+    with app.app_context():
+        s = SessionLocal()
+        req = s.scalar(select(ApprovalRequest).where(ApprovalRequest.state == "pending"))
+        assert req and (req.from_state, req.to_state, req.current_position) == ("submitted", "approved", 1)
+        req_id = req.id
+        bob_u = s.scalar(select(AppUser).where(AppUser.username == "bob"))
+        mgr_u = s.scalar(select(AppUser).where(AppUser.username == "mgr"))
+        from app import approvals
+        assert not approvals.can_act(s, req, bob_u)              # requester can't self-approve
+        assert approvals.can_act(s, req, mgr_u)
+
+    # manager sees it in the inbox and approves -> advances to position 2 (still held)
+    assert "approved" in mgr.get("/u/approvals").get_data(as_text=True)
+    _ok(mgr.post(f"/u/approvals/{req_id}/act", data={"decision": "approve", "comment": "ok"},
+                 follow_redirects=True))
+    assert _col("change_req", pk, "status") == "submitted"
+    with app.app_context():
+        req = SessionLocal().get(ApprovalRequest, req_id)
+        assert req.state == "pending" and req.current_position == 2
+
+    # director approves -> the transition is applied for real
+    _ok(dir_.post(f"/u/approvals/{req_id}/act", data={"decision": "approve", "comment": "go"},
+                  follow_redirects=True))
+    assert _col("change_req", pk, "status") == "approved"
+    with app.app_context():
+        s = SessionLocal()
+        assert s.get(ApprovalRequest, req_id).state == "approved"
+        n = s.scalar(select(func.count()).select_from(ApprovalAction)
+                     .where(ApprovalAction.request_id == req_id))
+        assert n == 2                                            # the sign-off trail
+
+    # reject path: a second record, manager rejects -> record stays put
+    _ok(bob.post(f"/u/forms/{fid}/new", data={"title": "C2", "status": "draft"},
+                 follow_redirects=True))
+    pk2 = _pk_of(app, "change_req", "C2")
+    _ok(bob.post(f"/u/forms/{fid}/{pk2}/edit", data={"title": "C2", "status": "submitted"},
+                 follow_redirects=True))
+    _ok(bob.post(f"/u/forms/{fid}/{pk2}/edit", data={"title": "C2", "status": "approved"},
+                 follow_redirects=True))
+    with app.app_context():
+        req2_id = SessionLocal().scalar(select(ApprovalRequest.id).where(
+            ApprovalRequest.row_pk == str(pk2), ApprovalRequest.state == "pending"))
+    _ok(mgr.post(f"/u/approvals/{req2_id}/act", data={"decision": "reject", "comment": "no"},
+                 follow_redirects=True))
+    assert _col("change_req", pk2, "status") == "submitted"      # not moved
+    with app.app_context():
+        assert SessionLocal().get(ApprovalRequest, req2_id).state == "rejected"
+
+    # schema export/import round-trips the steps with a remapped workflow id
+    exp = client.get("/designer/schema/export.json")
+    _ok(exp)
+    assert len(json.loads(exp.get_data())["approval_steps"]) == 2
+    _ok(client.post("/designer/schema/import",
+                    data={"file": (io.BytesIO(exp.get_data()), "s.json"), "replace_existing": "y"},
+                    content_type="multipart/form-data"))
+    with app.app_context():
+        s = SessionLocal()
+        new_wf = s.scalar(select(Workflow))
+        assert s.scalar(select(func.count()).select_from(ApprovalStep)
+                        .where(ApprovalStep.workflow_id == new_wf.id)) == 2

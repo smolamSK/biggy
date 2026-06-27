@@ -6,7 +6,7 @@ from flask import Blueprint, g, jsonify, render_template, request, url_for
 from flask_login import current_user
 from sqlalchemy import select
 
-from .. import record_service, workflow
+from .. import approvals, record_service, workflow
 from ..db import SessionLocal, engine_for_table, get_engine
 from ..helpers import (
     current_user_id, readable_fields, table_readable, table_writable, writable_fields,
@@ -234,9 +234,13 @@ def bulk_update(table):
             payload = {k: v for k, v in rec.items() if k != "id"}
             values = serialization.deserialize(mt, payload, session, engine,
                                                partial=True, writable=writable)
+            diverted = approvals.plan_diversions(session, mt, old, values)
             workflow.check(session, mt, old, values, current_user)
             if values:
                 record_service.update(session, engine, mt, pk, values, current_user_id())
+            for d in diverted:
+                approvals.request_transition(session, engine, mt, d["wf"], pk,
+                                             d["frm"], d["to"], current_user)
             updated.append(pk)
         except Exception as exc:  # noqa: BLE001
             session.rollback()
@@ -283,6 +287,7 @@ def update_row(table, pk):
                                            partial=True, writable=writable_fields(session, current_user, mt))
     except serialization.ApiError as exc:
         return _err(400, str(exc))
+    diverted = approvals.plan_diversions(session, mt, old, values)
     try:
         workflow.check(session, mt, old, values, current_user)
     except workflow.WorkflowError as exc:
@@ -292,8 +297,14 @@ def update_row(table, pk):
             record_service.update(session, engine, mt, pk, values, current_user_id())
         except Exception as exc:  # noqa: BLE001
             return _err(409, f"Could not update: {exc}")
+    for d in diverted:
+        approvals.request_transition(session, engine, mt, d["wf"], pk, d["frm"], d["to"], current_user)
     row = record_service.get_record(engine, mt, pk, user_id=user_id, is_designer=is_designer)
-    return jsonify(serialization.serialize_row(row, _hidden(session, mt)))
+    result = serialization.serialize_row(row, _hidden(session, mt))
+    if diverted:
+        result["_pending_approvals"] = [
+            {"field": d["field"].phys_name, "from": d["frm"], "to": d["to"]} for d in diverted]
+    return jsonify(result)
 
 
 @bp.route("/<table>/<int:pk>", methods=["DELETE"])

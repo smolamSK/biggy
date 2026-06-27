@@ -764,3 +764,66 @@ class SlaClock(Base):
     breached_at: Mapped[datetime | None] = mapped_column(DateTime)
     breach_notified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
+class ApprovalStep(Base):
+    """One approver requirement on a workflow transition (run by :mod:`app.approvals`).
+
+    A transition ``from_state → to_state`` of a [[Workflow]] **requires approval** iff
+    it has one or more steps. ``position`` orders them: same position = parallel (all
+    must approve), different positions run sequentially. Each step is satisfied when an
+    eligible approver (``approver_role`` — matched against ``AppUser.role`` — or the
+    specific ``approver_user_id``; designers always qualify) approves it. Part of the
+    app design — included in schema export/import.
+    """
+    __tablename__ = "app_approval_step"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    workflow_id: Mapped[int] = mapped_column(
+        ForeignKey("app_workflow.id", ondelete="CASCADE"), nullable=False
+    )
+    from_state: Mapped[str] = mapped_column(String(64), nullable=False)
+    to_state: Mapped[str] = mapped_column(String(64), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    name: Mapped[str | None] = mapped_column(String(120))
+    approver_role: Mapped[str | None] = mapped_column(String(20))
+    approver_user_id: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
+class ApprovalRequest(Base):
+    """A held transition awaiting sign-off (runtime state — not exported).
+
+    Created when a user requests an approval-required transition; the record stays in
+    ``from_state`` until every step approves (then [[ApprovalAction]]s drive it to
+    ``to_state``) or one rejects. ``current_position`` is the step group being voted on.
+    """
+    __tablename__ = "app_approval_request"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    workflow_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    table_phys: Mapped[str] = mapped_column(String(64), nullable=False)
+    row_pk: Mapped[str] = mapped_column(String(255), nullable=False)
+    from_state: Mapped[str] = mapped_column(String(64), nullable=False)
+    to_state: Mapped[str] = mapped_column(String(64), nullable=False)
+    state: Mapped[str] = mapped_column(String(10), default="pending", nullable=False)
+    current_position: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    requested_by: Mapped[int | None] = mapped_column(Integer)
+    requested_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+
+class ApprovalAction(Base):
+    """One approve/reject decision on an [[ApprovalRequest]] — the sign-off trail."""
+    __tablename__ = "app_approval_action"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    request_id: Mapped[int] = mapped_column(
+        ForeignKey("app_approval_request.id", ondelete="CASCADE"), nullable=False
+    )
+    step_id: Mapped[int | None] = mapped_column(Integer)
+    position: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    user_id: Mapped[int | None] = mapped_column(Integer)
+    decision: Mapped[str] = mapped_column(String(10), nullable=False)  # approve|reject
+    comment: Mapped[str | None] = mapped_column(Text)
+    at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)

@@ -19,6 +19,9 @@ from .identifiers import junction_name, validate_identifier
 from .metadata import ddl, schema_service
 from .metadata.field_types import ALL_TYPES, FILE_TYPES, RELATION_TYPE
 from .metadata.models import (
+    ApprovalAction,
+    ApprovalRequest,
+    ApprovalStep,
     CompositeUnique,
     Connection,
     Dashboard,
@@ -77,6 +80,8 @@ _DASHBOARD_COLS = ["id", "name", "description", "columns", "position"]
 _WIDGET_COLS = ["id", "dashboard_id", "title", "kind", "table_id", "query", "chart_type",
                 "content", "width", "limit", "position"]
 _WORKFLOW_COLS = ["id", "table_id", "field_id", "initial_state", "transitions", "layout"]
+_APPROVAL_STEP_COLS = ["id", "workflow_id", "from_state", "to_state", "position", "name",
+                       "approver_role", "approver_user_id"]
 _TRIGGER_COLS = ["id", "table_id", "name", "active", "event", "field_id", "from_state",
                  "to_state", "cond_field_id", "cond_op", "cond_value", "in_app",
                  "notify_target", "notify_user_id", "message", "email_to", "email_subject",
@@ -140,6 +145,8 @@ def export_schema(session):
                           for tr in session.scalars(select(TriggerRule).order_by(TriggerRule.id))],
         "sla_policies": [_dump(p, _SLA_POLICY_COLS)
                          for p in session.scalars(select(SlaPolicy).order_by(SlaPolicy.id))],
+        "approval_steps": [_dump(s, _APPROVAL_STEP_COLS)
+                           for s in session.scalars(select(ApprovalStep).order_by(ApprovalStep.id))],
         "roles": [_dump(r, _ROLE_COLS)
                   for r in session.scalars(select(Role).order_by(Role.id))],
         "field_permissions": [_dump(p, _FIELDPERM_COLS)
@@ -234,10 +241,10 @@ def wipe_model(session, engine):
     for eng, names in drops.values():
         _drop_physical(eng, names)
     session.execute(update(MetaMenu).values(parent_id=None))
-    for model in (SlaClock, SlaPolicy, TriggerRule, Feed, Webhook, PullSource, Connection,
-                  DashboardWidget, Dashboard, MetaFieldPermission, CompositeUnique, Sequence,
-                  Workflow, MetaPermission, MetaMenu, MetaRelation, MetaFormField, MetaForm,
-                  MetaField, MetaTable, DataSource):
+    for model in (ApprovalAction, ApprovalRequest, ApprovalStep, SlaClock, SlaPolicy,
+                  TriggerRule, Feed, Webhook, PullSource, Connection, DashboardWidget, Dashboard,
+                  MetaFieldPermission, CompositeUnique, Sequence, Workflow, MetaPermission,
+                  MetaMenu, MetaRelation, MetaFormField, MetaForm, MetaField, MetaTable, DataSource):
         session.execute(delete(model))
     session.commit()
 
@@ -456,15 +463,19 @@ def import_schema(session, engine, data, replace=False):
                 session.add(MetaPermission(role=p["role"], form_id=form_id,
                                            access=p.get("access", "write")))
 
-        # 8. workflows (remap table_id + field_id)
+        # 8. workflows (remap table_id + field_id; keep old→new id for approval steps)
+        wfmap = {}
         for w in data.get("workflows", []):
             table_id = tmap.get(w.get("table_id"))
             field_id = fmap.get(w.get("field_id"))
             if table_id and field_id:
-                session.add(Workflow(
-                    table_id=table_id, field_id=field_id,
-                    initial_state=w.get("initial_state"),
-                    transitions=w.get("transitions"), layout=w.get("layout")))
+                wf = Workflow(table_id=table_id, field_id=field_id,
+                              initial_state=w.get("initial_state"),
+                              transitions=w.get("transitions"), layout=w.get("layout"))
+                session.add(wf)
+                session.flush()
+                if w.get("id") is not None:
+                    wfmap[w["id"]] = wf.id
 
         # 9. trigger rules (remap table + field references; users aren't in schema)
         for tr in data.get("trigger_rules", []):
@@ -494,6 +505,17 @@ def import_schema(session, engine, data, replace=False):
                 kwargs[ref] = fmap.get(sp.get(ref))
             kwargs.setdefault("target_minutes", 60)
             session.add(SlaPolicy(table_id=table_id, **kwargs))
+
+        # 9c. approval steps (remap workflow_id; users aren't in schema → keep id as-is)
+        for sp in data.get("approval_steps", []):
+            wid = wfmap.get(sp.get("workflow_id"))
+            if not wid or not sp.get("from_state") or not sp.get("to_state"):
+                continue
+            session.add(ApprovalStep(
+                workflow_id=wid, from_state=sp["from_state"], to_state=sp["to_state"],
+                position=sp.get("position", 1), name=sp.get("name"),
+                approver_role=sp.get("approver_role"),
+                approver_user_id=sp.get("approver_user_id")))
 
         # 10. roles (upsert by name) + field permissions (remap field_id)
         have_roles = {r.name for r in session.scalars(select(Role))}

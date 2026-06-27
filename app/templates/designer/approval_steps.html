@@ -1,0 +1,57 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import delete_form %}
+{% block title %}Approval steps · {{ table.label }}{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">Approval steps — {{ table.label }} · {{ field.label }}</h1>
+  <span style="flex:1"></span>
+  <a class="btn" href="{{ url_for('designer.approvals') }}">Back</a>
+</div>
+<p class="muted">Add approvers to a transition to require sign-off. Same <strong>position</strong>
+  = parallel (all must approve); different positions run in sequence. A step is met by an
+  eligible approver — any user with the chosen <strong>role</strong>, or a specific <strong>user</strong>.</p>
+
+{% if not transitions %}
+  <div class="panel"><p class="muted">This workflow has no transitions yet. Add some in
+    <a href="{{ url_for('designer.workflow_edit', wf_id=wf.id) }}">the workflow editor</a>.</p></div>
+{% endif %}
+
+{% for t in transitions %}
+  {% set key = (t['from'], t['to']) %}
+  <div class="panel">
+    <h2 style="margin:.2rem 0">{{ t['from'] }} → {{ t['to'] }}
+      {% if by_trans.get(key) %}<span class="chip c-amber">requires approval</span>{% endif %}</h2>
+    <table class="grid">
+      <tr><th>Pos</th><th>Name</th><th>Approver</th><th></th></tr>
+      {% for s in by_trans.get(key, []) %}
+        <tr>
+          <td>{{ s.position }}</td>
+          <td>{{ s.name or '—' }}</td>
+          <td>{% if s.approver_user_id %}user #{{ s.approver_user_id }}
+              {%- elif s.approver_role %}role: {{ s.approver_role }}{% else %}anyone{% endif %}</td>
+          <td class="actions">{{ delete_form(url_for('designer.approval_step_delete', step_id=s.id), 'Delete', 'Delete this step?') }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" class="muted">No steps — this transition does not require approval.</td></tr>
+      {% endfor %}
+    </table>
+    <form method="post" action="{{ url_for('designer.approval_step_add', workflow_id=wf.id) }}"
+          class="toolbar" style="flex-wrap:wrap;margin-top:.4rem;gap:.4rem">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="from_state" value="{{ t['from'] }}">
+      <input type="hidden" name="to_state" value="{{ t['to'] }}">
+      <label>Pos <input type="number" name="position" value="1" min="1" style="width:4rem"></label>
+      <input type="text" name="name" placeholder="Step name (optional)">
+      <label>Role
+        <select name="approver_role"><option value="">—</option>
+          {% for r in roles %}<option value="{{ r }}">{{ r }}</option>{% endfor %}
+        </select></label>
+      <label>or User
+        <select name="approver_user_id"><option value="">—</option>
+          {% for u in users %}<option value="{{ u.id }}">{{ u.username }}</option>{% endfor %}
+        </select></label>
+      <button class="btn sm primary" type="submit">Add step</button>
+    </form>
+  </div>
+{% endfor %}
+{% endblock %}

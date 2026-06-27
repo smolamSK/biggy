@@ -40,6 +40,7 @@
         <a href="{{ url_for('auth.users') }}">Users</a>
         <a href="{{ url_for('core.connection') }}">Connection</a>
       {% endif %}
+      <a href="{{ url_for('user.approvals_inbox') }}" title="Approvals">✓{% if pending_approvals %} <span class="badge">{{ pending_approvals }}</span>{% endif %}</a>
       <a href="{{ url_for('user.notifications') }}" title="Notifications">🔔{% if unread_notifications %} <span class="badge">{{ unread_notifications }}</span>{% endif %}</a>
       <a href="{{ url_for('core.help_page', topic='user') }}" title="Help">Help</a>
       <a href="{{ url_for('auth.account') }}" class="muted" title="Account">{{ current_user.username }}</a>

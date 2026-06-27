@@ -1,0 +1,35 @@
+{% extends "user/_base.html" %}
+{% from "_macros.html" import record_link with context %}
+{% block title %}Approvals · Biggy{% endblock %}
+{% block inner %}
+<h1>Approvals</h1>
+<p class="muted">Transitions awaiting your sign-off.</p>
+
+<div class="panel">
+  <table class="grid">
+    <tr><th>Record</th><th>Change</th><th>Step</th><th>Waiting on</th><th></th></tr>
+    {% for it in items %}
+      {% set req = it.req %}
+      <tr>
+        <td>{% if it.table_id %}{{ record_link(it.table_id, req.row_pk, req.table_phys ~ ' #' ~ req.row_pk) }}
+            {% else %}{{ req.table_phys }} #{{ req.row_pk }}{% endif %}</td>
+        <td><strong>{{ req.from_state }} → {{ req.to_state }}</strong></td>
+        <td class="muted">{% if it.n_positions > 1 %}{{ it.step_no }} of {{ it.n_positions }}{% else %}—{% endif %}</td>
+        <td class="muted">{{ it.waiting }}</td>
+        <td class="actions">
+          <form method="post" action="{{ url_for('user.approval_act', request_id=req.id) }}"
+                class="toolbar" style="margin:0;flex-wrap:wrap;gap:.3rem">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ url_for('user.approvals_inbox') }}">
+            <input type="text" name="comment" placeholder="Comment" style="width:8rem">
+            <button class="btn sm primary" name="decision" value="approve" type="submit">Approve</button>
+            <button class="btn sm danger" name="decision" value="reject" type="submit">Reject</button>
+          </form>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="muted">Nothing awaiting your approval.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

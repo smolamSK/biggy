@@ -24,7 +24,7 @@ from flask import (
 from flask_login import current_user, login_required
 from sqlalchemy import select
 
-from .. import dashboards, data_service, feeds, file_store, list_export, record_service, reporting, sla, topology, workflow
+from .. import approvals, dashboards, data_service, feeds, file_store, list_export, record_service, reporting, sla, topology, workflow
 from .. import filters as filt
 from .. import importer
 from ..api import tokens as api_tokens
@@ -37,6 +37,7 @@ from ..metadata.field_types import RELATION_TYPE, type_label
 from ..metadata.models import (
     ApiToken,
     AppUser,
+    ApprovalRequest,
     Attachment,
     AuditLog,
     Dashboard,
@@ -317,6 +318,38 @@ def notifications_read():
         n.status = "read"
     session.commit()
     return redirect(url_for("user.notifications"))
+
+
+@bp.route("/approvals")
+def approvals_inbox():
+    session = _s()
+    table_ids = {t.phys_name: t.id for t in session.scalars(select(MetaTable))}
+    items = []
+    for req in approvals.pending_for_user(session, current_user):
+        steps = approvals.steps_for(session, req.workflow_id, req.from_state, req.to_state)
+        cur = [s for s in steps if s.position == req.current_position]
+        items.append({"req": req, "table_id": table_ids.get(req.table_phys),
+                      "waiting": ", ".join(s.name or s.approver_role or "approver" for s in cur),
+                      "step_no": req.current_position,
+                      "n_positions": len(sorted({s.position for s in steps}))})
+    return render_template("user/approvals.html", items=items)
+
+
+@bp.route("/approvals/<int:request_id>/act", methods=["POST"])
+def approval_act(request_id):
+    session = _s()
+    req = session.get(ApprovalRequest, request_id)
+    if not req:
+        abort(404)
+    decision = request.form.get("decision")
+    if decision not in ("approve", "reject"):
+        abort(400)
+    try:
+        approvals.act(session, req, current_user, decision, request.form.get("comment"))
+        flash(f"Request {decision}d.", "success")
+    except ValueError as exc:
+        flash(str(exc), "danger")
+    return redirect(_safe_next(url_for("user.approvals_inbox")))
 
 
 @bp.route("/tokens/<int:token_id>/revoke", methods=["POST"])
@@ -824,11 +857,21 @@ def cell_update(form_id, pk):
                                     user_id=user_id, is_designer=is_designer)
     if not old:
         abort(404)
+    values = {col: value}
+    diverted = approvals.plan_diversions(session, mf.table, old, values)
     try:  # honour status-workflow transitions here too (not just on the edit form)
-        workflow.check(session, mf.table, old, {col: value}, current_user)
+        workflow.check(session, mf.table, old, values, current_user)
     except workflow.WorkflowError as exc:
         return jsonify(ok=False, error=str(exc)), 409
-    record_service.update(session, engine, mf.table, pk, {col: value}, user_id)
+    for d in diverted:
+        approvals.request_transition(session, engine, mf.table, d["wf"], pk,
+                                     d["frm"], d["to"], current_user)
+    if values:
+        record_service.update(session, engine, mf.table, pk, values, user_id)
+    if diverted and col not in values:  # this cell's change is held for approval
+        held = old.get(col)
+        return jsonify(ok=True, pending=True, display=_cell_display(field, held),
+                       value=_cell_value(field, held))
     return jsonify(ok=True, display=_cell_display(field, value),
                    value=_cell_value(field, value))
 
@@ -844,10 +887,11 @@ def _save_record(form_id, pk, clone_from):
         form = built.form_class()
         if form.validate():
             values, mn = _collect(built, form)
-            ok = True
+            ok, diverted = True, []
             if pk is not None:
                 old = record_service.get_record(engine, mf.table, pk,
                                                 user_id=user_id, is_designer=is_designer) or {}
+                diverted = approvals.plan_diversions(session, mf.table, old, values)
                 try:
                     workflow.check(session, mf.table, old, values, current_user)
                 except workflow.WorkflowError as exc:
@@ -857,7 +901,11 @@ def _save_record(form_id, pk, clone_from):
                 if pk is None:
                     new_pk = record_service.create(session, engine, mf.table, values, user_id)
                 else:
-                    record_service.update(session, engine, mf.table, pk, values, user_id)
+                    if values:
+                        record_service.update(session, engine, mf.table, pk, values, user_id)
+                    for d in diverted:
+                        approvals.request_transition(session, engine, mf.table, d["wf"], pk,
+                                                     d["frm"], d["to"], current_user)
                     new_pk = pk
                 for item, ids in mn:
                     data_service.set_links(
@@ -866,7 +914,11 @@ def _save_record(form_id, pk, clone_from):
                 for item in built.items:
                     if item.kind == "file":
                         _save_attachments(session, item, new_pk)
-                flash("Saved.", "success")
+                if diverted:
+                    flash("Submitted for approval: " + ", ".join(
+                        f"{d['frm']} → {d['to']}" for d in diverted), "success")
+                else:
+                    flash("Saved.", "success")
                 return redirect(_safe_next(url_for("user.form_list", form_id=form_id)))
     else:
         defaults = {}
@@ -934,7 +986,11 @@ def _apply_workflow_choices(session, engine, mf, built, form, pk, user_id, is_de
         if field is None:
             continue
         if pk is not None:
-            choices = workflow.allowed_choices(wf, current.get(it.column), current_user)
+            cur = current.get(it.column)
+            choices = workflow.allowed_choices(wf, cur, current_user)
+            for c in approvals.extra_choices(session, wf, cur):  # approval-required targets
+                if c not in choices:
+                    choices.append(c)
             field.choices = [(c, c) for c in choices]
         elif wf.initial_state and not field.data:
             field.data = wf.initial_state
@@ -1148,10 +1204,14 @@ def record_view(table_id, pk):
                              parent_url=url_for("user.record_view", table_id=table_id, pk=pk))
     history = _history(session, view_form, pk) if table.track_audit else []
     sla_clocks = sla.clocks_for_record(session, table_id, table.phys_name, pk)
+    approval_reqs = approvals.requests_for_record(session, table.phys_name, pk)
+    can_approve = {r["req"].id: approvals.can_act(session, r["req"], current_user)
+                   for r in approval_reqs}
     return render_template("user/view.html", table=table, pk=pk, label=label, items=items,
                            edit_url=edit_url, deleted=bool(row.get("deleted_at")),
                            send_form_id=send_form_id, related=related, history=history,
-                           sla_clocks=sla_clocks)
+                           sla_clocks=sla_clocks, approval_reqs=approval_reqs,
+                           can_approve=can_approve)
 
 
 @bp.route("/topology/<int:table_id>/<pk>")
