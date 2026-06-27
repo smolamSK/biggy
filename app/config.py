@@ -62,6 +62,18 @@ class Config:
     # authenticated user without MFA is forced to enroll before using the app.
     REQUIRE_MFA = _as_bool(os.environ.get("REQUIRE_MFA"))
 
+    # SSO via OpenID Connect (see app/oidc.py). Enabled once issuer + client id are set.
+    OIDC_ISSUER = os.environ.get("OIDC_ISSUER")
+    OIDC_CLIENT_ID = os.environ.get("OIDC_CLIENT_ID")
+    OIDC_CLIENT_SECRET = os.environ.get("OIDC_CLIENT_SECRET")
+    OIDC_SCOPES = os.environ.get("OIDC_SCOPES", "openid email profile")
+    OIDC_REDIRECT_URI = os.environ.get("OIDC_REDIRECT_URI")  # blank → derived from the request
+    OIDC_USERNAME_CLAIM = os.environ.get("OIDC_USERNAME_CLAIM", "email")
+    OIDC_PROVISION = os.environ.get("OIDC_PROVISION", "link")  # link | jit
+    OIDC_DEFAULT_ROLE = os.environ.get("OIDC_DEFAULT_ROLE", "user")
+    OIDC_BUTTON_LABEL = os.environ.get("OIDC_BUTTON_LABEL", "Sign in with SSO")
+    OIDC_ENABLED = bool(OIDC_ISSUER and OIDC_CLIENT_ID)
+
     # Encryption at rest for secret columns. A urlsafe-base64 Fernet key; when blank,
     # a stable key is derived from SECRET_KEY (rotating either makes old ciphertext
     # unreadable — see app/crypto.py and `flask encrypt-secrets`).

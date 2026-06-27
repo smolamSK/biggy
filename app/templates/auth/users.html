@@ -23,4 +23,16 @@
     {% endfor %}
   </table>
 </div>
+
+<h2>Bulk import</h2>
+<div class="panel">
+  <p class="muted">One user per line: <code>username,role[,password]</code>. Existing usernames
+    are skipped; a blank password creates an SSO-only account (no local sign-in until set).</p>
+  <form method="post" action="{{ url_for('auth.users_bulk') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <textarea name="rows" rows="6" style="width:100%;font-family:var(--font-mono)"
+              placeholder="alice@acme.com,user&#10;bob@acme.com,designer,initialpw"></textarea>
+    <button class="btn primary" type="submit">Import users</button>
+  </form>
+</div>
 {% endblock %}

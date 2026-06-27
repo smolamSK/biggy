@@ -4184,3 +4184,170 @@ def test_require_mfa_enforcement(app, client):
         _ok(client.get("/auth/mfa"))                 # the enroll page itself is reachable
     finally:
         app.config["REQUIRE_MFA"] = False
+
+
+# --------------------------------------------------------------------------- #
+# SSO (OIDC) — stub IdP: real RSA-signed tokens verified against a served JWKS
+# --------------------------------------------------------------------------- #
+def _b64u(b):
+    import base64
+    return base64.urlsafe_b64encode(b).decode("ascii").rstrip("=")
+
+
+def _oidc_setup(app):
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    import app.oidc as oidc
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    pub = key.public_key().public_numbers()
+    holder = {"id_token": None}
+    jwks = {"keys": [{"kty": "RSA", "kid": "k1", "use": "sig", "alg": "RS256",
+                      "n": _b64u(pub.n.to_bytes((pub.n.bit_length() + 7) // 8, "big")),
+                      "e": _b64u(pub.e.to_bytes((pub.e.bit_length() + 7) // 8, "big"))}]}
+    disco = {"issuer": "https://idp.test", "authorization_endpoint": "https://idp.test/auth",
+             "token_endpoint": "https://idp.test/token", "jwks_uri": "https://idp.test/jwks"}
+
+    def transport(method, url, headers, body):
+        if url.endswith("openid-configuration"):
+            return 200, json.dumps(disco)
+        if url.endswith("/jwks"):
+            return 200, json.dumps(jwks)
+        if url.endswith("/token"):
+            return 200, json.dumps({"id_token": holder["id_token"], "access_token": "a"})
+        return 404, "{}"
+
+    oidc.set_transport(transport)
+    oidc.reset_caches()
+    app.config.update(OIDC_ISSUER="https://idp.test", OIDC_CLIENT_ID="cid",
+                      OIDC_CLIENT_SECRET="sec", OIDC_ENABLED=True, OIDC_PROVISION="link")
+    return key, holder
+
+
+def _oidc_teardown(app):
+    import app.oidc as oidc
+    oidc.set_transport(None)
+    oidc.reset_caches()
+    app.config.update(OIDC_ENABLED=False, OIDC_PROVISION="link")
+
+
+def _sign(key, claims, alg="RS256", kid="k1"):
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import padding
+    head = _b64u(json.dumps({"alg": alg, "kid": kid}).encode())
+    payload = _b64u(json.dumps(claims).encode())
+    sig = key.sign((head + "." + payload).encode("ascii"), padding.PKCS1v15(), hashes.SHA256())
+    return f"{head}.{payload}.{_b64u(sig)}"
+
+
+def _sso_flow(client, key, holder, claims):
+    """Drive /auth/oidc/login → callback; the token carries the app-issued nonce."""
+    import re as _re
+    import time as _t
+    loc = client.get("/auth/oidc/login").headers["Location"]
+    state = _re.search(r"state=([^&]+)", loc).group(1)
+    nonce = _re.search(r"nonce=([^&]+)", loc).group(1)
+    full = {"iss": "https://idp.test", "aud": "cid", "sub": "sub-1",
+            "exp": int(_t.time()) + 300, "iat": int(_t.time()), "nonce": nonce}
+    full.update(claims)
+    holder["id_token"] = _sign(key, full)
+    return client.get(f"/auth/oidc/callback?code=x&state={state}")
+
+
+def test_oidc_login_links_existing(app, client):
+    _setup(client)
+    _ok(client.post("/auth/users/new",
+                    data=dict(username="alice@acme.com", password="pw123456", role="user",
+                              is_active="y"), follow_redirects=True))
+    client.get("/auth/logout")
+    key, holder = _oidc_setup(app)
+    try:
+        assert "oidc/login" in client.get("/auth/login").get_data(as_text=True)  # SSO button
+        r = _sso_flow(client, key, holder, {"email": "alice@acme.com", "sub": "alice-sub"})
+        assert r.status_code == 302
+        assert client.get("/auth/account").status_code == 200          # logged in
+        with app.app_context():
+            u = SessionLocal().scalar(select(AppUser).where(AppUser.username == "alice@acme.com"))
+            assert u.oidc_subject == "alice-sub"                       # linked for next time
+    finally:
+        _oidc_teardown(app)
+
+
+def test_oidc_refuses_unknown_in_link_mode(app, client):
+    _setup(client)
+    client.get("/auth/logout")
+    key, holder = _oidc_setup(app)
+    try:
+        r = _sso_flow(client, key, holder, {"email": "nobody@acme.com", "sub": "x"})
+        assert r.status_code == 302 and "/auth/login" in r.headers["Location"]
+        assert client.get("/auth/account").status_code == 302         # not authenticated
+        with app.app_context():
+            assert SessionLocal().scalar(
+                select(AppUser).where(AppUser.username == "nobody@acme.com")) is None
+    finally:
+        _oidc_teardown(app)
+
+
+def test_oidc_jit_provision(app, client):
+    _setup(client)
+    client.get("/auth/logout")
+    key, holder = _oidc_setup(app)
+    app.config["OIDC_PROVISION"] = "jit"
+    try:
+        r = _sso_flow(client, key, holder, {"email": "newbie@acme.com", "sub": "new-sub"})
+        assert r.status_code == 302 and client.get("/auth/account").status_code == 200
+        with app.app_context():
+            u = SessionLocal().scalar(select(AppUser).where(AppUser.username == "newbie@acme.com"))
+            assert u and u.role == "user" and u.oidc_subject == "new-sub"
+    finally:
+        _oidc_teardown(app)
+
+
+def test_oidc_rejects_bad_token(app, client):
+    import time as _t
+    _setup(client)
+    key, holder = _oidc_setup(app)
+    try:
+        import app.oidc as oidc
+        with app.app_context():
+            base = {"iss": "https://idp.test", "aud": "cid", "sub": "s", "email": "e@x.y",
+                    "exp": int(_t.time()) + 300, "iat": int(_t.time()), "nonce": "N"}
+            assert oidc.verify_id_token(_sign(key, base), "N")["sub"] == "s"   # good token
+
+            def _rejected(token, nonce="N"):
+                try:
+                    oidc.verify_id_token(token, nonce)
+                    return False
+                except oidc.OidcError:
+                    return True
+
+            assert _rejected(_sign(key, dict(base, aud="other")))             # wrong audience
+            assert _rejected(_sign(key, dict(base, exp=int(_t.time()) - 100)))  # expired
+            assert _rejected(_sign(key, base), nonce="DIFFERENT")             # nonce mismatch
+            assert _rejected(_sign(key, dict(base, iss="https://evil.test"))) # issuer mismatch
+            tok = _sign(key, base)                                            # tampered signature
+            h, p, s = tok.split(".")
+            assert _rejected(f"{h}.{p}.{('a' if s[0] != 'a' else 'b') + s[1:]}")
+            none_tok = _b64u(json.dumps({"alg": "none"}).encode()) + "." \
+                + _b64u(json.dumps(base).encode()) + "."
+            assert _rejected(none_tok)                                        # alg 'none' refused
+
+        # state mismatch is refused at the route level
+        client.get("/auth/oidc/login")
+        r = client.get("/auth/oidc/callback?code=x&state=WRONGSTATE")
+        assert r.status_code == 302 and "/auth/login" in r.headers["Location"]
+    finally:
+        _oidc_teardown(app)
+
+
+def test_bulk_user_import(app, client):
+    _setup(client)
+    rows = "alice,user,pw123456\nbob,designer\n# a comment\nboss,user\ncarol,nosuchrole"
+    res = client.post("/auth/users/bulk", data={"rows": rows},
+                      follow_redirects=True).get_data(as_text=True)
+    assert "2 created" in res and "1 skipped" in res and "1 error" in res   # boss exists; bad role
+    with app.app_context():
+        s = SessionLocal()
+        alice = s.scalar(select(AppUser).where(AppUser.username == "alice"))
+        bob = s.scalar(select(AppUser).where(AppUser.username == "bob"))
+        assert alice.role == "user" and alice.check_password("pw123456")
+        assert bob.role == "designer" and not bob.check_password("")        # SSO-only / unusable pw
+        assert s.scalar(select(AppUser).where(AppUser.username == "carol")) is None

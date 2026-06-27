@@ -57,6 +57,7 @@ class AppUser(Base, UserMixin):
     totp_secret: Mapped[str | None] = mapped_column(EncryptedText)
     mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     mfa_backup_codes: Mapped[str | None] = mapped_column(Text)  # JSON list of sha256 hashes
+    oidc_subject: Mapped[str | None] = mapped_column(String(255), unique=True)  # linked SSO 'sub'
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
     def set_password(self, password):

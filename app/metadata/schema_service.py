@@ -132,6 +132,7 @@ _META_ADDITIONS = {
         {"name": "totp_secret", "type": Text()},
         {"name": "mfa_enabled", "type": Boolean(), "nullable": False, "default": "false"},
         {"name": "mfa_backup_codes", "type": Text()},
+        {"name": "oidc_subject", "type": String(255)},
     ],
     "app_meta_relation": [
         {"name": "to_display_field_ids", "type": Text()},

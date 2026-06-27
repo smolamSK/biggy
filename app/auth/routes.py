@@ -1,6 +1,10 @@
 """Authentication and (designer-only) user management."""
+import secrets
+
 from flask import (
     Blueprint,
+    abort,
+    current_app,
     flash,
     redirect,
     render_template,
@@ -10,12 +14,13 @@ from flask import (
 )
 from flask_login import current_user, login_required, login_user, logout_user
 from sqlalchemy import select
+from werkzeug.security import generate_password_hash
 
-from .. import totp
+from .. import oidc, totp
 from ..db import SessionLocal
 from ..forms.admin_forms import LoginForm, MfaCodeForm, PasswordChangeForm, UserForm
 from ..helpers import designer_required, ensure_roles
-from ..metadata.models import AppUser, Role
+from ..metadata.models import AppUser, ROLE_USER, Role
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -149,6 +154,91 @@ def account():
 
 
 # --------------------------------------------------------------------------- #
+# SSO (OpenID Connect)
+# --------------------------------------------------------------------------- #
+def _oidc_redirect_uri():
+    return current_app.config.get("OIDC_REDIRECT_URI") \
+        or url_for("auth.oidc_callback", _external=True)
+
+
+@bp.route("/oidc/login")
+def oidc_login():
+    if not current_app.config.get("OIDC_ENABLED"):
+        abort(404)
+    state, nonce = secrets.token_urlsafe(24), secrets.token_urlsafe(24)
+    web_session["_oidc_state"] = state
+    web_session["_oidc_nonce"] = nonce
+    web_session["_oidc_next"] = request.args.get("next") or ""
+    try:
+        return redirect(oidc.authorize_url(state, nonce, _oidc_redirect_uri()))
+    except oidc.OidcError as exc:
+        flash(f"SSO is unavailable: {exc}", "danger")
+        return redirect(url_for("auth.login"))
+
+
+@bp.route("/oidc/callback")
+def oidc_callback():
+    if not current_app.config.get("OIDC_ENABLED"):
+        abort(404)
+    if request.args.get("error"):
+        flash(f"SSO error: {request.args.get('error')}", "danger")
+        return redirect(url_for("auth.login"))
+    state = request.args.get("state")
+    if not state or state != web_session.pop("_oidc_state", None):
+        flash("SSO state mismatch — please try again.", "danger")
+        return redirect(url_for("auth.login"))
+    nonce = web_session.pop("_oidc_nonce", None)
+    nxt = web_session.pop("_oidc_next", "")
+    code = request.args.get("code")
+    if not code:
+        flash("SSO did not return a code.", "danger")
+        return redirect(url_for("auth.login"))
+    try:
+        tokens = oidc.exchange_code(code, _oidc_redirect_uri())
+        claims = oidc.verify_id_token(tokens["id_token"], nonce)
+    except oidc.OidcError as exc:
+        flash(f"SSO sign-in failed: {exc}", "danger")
+        return redirect(url_for("auth.login"))
+
+    user = _map_oidc_user(claims)
+    if not user:
+        flash("No Biggy account is linked to this identity.", "danger")
+        return redirect(url_for("auth.login"))
+    if not user.is_active:
+        flash("That account is inactive.", "danger")
+        return redirect(url_for("auth.login"))
+    login_user(user)
+    return redirect(nxt or url_for("core.index"))
+
+
+def _map_oidc_user(claims):
+    """Map verified OIDC claims to an AppUser (link existing; JIT-create if configured)."""
+    sub = claims.get("sub")
+    if not sub:
+        return None
+    session = SessionLocal()
+    user = session.scalar(select(AppUser).where(AppUser.oidc_subject == sub))
+    if user:
+        return user
+    claim = current_app.config.get("OIDC_USERNAME_CLAIM", "email")
+    uname = claims.get(claim) or claims.get("email") or claims.get("preferred_username")
+    if uname:
+        user = session.scalar(select(AppUser).where(AppUser.username == uname))
+        if user:                                  # link this identity for future logins
+            user.oidc_subject = sub
+            session.commit()
+            return user
+    if current_app.config.get("OIDC_PROVISION") == "jit" and uname:
+        user = AppUser(username=uname, oidc_subject=sub, is_active_flag=True,
+                       role=current_app.config.get("OIDC_DEFAULT_ROLE", "user"))
+        user.password_hash = generate_password_hash("oidc-" + secrets.token_urlsafe(32))
+        session.add(user)
+        session.commit()
+        return user
+    return None
+
+
+# --------------------------------------------------------------------------- #
 # User management (designer only)
 # --------------------------------------------------------------------------- #
 @bp.route("/users")
@@ -158,6 +248,42 @@ def users():
     session = SessionLocal()
     rows = session.scalars(select(AppUser).order_by(AppUser.username)).all()
     return render_template("auth/users.html", users=rows)
+
+
+@bp.route("/users/bulk", methods=["POST"])
+@login_required
+@designer_required
+def users_bulk():
+    """Create many users at once from pasted ``username,role[,password]`` lines."""
+    session = SessionLocal()
+    ensure_roles(session)
+    valid_roles = {r.name for r in session.scalars(select(Role))}
+    created = skipped = errors = 0
+    for line in (request.form.get("rows") or "").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = [p.strip() for p in line.split(",")]
+        username = parts[0]
+        role = parts[1] if len(parts) > 1 and parts[1] else ROLE_USER
+        password = parts[2] if len(parts) > 2 else ""
+        if not username or role not in valid_roles:
+            errors += 1
+            continue
+        if session.scalar(select(AppUser).where(AppUser.username == username)):
+            skipped += 1
+            continue
+        user = AppUser(username=username, role=role, is_active_flag=True)
+        if password:
+            user.set_password(password)
+        else:                       # no password → SSO-only / awaiting an admin reset
+            user.password_hash = generate_password_hash("set-" + secrets.token_urlsafe(24))
+        session.add(user)
+        created += 1
+    session.commit()
+    flash(f"Bulk import: {created} created, {skipped} skipped (existing), {errors} error(s).",
+          "success" if created else "info")
+    return redirect(url_for("auth.users"))
 
 
 @bp.route("/users/new", methods=["GET", "POST"])

@@ -178,6 +178,28 @@ Manage and "Run now" jobs in the UI at **Designer → Admin → Scheduled jobs**
 - **Outbound** connectors/feeds and trigger webhooks call out over HTTP — restrict
   egress as appropriate.
 
+### Single sign-on (OIDC)
+
+Biggy can delegate login to an OpenID Connect provider (Google Workspace, Microsoft
+Entra, Okta, Keycloak, …). Set the variables below and a **"Sign in with SSO"** button
+appears on the login page; the callback verifies the ID token (RS256 signature against the
+provider's JWKS, plus `iss`/`aud`/`exp`/`nonce`) before establishing a session.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `OIDC_ISSUER` | — | Issuer URL (discovery at `<issuer>/.well-known/openid-configuration`). Set with `OIDC_CLIENT_ID` to enable SSO. |
+| `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | — | The app registration's credentials. |
+| `OIDC_REDIRECT_URI` | *(derived)* | The callback; register `https://<host>/auth/oidc/callback` at the provider. |
+| `OIDC_SCOPES` | `openid email profile` | Requested scopes. |
+| `OIDC_USERNAME_CLAIM` | `email` | The claim matched to a Biggy `username`. |
+| `OIDC_PROVISION` | `link` | `link` = sign in only **existing** users (matched by the claim above; the IdP `sub` is then linked); `jit` = auto-create a user on first login. |
+| `OIDC_DEFAULT_ROLE` | `user` | Role for JIT-created users. |
+| `OIDC_BUTTON_LABEL` | `Sign in with SSO` | Login-button text. |
+
+SSO logs the user straight in (the IdP owns MFA). With `link` mode, pre-create accounts —
+see **Bulk import** on the *Users* page (paste `username,role[,password]` lines; a blank
+password makes an SSO-only account). Register the redirect URI over HTTPS in production.
+
 ### Two-factor authentication (MFA)
 
 Users can enable **TOTP** two-factor (Google Authenticator / Authy / 1Password / …) for
