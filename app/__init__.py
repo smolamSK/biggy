@@ -207,6 +207,31 @@ def _register_cli(app):
         click.echo("Ran jobs — triggers: {triggers}, feeds: {feeds}, pulls: {pulls}, "
                    "reports: {reports}, sla: {sla}.".format(**summary))
 
+    @app.cli.command("encrypt-secrets")
+    def encrypt_secrets():
+        """Re-write secret columns so any legacy plaintext is encrypted at rest."""
+        from sqlalchemy import select
+        from sqlalchemy.orm.attributes import flag_modified
+
+        from .db import SessionLocal
+        from .metadata.models import Connection, DataSource, PullSource, Webhook
+
+        session = SessionLocal()
+        targets = [(Connection, ["token"]), (DataSource, ["password"]),
+                   (Webhook, ["secret"]), (PullSource, ["auth_secret", "headers"])]
+        total = 0
+        for model, fields in targets:
+            n = 0
+            for obj in session.scalars(select(model)):
+                if any(getattr(obj, f) is not None for f in fields):
+                    for f in fields:
+                        flag_modified(obj, f)
+                    n += 1
+            total += n
+            click.echo(f"  {model.__tablename__}: {n} row(s) re-encrypted")
+        session.commit()
+        click.echo(f"Re-encrypted secrets in {total} row(s).")
+
     @app.cli.command("dump-examples")
     @click.argument("directory", default="examples")
     def dump_examples(directory):

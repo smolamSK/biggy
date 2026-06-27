@@ -18,17 +18,21 @@ from app.metadata.models import (
     ApprovalStep,
     Attachment,
     AuditLog,
+    Connection,
+    DataSource,
     MetaField,
     MetaForm,
     MetaFormField,
     MetaPermission,
     MetaTable,
     Notification,
+    PullSource,
     RateHit,
     ReportDef,
     SavedView,
     SlaClock,
     SlaPolicy,
+    Webhook,
     Workflow,
 )
 
@@ -4014,3 +4018,73 @@ def test_docker_artifacts_present():
     df, dc = open("Dockerfile").read(), open("docker-compose.yml").read()
     assert "gunicorn" in df and "run:app" in df
     assert "run-jobs" in dc and "mariadb" in dc
+
+
+def test_secrets_encrypted_at_rest(app, client):
+    """The 5 secret columns are ciphertext in the DB but plaintext to the ORM."""
+    import app.crypto as crypto
+    _setup(client)
+    tid = _make_table(client, app, "ci", "CI", "name")
+    with app.app_context():
+        s = SessionLocal()
+        conn = Connection(name="peer", base_url="http://x", token="tok-SECRET")
+        ds = DataSource(name="src", password="pw-SECRET")
+        wh = Webhook(name="wh", target_table_id=tid, token_hash="h" * 16, prefix="pfx",
+                     secret="hmac-SECRET")
+        ps = PullSource(name="ps", target_table_id=tid, auth_secret="bearer-SECRET",
+                        headers='{"Authorization":"Bearer XYZ"}')
+        s.add_all([conn, ds, wh, ps])
+        s.commit()
+        ids = (conn.id, ds.id, wh.id, ps.id)
+
+    checks = [("app_connection", "token", ids[0], "tok-SECRET"),
+              ("app_data_source", "password", ids[1], "pw-SECRET"),
+              ("app_webhook", "secret", ids[2], "hmac-SECRET"),
+              ("app_pull_source", "auth_secret", ids[3], "bearer-SECRET"),
+              ("app_pull_source", "headers", ids[3], '{"Authorization":"Bearer XYZ"}')]
+    with app.app_context():
+        with get_engine().connect() as c:
+            for tbl, col, rid, plain in checks:
+                raw = c.execute(text(f"SELECT {col} FROM {tbl} WHERE id=:i"), {"i": rid}).scalar()
+                assert raw != plain                       # stored as ciphertext
+                assert crypto.decrypt(raw) == plain       # which round-trips back
+        s = SessionLocal()                                # ORM read returns plaintext
+        assert s.get(Connection, ids[0]).token == "tok-SECRET"
+        assert s.get(DataSource, ids[1]).password == "pw-SECRET"
+        assert s.get(Webhook, ids[2]).secret == "hmac-SECRET"
+        assert s.get(PullSource, ids[3]).auth_secret == "bearer-SECRET"
+        assert s.get(PullSource, ids[3]).headers == '{"Authorization":"Bearer XYZ"}'
+
+
+def test_legacy_plaintext_secret_readable(app, client):
+    """A secret written before encryption (raw plaintext) still reads back via fallback."""
+    _setup(client)
+    with app.app_context():
+        with get_engine().begin() as c:
+            c.execute(text("INSERT INTO app_connection (name, base_url, token, active, created_at) "
+                           "VALUES ('legacy', 'http://x', 'PLAINTEXT-TOKEN', 1, NOW())"))
+        s = SessionLocal()
+        conn = s.scalar(select(Connection).where(Connection.name == "legacy"))
+        assert conn.token == "PLAINTEXT-TOKEN"            # decrypt-with-fallback
+
+
+def test_encrypt_secrets_cli(app, client):
+    """`encrypt-secrets` migrates legacy plaintext rows to ciphertext."""
+    import app.crypto as crypto
+    _setup(client)
+    with app.app_context():
+        with get_engine().begin() as c:
+            c.execute(text("INSERT INTO app_connection (name, base_url, token, active, created_at) "
+                           "VALUES ('lc', 'http://x', 'LEGACY-PLAIN', 1, NOW())"))
+        with get_engine().connect() as c:
+            assert c.execute(text("SELECT token FROM app_connection WHERE name='lc'")).scalar() \
+                == "LEGACY-PLAIN"
+
+    app.test_cli_runner().invoke(args=["encrypt-secrets"])
+
+    with app.app_context():
+        with get_engine().connect() as c:
+            raw = c.execute(text("SELECT token FROM app_connection WHERE name='lc'")).scalar()
+        assert raw != "LEGACY-PLAIN" and crypto.decrypt(raw) == "LEGACY-PLAIN"
+        s = SessionLocal()
+        assert s.scalar(select(Connection).where(Connection.name == "lc")).token == "LEGACY-PLAIN"

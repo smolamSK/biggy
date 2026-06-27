@@ -26,6 +26,8 @@ from sqlalchemy.orm import (
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 
+from ..crypto import EncryptedText
+
 
 def _utcnow():
     return datetime.now(timezone.utc)
@@ -467,7 +469,7 @@ class Connection(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     base_url: Mapped[str] = mapped_column(String(400), nullable=False)
-    token: Mapped[str | None] = mapped_column(String(255))
+    token: Mapped[str | None] = mapped_column(EncryptedText)   # encrypted at rest
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     last_check_at: Mapped[datetime | None] = mapped_column(DateTime)
     last_status: Mapped[str | None] = mapped_column(String(255))
@@ -490,7 +492,7 @@ class DataSource(Base):
     host: Mapped[str | None] = mapped_column(String(255))
     port: Mapped[int | None] = mapped_column(Integer)
     username: Mapped[str | None] = mapped_column(String(120))
-    password: Mapped[str | None] = mapped_column(String(255))
+    password: Mapped[str | None] = mapped_column(EncryptedText)   # encrypted at rest
     database: Mapped[str | None] = mapped_column(String(120))
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     last_check_at: Mapped[datetime | None] = mapped_column(DateTime)
@@ -560,7 +562,7 @@ class Webhook(Base):
     )
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     prefix: Mapped[str] = mapped_column(String(20), nullable=False)
-    secret: Mapped[str | None] = mapped_column(String(255))   # optional HMAC shared secret
+    secret: Mapped[str | None] = mapped_column(EncryptedText)  # optional HMAC shared secret (encrypted at rest)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     mode: Mapped[str] = mapped_column(String(10), default="create", nullable=False)  # create|upsert
     match_field: Mapped[str | None] = mapped_column(String(64))   # target col for upsert
@@ -600,10 +602,10 @@ class PullSource(Base):
     )
     remote_table: Mapped[str | None] = mapped_column(String(64))   # peer: remote table name
     url: Mapped[str | None] = mapped_column(String(400))           # rest: GET URL
-    headers: Mapped[str | None] = mapped_column(Text)              # rest: JSON headers (secret)
+    headers: Mapped[str | None] = mapped_column(EncryptedText)     # rest: JSON headers, secret (encrypted at rest)
     records_path: Mapped[str | None] = mapped_column(String(120))  # rest: dotted path to the array
     config: Mapped[str | None] = mapped_column(Text)               # advanced options (JSON; see app.pull)
-    auth_secret: Mapped[str | None] = mapped_column(String(255))   # bearer/api-key/basic secret
+    auth_secret: Mapped[str | None] = mapped_column(EncryptedText)  # bearer/api-key/basic secret (encrypted at rest)
     field_map: Mapped[str | None] = mapped_column(Text)  # JSON [{"target","source"}]
     mode: Mapped[str] = mapped_column(String(10), default="upsert", nullable=False)  # upsert|create
     match_field: Mapped[str | None] = mapped_column(String(64))    # local col for upsert

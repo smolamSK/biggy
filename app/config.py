@@ -58,6 +58,11 @@ class Config:
     # threshold (minutes before the deadline) for the on_track→due_soon state.
     SLA_DEFAULT_WARN_MINUTES = int(os.environ.get("SLA_DEFAULT_WARN_MINUTES", "30"))
 
+    # Encryption at rest for secret columns. A urlsafe-base64 Fernet key; when blank,
+    # a stable key is derived from SECRET_KEY (rotating either makes old ciphertext
+    # unreadable — see app/crypto.py and `flask encrypt-secrets`).
+    BIGGY_ENCRYPTION_KEY = os.environ.get("BIGGY_ENCRYPTION_KEY")
+
     # Dependency / impact map (topology view). Depth is user-adjustable in the UI,
     # clamped to MAX_DEPTH; MAX_NODES bounds query fan-out for a single map.
     TOPOLOGY_DEFAULT_DEPTH = int(os.environ.get("TOPOLOGY_DEFAULT_DEPTH", "2"))

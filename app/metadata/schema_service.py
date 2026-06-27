@@ -176,9 +176,19 @@ _META_ADDITIONS = {
     ],
     "app_pull_source": [
         {"name": "config", "type": Text()},
-        {"name": "auth_secret", "type": String(255)},
+        {"name": "auth_secret", "type": Text()},   # encrypted at rest (ciphertext > 255 chars)
+        {"name": "schedule_minutes", "type": Integer()},
     ],
 }
+
+# Columns widened to TEXT after the initial release (now hold encrypted ciphertext,
+# which exceeds the original VARCHAR length). Applied idempotently after the adds.
+_META_WIDENINGS = [
+    ("app_connection", "token"),
+    ("app_data_source", "password"),
+    ("app_webhook", "secret"),
+    ("app_pull_source", "auth_secret"),
+]
 
 
 def _spec_col(spec):
@@ -203,6 +213,10 @@ def ensure_meta_schema(engine):
             continue
         for spec in specs:
             ddl.add_column_if_missing(engine, table, _spec_col(spec))
+    # widen secret columns to TEXT on existing DBs (they now hold encrypted ciphertext)
+    for table, column in _META_WIDENINGS:
+        if table_exists(engine, table):
+            ddl.widen_to_text(engine, table, column)
 
 
 # audit / soft-delete columns added to a data table when its flags are enabled

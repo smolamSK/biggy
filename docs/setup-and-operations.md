@@ -178,6 +178,26 @@ Manage and "Run now" jobs in the UI at **Designer → Admin → Scheduled jobs**
 - **Outbound** connectors/feeds and trigger webhooks call out over HTTP — restrict
   egress as appropriate.
 
+### Encryption at rest
+
+Integration secrets — **connection tokens, data-source passwords, webhook HMAC secrets,
+and pull-source auth/headers** — are encrypted (Fernet: AES-128-CBC + HMAC) before they
+are written to the database, and decrypted only in-process. A database dump or read-only
+DB access therefore exposes ciphertext, not the secrets.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `BIGGY_ENCRYPTION_KEY` | *(derived from `SECRET_KEY`)* | A urlsafe-base64 Fernet key (`python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"`). When unset, a stable key is derived from `SECRET_KEY`. |
+
+- **Rotation caveat:** changing the key — or `SECRET_KEY` when no dedicated key is set —
+  makes existing ciphertext unreadable. Set a dedicated `BIGGY_ENCRYPTION_KEY` in
+  production and back it up.
+- **Upgrading an existing install:** reads transparently fall back to any pre-encryption
+  plaintext, which is encrypted on its next write. To migrate everything at once, run
+  `flask --app run encrypt-secrets`.
+- **Note:** schema export still includes `data_sources` passwords **in cleartext** by
+  design (an import must reconnect to recreate those tables) — keep export files secret.
+
 ---
 
 ## Backup, restore & upgrades

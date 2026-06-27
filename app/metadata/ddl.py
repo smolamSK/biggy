@@ -10,7 +10,7 @@ from contextlib import contextmanager
 
 from alembic.operations import Operations
 from alembic.runtime.migration import MigrationContext
-from sqlalchemy import inspect, text
+from sqlalchemy import Text, inspect, text
 
 
 def operations(conn):
@@ -60,3 +60,23 @@ def add_column_if_missing(engine, table_name, column):
         return
     with engine.begin() as conn:
         operations(conn).add_column(table_name, column)
+
+
+def widen_to_text(engine, table_name, column_name):
+    """Widen a bounded ``VARCHAR`` column to ``TEXT`` (idempotent; portable).
+
+    Used when a column starts holding encrypted ciphertext, which is longer than the
+    original ``String(n)``. Reflected ``TEXT`` has no ``length`` → a no-op on reruns.
+    SQLite alters via ``batch_alter_table`` (table rebuild).
+    """
+    cols = {c["name"]: c for c in inspect(engine).get_columns(table_name)}
+    col = cols.get(column_name)
+    if col is None or getattr(col["type"], "length", None) in (None, 0):
+        return  # missing, or already a TEXT/large type
+    with engine.begin() as conn:
+        ops = operations(conn)
+        if conn.dialect.name == "sqlite":
+            with ops.batch_alter_table(table_name) as batch:
+                batch.alter_column(column_name, type_=Text())
+        else:
+            ops.alter_column(table_name, column_name, type_=Text(), existing_nullable=True)
