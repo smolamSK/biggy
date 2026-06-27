@@ -4352,3 +4352,31 @@ def test_bulk_user_import(app, client):
         assert alice.role == "user" and alice.check_password("pw123456")
         assert bob.role == "designer" and not bob.check_password("")        # SSO-only / unusable pw
         assert s.scalar(select(AppUser).where(AppUser.username == "carol")) is None
+
+
+def test_netcmdb_example_sla_and_approvals(app, client):
+    """The big CMDB example carries its SLA + approval config in the schema JSON."""
+    from app import schema_io
+    from app.examples import build_netcmdb
+    from app.metadata.models import Role
+    _setup(client)
+    schema, _data = build_netcmdb()
+    with app.app_context():
+        s = SessionLocal()
+        schema_io.import_schema(s, get_engine(), schema, replace=True)   # schema only (fast)
+
+        incident = s.scalar(select(MetaTable).where(MetaTable.phys_name == "incident"))
+        pol = s.scalar(select(SlaPolicy).where(SlaPolicy.table_id == incident.id))
+        assert pol and pol.target_minutes == 240 and pol.stop_states == "resolved,closed"
+        assert s.get(MetaField, pol.status_field_id).phys_name == "status"   # field refs remapped
+        assert s.get(MetaField, pol.state_field_id).phys_name == "sla_state"
+        assert s.get(MetaField, pol.due_field_id).phys_name == "sla_due"
+        assert pol.breach_notify_target == "owner"
+
+        cr = s.scalar(select(MetaTable).where(MetaTable.phys_name == "change_request"))
+        wf = s.scalar(select(Workflow).where(Workflow.table_id == cr.id))
+        steps = s.scalars(select(ApprovalStep).where(
+            ApprovalStep.workflow_id == wf.id, ApprovalStep.from_state == "submitted",
+            ApprovalStep.to_state == "approved").order_by(ApprovalStep.position)).all()
+        assert [(x.position, x.approver_role) for x in steps] == [(1, "change_manager"), (2, "noc")]
+        assert {"change_manager", "noc"} <= {r.name for r in s.scalars(select(Role))}

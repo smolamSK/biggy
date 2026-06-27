@@ -14,9 +14,11 @@ class ModelBuilder:
     def __init__(self):
         self.tables, self.fields, self.relations = [], [], []
         self.forms, self.form_fields, self.menus, self.workflows = [], [], [], []
+        self.roles, self.sla_policies, self.approval_steps = [], [], []
         self._data = {}
         self._phys = {}
-        self._n = {"t": 0, "f": 0, "r": 0, "form": 0, "ff": 0, "m": 0, "wf": 0}
+        self._n = {"t": 0, "f": 0, "r": 0, "form": 0, "ff": 0, "m": 0, "wf": 0,
+                   "sla": 0, "ap": 0}
 
     def _id(self, key):
         self._n[key] += 1
@@ -93,10 +95,52 @@ class ModelBuilder:
 
     def workflow(self, table_id, field_id, transitions, initial, layout=None):
         """A status workflow on an enum field. ``transitions`` = [{from,to,roles}]."""
+        wf_id = self._id("wf")
         self.workflows.append({
-            "id": self._id("wf"), "table_id": table_id, "field_id": field_id,
+            "id": wf_id, "table_id": table_id, "field_id": field_id,
             "initial_state": initial, "transitions": json.dumps(transitions),
             "layout": json.dumps(layout or {}),
+        })
+        return wf_id
+
+    # --- access / ITSM ----------------------------------------------------
+    def role(self, name, label=None):
+        """A custom role (assignable to users; referenced by approval steps)."""
+        self.roles.append({"name": name, "label": label or name.replace("_", " ").title(),
+                           "builtin": False})
+        return name
+
+    def sla_policy(self, table_id, name, target_minutes, status_field_id=None,
+                   start_on_create=True, start_states=None, pause_states=None,
+                   stop_states=None, state_field_id=None, due_field_id=None,
+                   warn_minutes=None, cond_field_id=None, cond_op=None, cond_value=None,
+                   breach_in_app=False, breach_notify_target=None, breach_notify_user_id=None,
+                   breach_message=None, breach_email_to=None, breach_email_subject=None,
+                   breach_email_body=None, breach_set_field_id=None, breach_set_value=None,
+                   active=True):
+        """A service-level target on a table (see :mod:`app.sla`)."""
+        self.sla_policies.append({
+            "id": self._id("sla"), "table_id": table_id, "name": name, "active": active,
+            "target_minutes": target_minutes, "warn_minutes": warn_minutes,
+            "status_field_id": status_field_id, "start_on_create": start_on_create,
+            "start_states": start_states, "pause_states": pause_states,
+            "stop_states": stop_states, "cond_field_id": cond_field_id, "cond_op": cond_op,
+            "cond_value": cond_value, "state_field_id": state_field_id,
+            "due_field_id": due_field_id, "breach_in_app": breach_in_app,
+            "breach_notify_target": breach_notify_target,
+            "breach_notify_user_id": breach_notify_user_id, "breach_message": breach_message,
+            "breach_email_to": breach_email_to, "breach_email_subject": breach_email_subject,
+            "breach_email_body": breach_email_body, "breach_set_field_id": breach_set_field_id,
+            "breach_set_value": breach_set_value,
+        })
+
+    def approval_step(self, workflow_id, from_state, to_state, position=1, name=None,
+                      approver_role=None, approver_user_id=None):
+        """An approver requirement on a workflow transition (see :mod:`app.approvals`)."""
+        self.approval_steps.append({
+            "id": self._id("ap"), "workflow_id": workflow_id, "from_state": from_state,
+            "to_state": to_state, "position": position, "name": name,
+            "approver_role": approver_role, "approver_user_id": approver_user_id,
         })
 
     def _item(self, form_id, field_id=None, relation_id=None, required=False):
@@ -138,7 +182,8 @@ class ModelBuilder:
         return {"version": 1, "tables": self.tables, "fields": self.fields,
                 "relations": self.relations, "forms": self.forms,
                 "form_fields": self.form_fields, "menus": self.menus,
-                "workflows": self.workflows}
+                "workflows": self.workflows, "roles": self.roles,
+                "sla_policies": self.sla_policies, "approval_steps": self.approval_steps}
 
     def data(self):
         return {"version": 1, "tables": self._data}
@@ -394,6 +439,8 @@ def build_netcmdb():
     """A large network CMDB: ~12 tables, ~50 rows each, multiple status workflows."""
     b = ModelBuilder()
     N = 50
+    b.role("change_manager", "Change manager")
+    b.role("noc", "Network ops")
 
     def cyc(seq, i):
         return seq[i % len(seq)]
@@ -490,20 +537,31 @@ def build_netcmdb():
     b.field(cr, "risk", "enum", enum=["low", "medium", "high"], default="low")
     cr_st = b.field(cr, "status", "enum", enum=CR, default="draft")
     b.m1(cr, site, "site_id", "Affected site")
-    b.workflow(cr, cr_st,
-               [{"from": "draft", "to": "submitted", "roles": []},
-                {"from": "submitted", "to": "approved", "roles": ["designer"]},
-                {"from": "submitted", "to": "rejected", "roles": ["designer"]},
-                {"from": "approved", "to": "implemented", "roles": []},
-                {"from": "implemented", "to": "closed", "roles": []},
-                {"from": "rejected", "to": "draft", "roles": []}],
-               "draft", layout=lay(CR))
+    cr_wf = b.workflow(cr, cr_st,
+                       [{"from": "draft", "to": "submitted", "roles": []},
+                        # submitted→approved is governed by the approval steps below
+                        {"from": "submitted", "to": "approved", "roles": []},
+                        {"from": "submitted", "to": "rejected", "roles": ["change_manager"]},
+                        {"from": "approved", "to": "implemented", "roles": []},
+                        {"from": "implemented", "to": "closed", "roles": []},
+                        {"from": "rejected", "to": "draft", "roles": []}],
+                       "draft", layout=lay(CR))
+    # Approving a change requires sequential sign-off: the change manager, then NOC.
+    # Submitting "submitted → approved" holds the change until both approve.
+    b.approval_step(cr_wf, "submitted", "approved", position=1, name="Change manager",
+                    approver_role="change_manager")
+    b.approval_step(cr_wf, "submitted", "approved", position=2, name="NOC sign-off",
+                    approver_role="noc")
 
     INC = ["new", "triaged", "in_progress", "resolved", "closed"]
+    SLA_STATE = ["on_track", "due_soon", "paused", "met", "breached"]
     incident = b.table("incident", "Incident", track_audit=True, soft_delete=True)
     b.field(incident, "title", "string", length=160, nullable=False, display=True)
     b.field(incident, "severity", "enum", enum=["sev1", "sev2", "sev3", "sev4"], default="sev3")
     inc_st = b.field(incident, "status", "enum", enum=INC, default="new")
+    # SLA write-back fields (kept current by the SLA engine; see app.sla)
+    inc_sla_state = b.field(incident, "sla_state", "enum", label="SLA state", enum=SLA_STATE)
+    inc_sla_due = b.field(incident, "sla_due", "datetime", label="SLA due")
     b.m1(incident, site, "site_id", "Site")
     affected = b.mn(incident, router, "Affected routers")
     b.workflow(incident, inc_st,
@@ -513,6 +571,14 @@ def build_netcmdb():
                 {"from": "resolved", "to": "in_progress", "roles": []},
                 {"from": "resolved", "to": "closed", "roles": []}],
                "new", layout=lay(INC))
+    # Resolve incidents within 4 hours; the clock stops at resolved/closed, and on
+    # breach the owner is notified. Live state + deadline are written back to the
+    # fields above (so they show in lists/reports and on the record's SLA panel).
+    b.sla_policy(incident, "Resolution", target_minutes=240, status_field_id=inc_st,
+                 start_on_create=True, stop_states="resolved,closed",
+                 state_field_id=inc_sla_state, due_field_id=inc_sla_due,
+                 breach_in_app=True, breach_notify_target="owner",
+                 breach_message="SLA breached on incident: {title}")
 
     b.workflow(site, site_st,
                [{"from": "planned", "to": "building", "roles": []},
@@ -614,5 +680,7 @@ EXAMPLES = {
     "netcmdb": {"title": "Network CMDB (large)", "build": build_netcmdb,
                 "description": "12 tables (organizations, sites, racks, routers, switches, access "
                                "points, servers, subnets, circuits, change requests, incidents) with "
-                               "~50 rows each and multiple status workflows, view pages and audit/Trash."},
+                               "~50 rows each, status workflows, view pages and audit/Trash — plus an "
+                               "incident **SLA** (4h resolution) and a multi-step **approval** workflow "
+                               "on change requests."},
 }

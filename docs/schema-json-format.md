@@ -220,7 +220,8 @@ many-to-many related list via `relation_id`), `field_id`, `relation_id`,
 ### `workflows` — a state machine on an enum field
 `id`, `table_id`, `field_id` (an `enum` field), `initial_state`, `transitions`
 (JSON-string list of `{"from","to","roles":[role names]}`), `layout` (JSON string,
-`"{}"` is fine).
+`"{}"` is fine). A transition that has `approval_steps` (below) is **held** for
+sign-off instead of applying immediately.
 
 ### `trigger_rules` — when X happens, do Y
 `id`, `table_id`, `name`, `active`, `event` (`create`|`update`|`transition`|`delete`|
@@ -232,6 +233,30 @@ set `schedule_minutes` (and use a condition + a `set_field` so a row isn't acted
 twice). `cond_op` ∈ `eq, ne, contains, not_contains, starts_with, ends_with, gt,
 gte, lt, lte, empty, not_empty, is_true, is_false`. Messages support `{field}`
 placeholders.
+
+### `sla_policies` — a service-level target on a table (ITSM)
+`id`, `table_id`, `name`, `active`, `target_minutes` (the goal). A per-record clock
+starts/pauses/stops from a status field: `status_field_id` (an `enum` field) plus
+comma-separated `start_states` / `pause_states` / `stop_states` (state names, *not*
+JSON); `start_on_create` (bool). The clock measures 24×7 time (paused spans excluded);
+`warn_minutes` is the "due soon" threshold (blank = the `SLA_DEFAULT_WARN_MINUTES`
+default). The live state and deadline are **written back** to `state_field_id` (an
+`enum` field carrying `on_track`/`due_soon`/`paused`/`met`/`breached`) and
+`due_field_id` (a `datetime` field), so they show in lists/reports and can drive
+triggers. Optional applies-when: `cond_field_id`/`cond_op`/`cond_value` (same operators
+as a trigger). On breach: `breach_in_app` + `breach_notify_target`
+(`owner`|`actor`|`user`) + `breach_notify_user_id` + `breach_message`;
+`breach_email_to`/`breach_email_subject`/`breach_email_body`;
+`breach_set_field_id` + `breach_set_value`. (Per-record **clocks** are runtime — not
+exported.)
+
+### `approval_steps` — multi-step sign-off on a workflow transition
+`id`, `workflow_id` (a `workflows[].id`), `from_state`, `to_state` (the transition this
+governs), `position` (steps with the **same** position run in parallel — all must
+approve; **different** positions run in sequence), `name`, and an approver: either
+`approver_role` (any user with that role — see `roles`) **or** `approver_user_id`.
+A transition with any steps is held for sign-off; full approval applies it, any
+rejection cancels it. (The running **requests/actions** are runtime — not exported.)
 
 ### `connections`, `feeds` — push data *out* to a peer Biggy
 - `connections`: `id`, `name`, `base_url`, `active`. (The bearer `token` is a secret —
@@ -284,6 +309,7 @@ they will be applied, but be aware that an *exported* file will not contain them
 | `webhooks` | receive token (re-minted), HMAC `secret` |
 | `pull_sources` | request `headers`, `auth_secret`, `watermark` (reset to start) |
 | `feeds` | `watermark` (reset) |
+| `sla_policies` / `approval_steps` | the *config* is exported; the per-record **clocks** and approval **requests/actions** are runtime (not exported) |
 | `data_sources` | `password` **is** included (needed to recreate tables) — treat exports as sensitive |
 
 ---
@@ -330,6 +356,10 @@ When asked to "build a Biggy app", produce **one JSON file** following these rul
 7. Leave out sections you don't need (they default to empty). Set user-reference
    fields (`notify_user_id`, webhook/pull `user_id`) to `null`.
 8. Use valid `data_type` values from §5 and valid identifiers from §8.
+9. **ITSM (optional):** an `sla_policies` entry references its `table_id` plus field ids
+   (`status_field_id`, and write-back `state_field_id`/`due_field_id`); an
+   `approval_steps` entry references a `workflows[].id` (`workflow_id`) and an
+   `approver_role` from `roles`. See the `netcmdb` example for a worked model.
 
 **Self-check before returning**: every `*_id` reference resolves to a defined object;
 every `enum`/`tags` field has `enum_options`; every `m1` relation has both a relation
