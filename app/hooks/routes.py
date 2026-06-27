@@ -10,28 +10,23 @@ import hashlib
 import hmac
 import json
 import math
-import time
-from collections import defaultdict, deque
-from datetime import datetime, timezone
-from threading import Lock
+from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, current_app, g, jsonify, request
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from werkzeug.exceptions import RequestEntityTooLarge
 
 from .. import data_service, record_service
 from ..api.tokens import hash_token
 from ..db import SessionLocal, engine_for_table
 from ..importer import coerce_value
-from ..metadata.models import MetaTable, Notification, Webhook
+from ..metadata.models import MetaTable, Notification, RateHit, Webhook
 
 bp = Blueprint("hooks", __name__, url_prefix="/hooks")
 
-# In-process sliding-window rate limiter: token_hash -> deque[monotonic stamps].
-# Per-process only — correct for this single-process app; a multi-worker
-# deployment would need shared storage (Redis, etc.).
-_RATE_HITS = defaultdict(deque)
-_RATE_LOCK = Lock()
+
+def _now():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _err(status, message, **headers):
@@ -46,19 +41,27 @@ def _limit(value, cfg_key):
 
 
 def _rate_ok(key, limit, window):
-    """Sliding-window check. Returns ``(ok, retry_after_seconds)``; ``limit<=0`` disables."""
+    """Shared (DB-backed) sliding-window check across all workers.
+
+    Returns ``(ok, retry_after_seconds)``; ``limit<=0`` disables. Backed by
+    ``app_rate_hit`` so the limit holds across multiple worker processes (a small
+    over-count is possible under extreme concurrency — acceptable for a soft limit).
+    """
     if not limit or limit <= 0:
         return True, 0
-    now = time.monotonic()
-    with _RATE_LOCK:
-        hits = _RATE_HITS[key]
-        cutoff = now - window
-        while hits and hits[0] < cutoff:
-            hits.popleft()
-        if len(hits) >= limit:
-            return False, max(1, math.ceil(window - (now - hits[0])))
-        hits.append(now)
-        return True, 0
+    now = _now()
+    cutoff = now - timedelta(seconds=window)
+    session = SessionLocal()
+    session.execute(delete(RateHit).where(RateHit.key == key, RateHit.at < cutoff))
+    session.commit()
+    hits = session.scalars(
+        select(RateHit).where(RateHit.key == key).order_by(RateHit.at)).all()
+    if len(hits) >= limit:
+        retry = max(1, math.ceil(window - (now - hits[0].at).total_seconds()))
+        return False, retry
+    session.add(RateHit(key=key, at=now))
+    session.commit()
+    return True, 0
 
 
 def _dig(payload, path):

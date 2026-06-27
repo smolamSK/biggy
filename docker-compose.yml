@@ -1,0 +1,56 @@
+# Production-shaped stack: MariaDB + a multi-worker Biggy web service + a
+# separate scheduler runner. Multiple web workers are safe because scheduled
+# jobs are claimed atomically in the DB and the webhook rate limiter is shared
+# (DB-backed). Put a TLS-terminating reverse proxy in front of `web` in real use.
+services:
+  db:
+    image: mariadb:11
+    environment:
+      MARIADB_DATABASE: biggy
+      MARIADB_USER: biggy
+      MARIADB_PASSWORD: ${DB_PASSWORD:-biggy}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpw}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: biggy
+      DB_USER: biggy
+      DB_PASSWORD: ${DB_PASSWORD:-biggy}
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads:/app/instance
+
+  # Scheduler runner: one process loops `run-jobs`. Even if you scale `web` and
+  # also enable its ticker, atomic claims ensure each due job runs exactly once.
+  jobs:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: biggy
+      DB_USER: biggy
+      DB_PASSWORD: ${DB_PASSWORD:-biggy}
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+    command: sh -c "while true; do flask --app run run-jobs; sleep 60; done"
+
+volumes:
+  db-data:
+  uploads:

@@ -827,3 +827,18 @@ class ApprovalAction(Base):
     decision: Mapped[str] = mapped_column(String(10), nullable=False)  # approve|reject
     comment: Mapped[str | None] = mapped_column(Text)
     at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
+class RateHit(Base):
+    """One inbound-webhook request timestamp, for the shared (DB-backed) rate limiter.
+
+    Replaces a per-process in-memory counter so the sliding-window limit is enforced
+    across all worker processes. Pure runtime data — never exported; old rows are
+    swept opportunistically by the scheduler.
+    """
+    __tablename__ = "app_rate_hit"
+    __table_args__ = (Index("ix_rate_hit_key_at", "key", "at"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    key: Mapped[str] = mapped_column(String(64), nullable=False)
+    at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

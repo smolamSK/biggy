@@ -1,0 +1,14 @@
+.venv/
+.localdb/
+.git/
+.gitignore
+__pycache__/
+*.pyc
+.pytest_cache/
+*.log
+*.sqlite
+instance/
+.claude/
+.env
+docs/
+tests/

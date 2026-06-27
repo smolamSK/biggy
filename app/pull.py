@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select
 
-from . import connectors, data_service, importer, record_service, triggers
+from . import connectors, data_service, importer, jobs, record_service, triggers
 from .db import SessionLocal, engine_for_table
 from .metadata.models import Connection, MetaTable, Notification, PullSource
 
@@ -370,7 +370,9 @@ def run_scheduled(session, engine, only_source_id=None):
          else select(PullSource).where(PullSource.active.is_(True)))
     imported = 0
     for source in session.scalars(q).all():
-        if not only_source_id and not _due(source, now):
+        # atomic claim so concurrent workers don't poll the same source twice
+        if not only_source_id and not jobs.claim_due(
+                session, PullSource, source.id, source.schedule_minutes, now):
             continue
         imported += run_one(session, engine, source)
     return imported

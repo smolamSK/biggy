@@ -19,15 +19,15 @@ the rest. Idempotency for scheduled triggers is by design: the designer pairs a
 """
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qsl
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from werkzeug.datastructures import MultiDict
 
-from . import feeds, pull, record_service, reporting, sla, triggers
+from . import feeds, jobs, pull, record_service, reporting, sla, triggers
 from .db import SessionLocal, engine_for_table, get_engine
-from .metadata.models import AppUser, MetaTable, Notification, ReportDef, TriggerRule
+from .metadata.models import AppUser, MetaTable, Notification, RateHit, ReportDef, TriggerRule
 
 
 def _now():
@@ -123,20 +123,17 @@ def run_due(session, engine, now=None):
     now = now or _now()
     summary = {"triggers": 0, "feeds": 0, "pulls": 0, "reports": 0, "sla": 0}
 
-    # 1. scheduled triggers
+    # 1. scheduled triggers (atomically claimed so concurrent workers don't double-run)
     for rule in session.scalars(select(TriggerRule).where(
             TriggerRule.active.is_(True), TriggerRule.event == "scheduled")).all():
-        if not _due(rule.last_run_at, rule.schedule_minutes, now):
+        if not jobs.claim_due(session, TriggerRule, rule.id, rule.schedule_minutes, now):
             continue
         try:
             summary["triggers"] += _run_trigger(session, rule)
-            rule.last_run_at = now
             session.commit()
         except Exception as exc:  # noqa: BLE001
             session.rollback()
             _log_error("trigger", rule.name, exc)
-            rule.last_run_at = now
-            session.commit()
 
     # 2. scheduled feeds (delegates; keeps its own watermark + loopback handling)
     try:
@@ -156,20 +153,25 @@ def run_due(session, engine, now=None):
     except Exception as exc:  # noqa: BLE001
         _log_error("sla", "breach sweep", exc)
 
-    # 3. scheduled report digests
+    # 3. scheduled report digests (atomically claimed)
     for report in session.scalars(select(ReportDef).where(
             ReportDef.schedule_minutes.is_not(None))).all():
-        if not _due(report.last_run_at, report.schedule_minutes, now):
+        if not jobs.claim_due(session, ReportDef, report.id, report.schedule_minutes, now):
             continue
         try:
             summary["reports"] += _run_report(session, report)
-            report.last_run_at = now
             session.commit()
         except Exception as exc:  # noqa: BLE001
             session.rollback()
             _log_error("report", report.name, exc)
-            report.last_run_at = now
-            session.commit()
+
+    # 4. sweep old rate-limiter hits (keeps app_rate_hit small; shared across workers)
+    try:
+        session.execute(delete(RateHit).where(RateHit.at < now - timedelta(hours=1)))
+        session.commit()
+    except Exception as exc:  # noqa: BLE001
+        session.rollback()
+        _log_error("rate", "rate-hit sweep", exc)
 
     return summary
 

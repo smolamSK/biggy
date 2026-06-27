@@ -37,6 +37,7 @@ from .metadata.models import (
     MetaRelation,
     MetaTable,
     PullSource,
+    RateHit,
     Role,
     Sequence,
     SlaClock,
@@ -241,7 +242,7 @@ def wipe_model(session, engine):
     for eng, names in drops.values():
         _drop_physical(eng, names)
     session.execute(update(MetaMenu).values(parent_id=None))
-    for model in (ApprovalAction, ApprovalRequest, ApprovalStep, SlaClock, SlaPolicy,
+    for model in (RateHit, ApprovalAction, ApprovalRequest, ApprovalStep, SlaClock, SlaPolicy,
                   TriggerRule, Feed, Webhook, PullSource, Connection, DashboardWidget, Dashboard,
                   MetaFieldPermission, CompositeUnique, Sequence, Workflow, MetaPermission,
                   MetaMenu, MetaRelation, MetaFormField, MetaForm, MetaField, MetaTable, DataSource):

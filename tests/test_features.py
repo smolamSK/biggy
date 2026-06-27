@@ -24,6 +24,7 @@ from app.metadata.models import (
     MetaPermission,
     MetaTable,
     Notification,
+    RateHit,
     ReportDef,
     SavedView,
     SlaClock,
@@ -3959,3 +3960,57 @@ def test_approval_workflow(app, client):
         new_wf = s.scalar(select(Workflow))
         assert s.scalar(select(func.count()).select_from(ApprovalStep)
                         .where(ApprovalStep.workflow_id == new_wf.id)) == 2
+
+
+def test_scheduler_atomic_claim(app, client):
+    """A scheduled job is claimed atomically — concurrent workers run it once."""
+    from app import jobs, scheduler
+    from datetime import datetime, timezone
+    _setup(client)
+    tid = _make_table(client, app, "tick", "Tick", "title")
+    fid = _make_form(client, app, "tick_form", "Ticks", tid)
+    _ok(client.post(f"/u/forms/{fid}/new", data={"title": "A"}, follow_redirects=True))
+    with app.app_context():
+        boss_id = SessionLocal().scalar(select(AppUser).where(AppUser.username == "boss")).id
+    rid = _make_trigger(app, "tick", name="Beat", event="scheduled", schedule_minutes=60,
+                        in_app=True, notify_target="user", notify_user_id=boss_id,
+                        message="beat {title}")
+
+    def _n_inapp():
+        with app.app_context():
+            return SessionLocal().scalar(select(func.count()).select_from(Notification)
+                                         .where(Notification.channel == "in_app"))
+
+    # run_due fires the rule once; an immediate second pass is claimed-out (no double-run)
+    with app.app_context():
+        assert scheduler.run_due(SessionLocal(), get_engine())["triggers"] == 1
+    with app.app_context():
+        assert scheduler.run_due(SessionLocal(), get_engine())["triggers"] == 0
+    assert _n_inapp() == 1
+
+    # direct claim: force due, then two claims for the same job → exactly one wins
+    _force_due(app, "TriggerRule", rid)
+    with app.app_context():
+        s = SessionLocal()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        from app.metadata.models import TriggerRule
+        assert jobs.claim_due(s, TriggerRule, rid, 60, now) is True
+        assert jobs.claim_due(s, TriggerRule, rid, 60, now) is False
+        assert jobs.claim_due(s, TriggerRule, rid, 0, now) is False     # disabled cadence
+
+
+def test_rate_limit_shared_store(app, client):
+    """The webhook rate limiter is DB-backed (shared across workers), not in-process."""
+    _setup(client)
+    tid = _make_table(client, app, "beep", "Beep", "label")
+    _, token = _make_webhook(client, app, tid, [("label", "label")])
+    assert client.post(f"/hooks/{token}", json={"label": "x"}).status_code == 201
+    with app.app_context():
+        n = SessionLocal().scalar(select(func.count()).select_from(RateHit))
+        assert n >= 1                                                   # a hit row persisted in the DB
+
+
+def test_docker_artifacts_present():
+    df, dc = open("Dockerfile").read(), open("docker-compose.yml").read()
+    assert "gunicorn" in df and "run:app" in df
+    assert "run-jobs" in dc and "mariadb" in dc

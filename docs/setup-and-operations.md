@@ -120,13 +120,30 @@ set (and always skipped under tests).
 
 `run.py`'s `app.run(debug=True)` is for development only. In production:
 
-- Serve with a real WSGI server, e.g. `gunicorn 'app:create_app()'` (or uWSGI),
-  behind a TLS-terminating reverse proxy (nginx/Caddy).
+- Serve with a real WSGI server, e.g. `gunicorn 'run:app'` (or uWSGI), behind a
+  TLS-terminating reverse proxy (nginx/Caddy). **Multiple workers are safe:**
+  scheduled jobs are claimed atomically in the database (no duplicate runs) and the
+  webhook rate limiter is DB-backed (shared across workers).
 - Set a strong `SECRET_KEY` and real DB credentials; never run with `debug=True`.
 - Put a **request-body size limit** at the proxy in front of the public, unauthenticated
   `POST /hooks/<token>` webhook endpoints (defence in depth on top of
   `WEBHOOK_MAX_BODY_BYTES`).
 - Cookies are already `HttpOnly` + `SameSite=Lax`; serve over HTTPS so they're secure.
+
+### Docker
+
+A `Dockerfile` and `docker-compose.yml` are included. The compose stack runs MariaDB,
+a multi-worker `web` service (gunicorn), and a separate `jobs` service that loops
+`run-jobs`:
+
+```bash
+SECRET_KEY=$(python -c 'import secrets;print(secrets.token_urlsafe(32))') \
+  docker compose up --build
+# first run opens the setup wizard at http://localhost:8000
+```
+
+Override `DB_PASSWORD`/`SECRET_KEY` via the environment (or an `.env` file). For real
+deployments, front `web` with a TLS reverse proxy.
 
 ---
 
@@ -141,10 +158,10 @@ feeds**, and **scheduled report email digests** — is run by one entry point. P
   * * * * *  cd /path/to/biggy && .venv/bin/flask --app run run-jobs
   ```
   (`flask --app run sync` is a kept alias of `run-jobs`.)
-- **In-process ticker (single-process deploys):** set `SCHEDULER_ENABLED=true` and a
-  `SCHEDULER_TICK_SECONDS`; a background thread runs due jobs. **Caveat:** it is
-  per-process, so under multiple workers each would tick — use the cron form (one
-  runner) when you scale out.
+- **In-process ticker:** set `SCHEDULER_ENABLED=true` and a `SCHEDULER_TICK_SECONDS`;
+  a background thread runs due jobs. This is now **multi-worker-safe** — every worker
+  may tick, but each due job is claimed atomically in the DB, so it runs exactly once.
+  (Using a single external runner still means fewer redundant "is anything due?" scans.)
 
 Manage and "Run now" jobs in the UI at **Designer → Admin → Scheduled jobs**.
 

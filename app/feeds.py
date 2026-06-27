@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select
 
-from . import connectors, data_service, triggers
+from . import connectors, data_service, jobs, triggers
 from .db import SessionLocal
 from .metadata.models import Connection, Feed, Notification
 
@@ -144,7 +144,9 @@ def run_scheduled(session, engine, only_feed_id=None):
         q = select(Feed).where(Feed.id == only_feed_id)
     pushed = 0
     for feed in session.scalars(q).all():
-        if not only_feed_id and not _due(feed, now):
+        # atomic claim so concurrent workers don't push the same rows twice
+        if not only_feed_id and not jobs.claim_due(
+                session, Feed, feed.id, feed.schedule_minutes, now):
             continue
         mt = session.get(MetaTable, feed.source_table_id)
         if not mt:
