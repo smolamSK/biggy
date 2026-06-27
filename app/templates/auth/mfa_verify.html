@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}Two-factor · Biggy{% endblock %}
+{% block content %}
+<div class="center-card">
+  <div class="panel">
+    <h1>Two-factor authentication</h1>
+    <p class="muted">Enter the 6-digit code from your authenticator app (or a backup code).</p>
+    <form method="post">
+      {{ form.hidden_tag() }}
+      {{ render_field(form.code) }}
+      <button class="btn primary" type="submit">Verify</button>
+      <a class="btn" href="{{ url_for('auth.login') }}">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -53,6 +53,10 @@ class AppUser(Base, UserMixin):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False, default=ROLE_USER)
     is_active_flag: Mapped[bool] = mapped_column("is_active", Boolean, default=True)
+    # TOTP two-factor (see app/totp.py). Secret encrypted at rest; backup codes hashed.
+    totp_secret: Mapped[str | None] = mapped_column(EncryptedText)
+    mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    mfa_backup_codes: Mapped[str | None] = mapped_column(Text)  # JSON list of sha256 hashes
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
     def set_password(self, password):

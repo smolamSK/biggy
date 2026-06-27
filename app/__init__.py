@@ -108,6 +108,19 @@ def _register_lifecycle(app):
         if not allowed and not is_bootstrapped():
             return redirect(url_for("core.setup"))
 
+    @app.before_request
+    def require_mfa_enrolled():
+        """When REQUIRE_MFA is on, force an authenticated user to enroll first."""
+        if not app.config.get("REQUIRE_MFA"):
+            return None
+        from flask_login import current_user
+
+        endpoint = request.endpoint or ""
+        exempt = endpoint in ("auth.mfa", "auth.logout", "core.health", "static")
+        if (not exempt and current_user.is_authenticated
+                and not getattr(current_user, "mfa_enabled", False)):
+            return redirect(url_for("auth.mfa"))
+
 
 def _register_context(app):
     @app.context_processor

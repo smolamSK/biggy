@@ -12,6 +12,8 @@
       {{ render_field(form.confirm) }}
       <button class="btn primary" type="submit">Change password</button>
     </form>
+    <hr style="margin:1rem 0;border:none;border-top:1px solid var(--line)">
+    <p><a class="btn" href="{{ url_for('auth.mfa') }}">Two-factor authentication →</a></p>
   </div>
 </div>
 {% endblock %}

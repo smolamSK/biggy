@@ -128,6 +128,11 @@ def _reflect_pk(engine, phys_name, md=None):
 # Columns added to existing app_meta_* tables after the initial release. Stored as
 # specs and applied idempotently via reflection (no MySQL-only IF NOT EXISTS).
 _META_ADDITIONS = {
+    "app_user": [
+        {"name": "totp_secret", "type": Text()},
+        {"name": "mfa_enabled", "type": Boolean(), "nullable": False, "default": "false"},
+        {"name": "mfa_backup_codes", "type": Text()},
+    ],
     "app_meta_relation": [
         {"name": "to_display_field_ids", "type": Text()},
         {"name": "from_display_field_ids", "type": Text()},

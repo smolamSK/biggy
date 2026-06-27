@@ -47,6 +47,10 @@ class UserForm(FlaskForm):
     is_active = BooleanField("Active", default=True)
 
 
+class MfaCodeForm(FlaskForm):
+    code = StringField("Authentication code", validators=[DataRequired(), Length(max=20)])
+
+
 class TableForm(FlaskForm):
     phys_name = StringField("Table name (identifier)", validators=[DataRequired()])
     label = StringField("Label", validators=[DataRequired(), Length(max=120)])

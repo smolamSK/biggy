@@ -178,6 +178,20 @@ Manage and "Run now" jobs in the UI at **Designer → Admin → Scheduled jobs**
 - **Outbound** connectors/feeds and trigger webhooks call out over HTTP — restrict
   egress as appropriate.
 
+### Two-factor authentication (MFA)
+
+Users can enable **TOTP** two-factor (Google Authenticator / Authy / 1Password / …) for
+their own account under **Account → Two-factor**: add the shown `otpauth://` URI (or the
+key) to an authenticator app and confirm a 6-digit code. Login then asks for the code as a
+second step; one-time **backup codes** are issued for recovery. A designer can **reset a
+user's MFA** from the user-edit page (lost device).
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `REQUIRE_MFA` | `false` | When true, any signed-in user without MFA is redirected to enroll before using the app. |
+
+The TOTP secret is stored **encrypted at rest** (see below); backup codes are stored hashed.
+
 ### Encryption at rest
 
 Integration secrets — **connection tokens, data-source passwords, webhook HMAC secrets,

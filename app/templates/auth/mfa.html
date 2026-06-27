@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}Two-factor · Biggy{% endblock %}
+{% block content %}
+<div class="center-card">
+  <div class="panel">
+    <h1>Two-factor authentication</h1>
+
+    {% if shown_codes %}
+      <div class="panel" style="background:var(--canvas)">
+        <strong>Save your backup codes</strong>
+        <p class="muted" style="font-size:var(--fs-xs)">Each can be used once if you lose your
+          authenticator. They are shown only now.</p>
+        <pre style="margin:0">{% for c in shown_codes %}{{ c }}
+{% endfor %}</pre>
+      </div>
+    {% endif %}
+
+    {% if user.mfa_enabled %}
+      <p><span class="chip c-green">enabled</span>
+        <span class="muted">{{ backup_remaining }} backup code(s) left.</span></p>
+      <form method="post" class="toolbar" style="flex-wrap:wrap;gap:.4rem">
+        {{ form.hidden_tag() }}
+        <button class="btn sm" name="action" value="regenerate" type="submit">Regenerate backup codes</button>
+      </form>
+      <h2 style="margin-top:1rem">Disable</h2>
+      <p class="muted">Enter a current code to turn two-factor off.</p>
+      <form method="post" class="toolbar" style="flex-wrap:wrap;gap:.4rem">
+        {{ form.hidden_tag() }}
+        {{ render_field(form.code) }}
+        <button class="btn sm danger" name="action" value="disable" type="submit">Disable two-factor</button>
+      </form>
+    {% else %}
+      <p class="muted">Add your account to an authenticator app (Google Authenticator, Authy,
+        1Password, …), then enter the 6-digit code it shows to confirm.</p>
+      <ol>
+        <li>Scan or paste this setup URI into your app:
+          <pre style="white-space:pre-wrap;word-break:break-all;margin:.3rem 0">{{ uri }}</pre></li>
+        <li>Or enter the key manually: <code>{{ secret }}</code></li>
+      </ol>
+      <form method="post" class="toolbar" style="flex-wrap:wrap;gap:.4rem">
+        {{ form.hidden_tag() }}
+        {{ render_field(form.code) }}
+        <button class="btn primary" name="action" value="enable" type="submit">Enable two-factor</button>
+      </form>
+    {% endif %}
+    <p style="margin-top:1rem"><a class="btn" href="{{ url_for('auth.account') }}">Back to account</a></p>
+  </div>
+</div>
+{% endblock %}

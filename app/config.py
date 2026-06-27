@@ -58,6 +58,10 @@ class Config:
     # threshold (minutes before the deadline) for the on_track→due_soon state.
     SLA_DEFAULT_WARN_MINUTES = int(os.environ.get("SLA_DEFAULT_WARN_MINUTES", "30"))
 
+    # Require TOTP two-factor for every user (operator policy). When true, an
+    # authenticated user without MFA is forced to enroll before using the app.
+    REQUIRE_MFA = _as_bool(os.environ.get("REQUIRE_MFA"))
+
     # Encryption at rest for secret columns. A urlsafe-base64 Fernet key; when blank,
     # a stable key is derived from SECRET_KEY (rotating either makes old ciphertext
     # unreadable — see app/crypto.py and `flask encrypt-secrets`).

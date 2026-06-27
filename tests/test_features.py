@@ -4096,3 +4096,91 @@ def test_encrypt_secrets_cli(app, client):
         assert raw != "LEGACY-PLAIN" and crypto.decrypt(raw) == "LEGACY-PLAIN"
         s = SessionLocal()
         assert s.scalar(select(Connection).where(Connection.name == "lc")).token == "LEGACY-PLAIN"
+
+
+def test_totp_roundtrip():
+    from app import totp
+    s = totp.new_secret()
+    assert totp.verify(s, totp.now_code(s)) is True
+    assert totp.verify(s, "000000") is False or totp.now_code(s) == "000000"
+    # window tolerance: the previous 30s step still verifies
+    import time as _t
+    assert totp.verify(s, totp.now_code(s, at=_t.time() - 30)) is True
+    plain, hashed = totp.make_backup_codes(3)
+    ok, rest = totp.consume_backup_code(hashed, plain[0])
+    assert ok and totp.backup_count(rest) == 2 and totp.consume_backup_code(rest, plain[0])[0] is False
+
+
+def _enroll_mfa(app, client):
+    """Enable MFA for the logged-in user; return (secret, backup_codes)."""
+    from app import totp
+    page = client.get("/auth/mfa").get_data(as_text=True)
+    secret = re.search(r"secret=([A-Z2-7]+)", page).group(1)
+    resp = client.post("/auth/mfa", data={"action": "enable", "code": totp.now_code(secret)},
+                       follow_redirects=True).get_data(as_text=True)
+    backups = re.findall(r"[0-9a-f]{4}-[0-9a-f]{4}", resp)
+    return secret, backups
+
+
+def test_mfa_enroll_and_two_step_login(app, client):
+    from app import totp
+    _setup(client)                                   # logged in as 'boss'
+    secret, backups = _enroll_mfa(app, client)
+    assert len(backups) == 10
+    with app.app_context():
+        u = SessionLocal().scalar(select(AppUser).where(AppUser.username == "boss"))
+        assert u.mfa_enabled and u.totp_secret == secret
+        with get_engine().connect() as c:
+            raw = c.execute(text("SELECT totp_secret FROM app_user WHERE id=:i"), {"i": u.id}).scalar()
+        assert raw != secret                         # secret is encrypted at rest
+
+    client.get("/auth/logout")
+    # password alone redirects to the second factor and does NOT authenticate
+    r = client.post("/auth/login", data={"username": "boss", "password": "secret1"})
+    assert r.status_code == 302 and "/auth/mfa-verify" in r.headers["Location"]
+    assert client.get("/auth/account").status_code == 302   # still not logged in
+
+    # a wrong code is rejected; the right code logs in
+    client.post("/auth/mfa-verify", data={"code": "000001"})
+    assert client.get("/auth/account").status_code == 302
+    r = client.post("/auth/mfa-verify", data={"code": totp.now_code(secret)})
+    assert r.status_code == 302
+    assert client.get("/auth/account").status_code == 200   # authenticated now
+
+    # a backup code also works (and is single-use)
+    client.get("/auth/logout")
+    client.post("/auth/login", data={"username": "boss", "password": "secret1"})
+    r = client.post("/auth/mfa-verify", data={"code": backups[0]})
+    assert r.status_code == 302 and client.get("/auth/account").status_code == 200
+    client.get("/auth/logout")
+    client.post("/auth/login", data={"username": "boss", "password": "secret1"})
+    client.post("/auth/mfa-verify", data={"code": backups[0]})   # already spent
+    assert client.get("/auth/account").status_code == 302       # not accepted twice
+
+
+def test_mfa_admin_reset(app, client):
+    _setup(client)
+    _ok(client.post("/auth/users/new",
+                    data=dict(username="amy", password="pw123456", role="user", is_active="y"),
+                    follow_redirects=True))
+    with app.app_context():
+        s = SessionLocal()
+        amy = s.scalar(select(AppUser).where(AppUser.username == "amy"))
+        amy.mfa_enabled, amy.totp_secret = True, "JBSWY3DPEHPK3PXP"
+        s.commit()
+        amy_id = amy.id
+    _ok(client.post(f"/auth/users/{amy_id}/reset-mfa", follow_redirects=True))
+    with app.app_context():
+        amy = SessionLocal().get(AppUser, amy_id)
+        assert not amy.mfa_enabled and amy.totp_secret is None
+
+
+def test_require_mfa_enforcement(app, client):
+    _setup(client)                                   # boss logged in, no MFA
+    app.config["REQUIRE_MFA"] = True
+    try:
+        r = client.get("/designer/dashboard")
+        assert r.status_code == 302 and "/auth/mfa" in r.headers["Location"]
+        _ok(client.get("/auth/mfa"))                 # the enroll page itself is reachable
+    finally:
+        app.config["REQUIRE_MFA"] = False

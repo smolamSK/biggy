@@ -14,5 +14,20 @@
     <button class="btn primary" type="submit">Save</button>
     <a class="btn" href="{{ url_for('auth.users') }}">Cancel</a>
   </form>
+  {% if user %}
+    <hr style="margin:1rem 0;border:none;border-top:1px solid var(--line)">
+    <div class="toolbar" style="margin:0">
+      <span class="muted">Two-factor:
+        {% if user.mfa_enabled %}<span class="chip c-green">enabled</span>{% else %}off{% endif %}</span>
+      <span style="flex:1"></span>
+      {% if user.mfa_enabled %}
+        <form method="post" action="{{ url_for('auth.user_reset_mfa', user_id=user.id) }}" class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn sm danger" type="submit"
+                  onclick="return confirm('Reset two-factor for this user?')">Reset MFA</button>
+        </form>
+      {% endif %}
+    </div>
+  {% endif %}
 </div>
 {% endblock %}
