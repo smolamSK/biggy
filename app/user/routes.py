@@ -12,6 +12,7 @@ from flask import (
     Blueprint,
     Response,
     abort,
+    current_app,
     flash,
     jsonify,
     redirect,
@@ -23,7 +24,7 @@ from flask import (
 from flask_login import current_user, login_required
 from sqlalchemy import select
 
-from .. import dashboards, data_service, feeds, file_store, list_export, record_service, reporting, workflow
+from .. import dashboards, data_service, feeds, file_store, list_export, record_service, reporting, topology, workflow
 from .. import filters as filt
 from .. import importer
 from ..api import tokens as api_tokens
@@ -1149,6 +1150,46 @@ def record_view(table_id, pk):
     return render_template("user/view.html", table=table, pk=pk, label=label, items=items,
                            edit_url=edit_url, deleted=bool(row.get("deleted_at")),
                            send_form_id=send_form_id, related=related, history=history)
+
+
+@bp.route("/topology/<int:table_id>/<pk>")
+def record_topology(table_id, pk):
+    """Dependency & impact map for a single record (CI)."""
+    session = _s()
+    table = session.get(MetaTable, table_id)
+    view_form = table_view_form(session, table_id)
+    if not table or not view_form:
+        abort(404)
+    if not can_read(form_access(session, current_user, view_form.id)):
+        abort(403)
+    engine = engine_for_table(table)
+    root = record_service.get_record(engine, table, pk, user_id=current_user_id(),
+                                     is_designer=current_user.is_designer, allow_deleted=True)
+    if not root:
+        abort(404)
+    pk = root.get(table.pk_col, pk)   # canonical, correctly-typed pk from the row
+
+    max_depth = current_app.config["TOPOLOGY_MAX_DEPTH"]
+    direction = request.args.get("direction", "both")
+    if direction not in topology.DIRECTIONS:
+        direction = "both"
+    try:
+        depth = int(request.args.get("depth", current_app.config["TOPOLOGY_DEFAULT_DEPTH"]))
+    except (TypeError, ValueError):
+        depth = current_app.config["TOPOLOGY_DEFAULT_DEPTH"]
+    depth = max(1, min(depth, max_depth))
+
+    graph = topology.graph_for(session, current_user, table, pk, direction=direction,
+                               depth=depth, max_nodes=current_app.config["TOPOLOGY_MAX_NODES"])
+    summary = {}
+    for n in graph["nodes"]:
+        summary[n["table_label"]] = summary.get(n["table_label"], 0) + 1
+    summary = sorted(summary.items(), key=lambda kv: (-kv[1], kv[0]))
+    disp = display_field_name(session, table)
+    label = str(root.get(disp)) if root.get(disp) not in (None, "") else f"#{pk}"
+    return render_template("user/topology.html", table=table, pk=pk, label=label,
+                           graph=graph, summary=summary, direction=direction, depth=depth,
+                           max_depth=max_depth)
 
 
 def _view_items(session, engine, view_form, built, row):

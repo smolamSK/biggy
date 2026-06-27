@@ -2,7 +2,11 @@
 {% from "_macros.html" import render_field, delete_form, record_link with context %}
 {% block title %}{{ mode }} · {{ mf.title }}{% endblock %}
 {% block inner %}
-<h1>{{ mode }} — {{ mf.title }}</h1>
+<div class="toolbar">
+  <h1 style="margin:0">{{ mode }} — {{ mf.title }}</h1>
+  <span style="flex:1"></span>
+  {% if pk %}<a class="btn" href="{{ url_for('user.record_topology', table_id=mf.table_id, pk=pk) }}">Impact map</a>{% endif %}
+</div>
 {% if mf.description %}<p class="muted">{{ mf.description }}</p>{% endif %}
 
 {% macro render_item(item) %}

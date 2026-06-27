@@ -1,0 +1,60 @@
+{% extends "user/_base.html" %}
+{% block title %}Impact map · {{ label }} · Biggy{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">Impact map — {{ table.label }}: {{ label }}</h1>
+  <span class="muted">drag to pan · scroll to zoom · drag a node to move</span>
+  <span style="flex:1"></span>
+  <a class="btn" href="{{ url_for('user.record_view', table_id=table.id, pk=pk) }}">← Back to record</a>
+</div>
+
+<div class="toolbar" style="flex-wrap:wrap;gap:.4rem">
+  <span class="muted">Direction:</span>
+  {% for d, lbl in [('upstream', 'Upstream (depends on)'), ('downstream', 'Downstream (impact)'), ('both', 'Both')] %}
+    <a class="btn sm {{ 'primary' if direction == d }}"
+       href="{{ url_for('user.record_topology', table_id=table.id, pk=pk, direction=d, depth=depth) }}">{{ lbl }}</a>
+  {% endfor %}
+  <span style="width:.8rem"></span>
+  <span class="muted">Depth:</span>
+  {% for n in range(1, max_depth + 1) %}
+    <a class="btn sm {{ 'primary' if depth == n }}"
+       href="{{ url_for('user.record_topology', table_id=table.id, pk=pk, direction=direction, depth=n) }}">{{ n }}</a>
+  {% endfor %}
+  <span style="flex:1"></span>
+  <button class="btn sm" id="topo-zoom-out" type="button" title="Zoom out">−</button>
+  <button class="btn sm" id="topo-zoom-in" type="button" title="Zoom in">+</button>
+  <button class="btn sm" id="topo-fit" type="button">Fit</button>
+</div>
+
+{% if graph.nodes|length > 1 %}
+<div class="topo-layout">
+  <div id="topo-canvas">
+    <div id="topo-world">
+      <svg id="topo-edges" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+  </div>
+  <aside class="panel topo-side">
+    <h2 style="margin:0 0 .4rem">Reachable CIs <span class="muted">({{ graph.nodes|length - 1 }})</span></h2>
+    {% if graph.truncated %}
+      <p class="badge" style="background:var(--amber-bg,#fef3c7);color:#92400e">Showing first {{ graph.nodes|length }} — truncated</p>
+    {% endif %}
+    <table class="grid">
+      <tr><th>Type</th><th class="num">Count</th></tr>
+      {% for tlabel, count in summary %}
+        <tr><td>{{ tlabel }}</td><td class="num">{{ count }}</td></tr>
+      {% endfor %}
+    </table>
+    <p class="muted" style="font-size:var(--fs-xs);margin-bottom:0">
+      Arrows point from a CI to what it <strong>depends on</strong>. Dashed = many-to-many link.
+      Click a node title to recenter the map; ↗ opens the record.</p>
+  </aside>
+</div>
+<script type="application/json" id="topo-graph">{{ graph|tojson }}</script>
+<script src="{{ url_for('static', filename='topology.js') }}" defer></script>
+{% else %}
+<div class="panel">
+  <p class="muted">No related Configuration Items found for this record in the chosen direction and depth.
+    Try <strong>Both</strong> or a greater depth, or add relationships in Designer mode.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -54,6 +54,12 @@ class Config:
     SCHEDULER_ENABLED = _as_bool(os.environ.get("SCHEDULER_ENABLED"))
     SCHEDULER_TICK_SECONDS = int(os.environ.get("SCHEDULER_TICK_SECONDS", "60"))
 
+    # Dependency / impact map (topology view). Depth is user-adjustable in the UI,
+    # clamped to MAX_DEPTH; MAX_NODES bounds query fan-out for a single map.
+    TOPOLOGY_DEFAULT_DEPTH = int(os.environ.get("TOPOLOGY_DEFAULT_DEPTH", "2"))
+    TOPOLOGY_MAX_DEPTH = int(os.environ.get("TOPOLOGY_MAX_DEPTH", "4"))
+    TOPOLOGY_MAX_NODES = int(os.environ.get("TOPOLOGY_MAX_NODES", "150"))
+
     # Display symbol for the 'currency' field type
     CURRENCY_SYMBOL = os.environ.get("CURRENCY_SYMBOL", "$")
 

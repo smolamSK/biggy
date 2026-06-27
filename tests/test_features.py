@@ -416,6 +416,73 @@ def test_record_view_and_links(app, client):
             select(MetaForm).where(MetaForm.name == "company_view")).purpose == "view"
 
 
+def _topo_graph(client, table_id, pk, **params):
+    """GET the topology page and return its embedded graph JSON."""
+    import json as _json
+    import re as _re
+    qs = "&".join(f"{k}={v}" for k, v in params.items())
+    res = client.get(f"/u/topology/{table_id}/{pk}" + (f"?{qs}" if qs else ""))
+    _ok(res)
+    m = _re.search(r'id="topo-graph">(.*?)</script>', res.get_data(as_text=True), _re.S)
+    return _json.loads(m.group(1)) if m else None
+
+
+def test_topology_impact_map(app, client):
+    _setup(client)
+    site_tid = _make_table(client, app, "site", "Site", "name")
+    rack_tid = _make_table(client, app, "rack", "Rack", "code")
+    mach_tid = _make_table(client, app, "machine", "Machine", "name")
+    nic_tid = _make_table(client, app, "nic", "Nic", "name")
+    hidden_tid = _make_table(client, app, "hidden_ci", "Hidden", "name")
+    # view forms make a table reachable in the map; hidden_ci deliberately gets none
+    for name, tid in [("site", site_tid), ("rack", rack_tid),
+                      ("machine", mach_tid), ("nic", nic_tid)]:
+        _make_form_p(client, app, f"{name}_view", name.title(), tid, "view")
+    # rack→site, machine→rack, nic→machine, hidden_ci→rack (hidden has NO view form)
+    for nm, frm, to, col in [("rack_site", rack_tid, site_tid, "site_id"),
+                             ("machine_rack", mach_tid, rack_tid, "rack_id"),
+                             ("nic_machine", nic_tid, mach_tid, "machine_id"),
+                             ("hidden_rack", hidden_tid, rack_tid, "rack_id")]:
+        _ok(client.post("/designer/relations/new-m1",
+                        data=dict(name=nm, from_table_id=frm, to_table_id=to, field_name=col,
+                                  on_delete="SET NULL", nullable="y"), follow_redirects=True))
+    with app.app_context():
+        with get_engine().begin() as c:
+            c.execute(text("INSERT INTO site (id, name) VALUES (1,'DC1')"))
+            c.execute(text("INSERT INTO rack (id, code, site_id) VALUES (1,'R1',1)"))
+            c.execute(text("INSERT INTO machine (id, name, rack_id) VALUES (1,'M1',1)"))
+            c.execute(text("INSERT INTO nic (id, name, machine_id) VALUES (1,'N1',1)"))
+            c.execute(text("INSERT INTO hidden_ci (id, name, rack_id) VALUES (1,'SECRETX',1)"))
+
+    # both directions, depth 2 from the rack: upstream site + downstream machine→nic
+    g = _topo_graph(client, rack_tid, 1, direction="both", depth=2)
+    labels = {n["label"] for n in g["nodes"]}
+    assert {"R1", "M1", "N1", "DC1"} <= labels      # root + downstream chain + upstream parent
+    assert "SECRETX" not in labels                  # child table without a view form is excluded
+    assert g["truncated"] is False
+    # an edge points from the machine to the rack it depends on
+    assert any(e["directed"] and e["kind"] == "m1" for e in g["edges"])
+
+    # direction filter: upstream only, depth 1 → just the parent site, no children
+    g_up = _topo_graph(client, rack_tid, 1, direction="upstream", depth=1)
+    up = {n["label"] for n in g_up["nodes"]}
+    assert "DC1" in up and "M1" not in up
+
+    # depth clamps to TOPOLOGY_MAX_DEPTH (no error on an over-large request)
+    _ok(client.get(f"/u/topology/{rack_tid}/1?depth=99"))
+
+    # node cap flips the truncated flag
+    app.config["TOPOLOGY_MAX_NODES"] = 2
+    try:
+        g_cap = _topo_graph(client, rack_tid, 1, direction="both", depth=2)
+        assert g_cap["truncated"] is True and len(g_cap["nodes"]) == 2
+    finally:
+        app.config["TOPOLOGY_MAX_NODES"] = 150
+
+    # the view page links to the impact map
+    assert f"/u/topology/{rack_tid}/1" in client.get(f"/u/view/{rack_tid}/1").get_data(as_text=True)
+
+
 def _add_field(client, tid, phys, data_type, **kw):
     data = dict(phys_name=phys, label=phys.title(), data_type=data_type, nullable="y")
     data.update(kw)
