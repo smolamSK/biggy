@@ -1,5 +1,7 @@
 # Biggy
 
+[![CI](https://github.com/smolamSK/biggy/actions/workflows/ci.yml/badge.svg)](https://github.com/smolamSK/biggy/actions/workflows/ci.yml)
+
 A metadata-driven, low-code app for managing data in a relational database. It has two modes:
 
 - **Designer mode** — create tables, define fields and relations (many-to-one and many-to-many),

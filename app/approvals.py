@@ -14,7 +14,7 @@ applying the approved move can't recurse.
 """
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 
 from . import record_service, workflow
 from .db import engine_for_table
@@ -240,10 +240,30 @@ def _notify_requester(session, request, what):
 # --------------------------------------------------------------------------- #
 # Queries for the inbox / badge / record panel
 # --------------------------------------------------------------------------- #
+def _candidate_requests(session, user):
+    """Pending requests with a step at the current position this user *might* act on.
+
+    One SQL query (join to the step table; role/user filter for non-designers), so
+    the per-request badge/inbox cost is O(this user's pending), not O(all pending).
+    The exact `can_act` check still runs on the few candidates (it also excludes
+    steps already satisfied).
+    """
+    q = (select(ApprovalRequest)
+         .join(ApprovalStep, and_(
+             ApprovalStep.workflow_id == ApprovalRequest.workflow_id,
+             ApprovalStep.from_state == ApprovalRequest.from_state,
+             ApprovalStep.to_state == ApprovalRequest.to_state,
+             ApprovalStep.position == ApprovalRequest.current_position))
+         .where(ApprovalRequest.state == "pending"))
+    if not getattr(user, "is_designer", False):
+        q = q.where(or_(ApprovalStep.approver_user_id == getattr(user, "id", None),
+                        ApprovalStep.approver_role == getattr(user, "role", None)))
+    return session.scalars(q.distinct().order_by(ApprovalRequest.id.desc())).all()
+
+
 def pending_for_user(session, user):
-    return [req for req in session.scalars(select(ApprovalRequest).where(
-        ApprovalRequest.state == "pending").order_by(ApprovalRequest.id.desc()))
-        if can_act(session, req, user)]
+    return [req for req in _candidate_requests(session, user)
+            if can_act(session, req, user)]
 
 
 def pending_count_for_user(session, user):

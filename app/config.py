@@ -62,6 +62,12 @@ class Config:
     # authenticated user without MFA is forced to enroll before using the app.
     REQUIRE_MFA = _as_bool(os.environ.get("REQUIRE_MFA"))
 
+    # Login lockout: after N *failed* attempts (per username and per IP) within the
+    # window, further sign-in attempts are refused. 0 disables. Successful logins
+    # never count. Also bounds wrong MFA-code attempts.
+    LOGIN_RATE_LIMIT = int(os.environ.get("LOGIN_RATE_LIMIT", "10"))
+    LOGIN_RATE_WINDOW = int(os.environ.get("LOGIN_RATE_WINDOW", "300"))  # seconds
+
     # SSO via OpenID Connect (see app/oidc.py). Enabled once issuer + client id are set.
     OIDC_ISSUER = os.environ.get("OIDC_ISSUER")
     OIDC_CLIENT_ID = os.environ.get("OIDC_CLIENT_ID")
@@ -91,6 +97,14 @@ class Config:
     # Session / cookie hardening
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
+    # Set true when serving over HTTPS (cookies then never travel over http).
+    SESSION_COOKIE_SECURE = _as_bool(os.environ.get("SESSION_COOKIE_SECURE"))
+    # Blank/0 = a browser-session cookie (expires on close, the default). When set,
+    # sessions become permanent with this lifetime (cookie + server side).
+    SESSION_LIFETIME_MINUTES = int(os.environ.get("SESSION_LIFETIME_MINUTES", "0"))
+    if SESSION_LIFETIME_MINUTES > 0:
+        from datetime import timedelta as _td
+        PERMANENT_SESSION_LIFETIME = _td(minutes=SESSION_LIFETIME_MINUTES)
     WTF_CSRF_TIME_LIMIT = None
 
     @staticmethod

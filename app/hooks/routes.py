@@ -9,24 +9,19 @@ fire). The mirror of :mod:`app.feeds` (outbound). Auth: a secret token in the UR
 import hashlib
 import hmac
 import json
-import math
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from flask import Blueprint, current_app, g, jsonify, request
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from werkzeug.exceptions import RequestEntityTooLarge
 
-from .. import data_service, record_service
+from .. import data_service, rate_limit, record_service
 from ..api.tokens import hash_token
 from ..db import SessionLocal, engine_for_table
 from ..importer import coerce_value
-from ..metadata.models import MetaTable, Notification, RateHit, Webhook
+from ..metadata.models import MetaTable, Notification, Webhook
 
 bp = Blueprint("hooks", __name__, url_prefix="/hooks")
-
-
-def _now():
-    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _err(status, message, **headers):
@@ -41,27 +36,8 @@ def _limit(value, cfg_key):
 
 
 def _rate_ok(key, limit, window):
-    """Shared (DB-backed) sliding-window check across all workers.
-
-    Returns ``(ok, retry_after_seconds)``; ``limit<=0`` disables. Backed by
-    ``app_rate_hit`` so the limit holds across multiple worker processes (a small
-    over-count is possible under extreme concurrency — acceptable for a soft limit).
-    """
-    if not limit or limit <= 0:
-        return True, 0
-    now = _now()
-    cutoff = now - timedelta(seconds=window)
-    session = SessionLocal()
-    session.execute(delete(RateHit).where(RateHit.key == key, RateHit.at < cutoff))
-    session.commit()
-    hits = session.scalars(
-        select(RateHit).where(RateHit.key == key).order_by(RateHit.at)).all()
-    if len(hits) >= limit:
-        retry = max(1, math.ceil(window - (now - hits[0].at).total_seconds()))
-        return False, retry
-    session.add(RateHit(key=key, at=now))
-    session.commit()
-    return True, 0
+    """Shared sliding-window check (DB-backed; see :mod:`app.rate_limit`)."""
+    return rate_limit.hit_ok(key, limit, window)
 
 
 def _dig(payload, path):

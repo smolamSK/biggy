@@ -62,6 +62,19 @@ def add_column_if_missing(engine, table_name, column):
         operations(conn).add_column(table_name, column)
 
 
+def create_index_if_missing(engine, index):
+    """``CREATE INDEX`` only when it isn't already present (portable, by name).
+
+    ``index`` is a SQLAlchemy :class:`Index` bound to a metadata table. Needed
+    because ``create_all`` never adds indexes to tables that already exist.
+    """
+    table_name = index.table.name
+    existing = {ix["name"] for ix in inspect(engine).get_indexes(table_name)}
+    if index.name in existing:
+        return
+    index.create(engine)
+
+
 def widen_to_text(engine, table_name, column_name):
     """Widen a bounded ``VARCHAR`` column to ``TEXT`` (idempotent; portable).
 

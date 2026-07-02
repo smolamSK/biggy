@@ -223,6 +223,22 @@ def ensure_meta_schema(engine):
     for table, column in _META_WIDENINGS:
         if table_exists(engine, table):
             ddl.widen_to_text(engine, table, column)
+    ensure_indexes(engine)
+
+
+def ensure_indexes(engine):
+    """Create any declared ``app_*`` index missing from an existing database.
+
+    ``create_all`` only makes indexes together with *new* tables; this backfills
+    indexes added to models after a table was first created.
+    """
+    from .models import Base
+
+    for table in Base.metadata.tables.values():
+        if not table_exists(engine, table.name):
+            continue
+        for index in table.indexes:
+            ddl.create_index_if_missing(engine, index)
 
 
 # audit / soft-delete columns added to a data table when its flags are enabled

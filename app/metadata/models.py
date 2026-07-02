@@ -295,6 +295,7 @@ class MetaFieldPermission(Base):
 
 class AuditLog(Base):
     __tablename__ = "app_audit_log"
+    __table_args__ = (Index("ix_audit_table_row", "table_phys", "row_pk"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     table_phys: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -756,7 +757,8 @@ class SlaClock(Base):
     """
     __tablename__ = "app_sla_clock"
     __table_args__ = (UniqueConstraint("policy_id", "table_phys", "row_pk",
-                                       name="uq_sla_clock"),)
+                                       name="uq_sla_clock"),
+                      Index("ix_sla_clock_state", "state"))
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     policy_id: Mapped[int] = mapped_column(
@@ -806,6 +808,8 @@ class ApprovalRequest(Base):
     ``to_state``) or one rejects. ``current_position`` is the step group being voted on.
     """
     __tablename__ = "app_approval_request"
+    __table_args__ = (Index("ix_approval_req_record", "table_phys", "row_pk"),
+                      Index("ix_approval_req_state", "state"))
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     workflow_id: Mapped[int] = mapped_column(Integer, nullable=False)

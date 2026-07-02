@@ -128,7 +128,8 @@ set (and always skipped under tests).
 - Put a **request-body size limit** at the proxy in front of the public, unauthenticated
   `POST /hooks/<token>` webhook endpoints (defence in depth on top of
   `WEBHOOK_MAX_BODY_BYTES`).
-- Cookies are already `HttpOnly` + `SameSite=Lax`; serve over HTTPS so they're secure.
+- Cookies are already `HttpOnly` + `SameSite=Lax`; serve over HTTPS and set
+  `SESSION_COOKIE_SECURE=true` + a `SESSION_LIFETIME_MINUTES` so sessions expire.
 
 ### Docker
 
@@ -211,6 +212,18 @@ user's MFA** from the user-edit page (lost device).
 | Variable | Default | Meaning |
 |---|---|---|
 | `REQUIRE_MFA` | `false` | When true, any signed-in user without MFA is redirected to enroll before using the app. |
+
+### Sign-in & session hardening
+
+Failed sign-ins are throttled (per username **and** per IP; wrong MFA codes count too);
+successful logins never contribute to a lockout.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `LOGIN_RATE_LIMIT` | `10` | failed attempts per window before further attempts are refused (0 = off) |
+| `LOGIN_RATE_WINDOW` | `300` | the lockout window, seconds |
+| `SESSION_COOKIE_SECURE` | `false` | set `true` when serving over HTTPS (recommended in production) |
+| `SESSION_LIFETIME_MINUTES` | `0` | `0` = browser-session cookie; `>0` = sessions expire after this many minutes |
 
 The TOTP secret is stored **encrypted at rest** (see below); backup codes are stored hashed.
 

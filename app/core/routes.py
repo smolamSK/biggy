@@ -57,7 +57,8 @@ def setup():
             session.add(user)
             session.commit()
             current_app.config["_BOOTSTRAPPED"] = True
-            login_user(user)
+            from ..auth.routes import establish_session
+            establish_session(user)
             flash("Setup complete. Welcome to Biggy!", "success")
             return redirect(url_for("designer.dashboard"))
 

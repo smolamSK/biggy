@@ -16,7 +16,7 @@ from flask_login import current_user, login_required, login_user, logout_user
 from sqlalchemy import select
 from werkzeug.security import generate_password_hash
 
-from .. import oidc, totp
+from .. import oidc, rate_limit, totp
 from ..db import SessionLocal
 from ..forms.admin_forms import LoginForm, MfaCodeForm, PasswordChangeForm, UserForm
 from ..helpers import designer_required, ensure_roles
@@ -30,12 +30,29 @@ def _role_choices(session):
     return [(r.name, r.label) for r in session.scalars(select(Role).order_by(Role.name))]
 
 
+def establish_session(user):
+    """``login_user`` + opt-in session lifetime (SESSION_LIFETIME_MINUTES)."""
+    if current_app.config.get("SESSION_LIFETIME_MINUTES", 0) > 0:
+        web_session.permanent = True
+    login_user(user)
+
+
+def _login_limits():
+    cfg = current_app.config
+    return cfg.get("LOGIN_RATE_LIMIT", 0), cfg.get("LOGIN_RATE_WINDOW", 300)
+
+
 @bp.route("/login", methods=["GET", "POST"])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for("core.index"))
     form = LoginForm()
     if form.validate_on_submit():
+        limit, window = _login_limits()
+        keys = (f"login:{form.username.data}", f"login-ip:{request.remote_addr}")
+        if any(rate_limit.blocked(k, limit, window)[0] for k in keys):
+            flash("Too many failed attempts — try again later.", "danger")
+            return render_template("auth/login.html", form=form)
         session = SessionLocal()
         user = session.scalar(select(AppUser).where(AppUser.username == form.username.data))
         if user and user.check_password(form.password.data) and user.is_active:
@@ -44,8 +61,10 @@ def login():
                 web_session["_mfa_uid"] = user.id
                 web_session["_mfa_next"] = request.args.get("next") or ""
                 return redirect(url_for("auth.mfa_verify"))
-            login_user(user)
+            establish_session(user)
             return redirect(request.args.get("next") or url_for("core.index"))
+        for k in keys:                       # only *failures* count toward the lockout
+            rate_limit.record(k)
         flash("Invalid credentials or inactive account.", "danger")
     return render_template("auth/login.html", form=form)
 
@@ -63,6 +82,11 @@ def mfa_verify():
         return redirect(url_for("auth.login"))
     form = MfaCodeForm()
     if form.validate_on_submit():
+        limit, window = _login_limits()
+        key = f"mfa:{user.id}"
+        if rate_limit.blocked(key, limit, window)[0]:
+            flash("Too many failed attempts — try again later.", "danger")
+            return render_template("auth/mfa_verify.html", form=form)
         code = form.code.data.strip()
         ok = totp.verify(user.totp_secret, code)
         if not ok:
@@ -73,8 +97,9 @@ def mfa_verify():
         if ok:
             nxt = web_session.pop("_mfa_next", "")
             web_session.pop("_mfa_uid", None)
-            login_user(user)
+            establish_session(user)
             return redirect(nxt or url_for("core.index"))
+        rate_limit.record(key)               # wrong codes count toward the lockout
         flash("Invalid authentication code.", "danger")
     return render_template("auth/mfa_verify.html", form=form)
 
@@ -208,7 +233,7 @@ def oidc_callback():
     if not user.is_active:
         flash("That account is inactive.", "danger")
         return redirect(url_for("auth.login"))
-    login_user(user)
+    establish_session(user)
     return redirect(nxt or url_for("core.index"))
 
 

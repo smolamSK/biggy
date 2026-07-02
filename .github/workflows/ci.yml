@@ -1,0 +1,57 @@
+# Run the full test suite (unit + integration) against a MariaDB service.
+# The integration tests use `biggy_test` / `biggy_test2` (see tests/conftest.py);
+# they would self-skip if the DB were unreachable, so the healthcheck + DB-create
+# step below make sure they actually run.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11
+        env:
+          MARIADB_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: "3306"
+      DB_USER: biggy
+      DB_PASSWORD: biggy
+      DB_NAME: biggy
+      SECRET_KEY: ci-secret-key
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create databases
+        run: |
+          mysql --host 127.0.0.1 --port 3306 -uroot -proot -e "
+            CREATE DATABASE biggy CHARACTER SET utf8mb4;
+            CREATE DATABASE biggy_test CHARACTER SET utf8mb4;
+            CREATE DATABASE biggy_test2 CHARACTER SET utf8mb4;
+            CREATE USER 'biggy'@'%' IDENTIFIED BY 'biggy';
+            GRANT ALL ON biggy.* TO 'biggy'@'%';
+            GRANT ALL ON biggy_test.* TO 'biggy'@'%';
+            GRANT ALL ON biggy_test2.* TO 'biggy'@'%';"
+
+      - name: Run tests
+        run: python -m pytest -q

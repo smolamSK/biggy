@@ -4380,3 +4380,109 @@ def test_netcmdb_example_sla_and_approvals(app, client):
             ApprovalStep.to_state == "approved").order_by(ApprovalStep.position)).all()
         assert [(x.position, x.approver_role) for x in steps] == [(1, "change_manager"), (2, "noc")]
         assert {"change_manager", "noc"} <= {r.name for r in s.scalars(select(Role))}
+
+
+def test_pending_approvals_candidates(app, client):
+    """The badge/inbox query narrows to the user's own pending approvals (N+1 fix)."""
+    from app import approvals
+    _setup(client)
+    tid = _make_table(client, app, "cr2", "CR2", "title")
+    _add_field(client, tid, "status", "enum", enum_options="draft\nsubmitted\napproved")
+    fid = _make_form(client, app, "cr2_form", "CR2s", tid)
+    status_fid = _fid(app, "cr2", "status")
+    _ok(client.post("/designer/roles", data={"name": "approver1", "label": "A1"},
+                    follow_redirects=True))
+    for u, r in (("appr", "approver1"), ("other", "user")):
+        _ok(client.post("/auth/users/new",
+                        data=dict(username=u, password="pw123456", role=r, is_active="y"),
+                        follow_redirects=True))
+    with app.app_context():
+        s = SessionLocal()
+        s.add(Workflow(table_id=tid, field_id=status_fid, initial_state="draft",
+                       transitions=json.dumps([{"from": "draft", "to": "submitted", "roles": []},
+                                               {"from": "submitted", "to": "approved", "roles": []}])))
+        s.commit()
+        wf_id = s.scalar(select(Workflow.id).where(Workflow.field_id == status_fid))
+        s.add(ApprovalStep(workflow_id=wf_id, from_state="submitted", to_state="approved",
+                           position=1, approver_role="approver1"))
+        s.commit()
+
+    bob = _login_client(app, "appr")   # eligible approver
+    _ok(client.post(f"/u/forms/{fid}/new", data={"title": "X", "status": "draft"},
+                    follow_redirects=True))
+    _ok(client.post(f"/u/forms/{fid}/1/edit", data={"title": "X", "status": "submitted"},
+                    follow_redirects=True))
+    _ok(client.post(f"/u/forms/{fid}/1/edit", data={"title": "X", "status": "approved"},
+                    follow_redirects=True))                      # held → pending request
+    with app.app_context():
+        s = SessionLocal()
+        appr_u = s.scalar(select(AppUser).where(AppUser.username == "appr"))
+        other_u = s.scalar(select(AppUser).where(AppUser.username == "other"))
+        assert len(approvals.pending_for_user(s, appr_u)) == 1   # eligible: sees it
+        assert approvals.pending_count_for_user(s, appr_u) == 1  # the badge count matches
+        assert approvals.pending_for_user(s, other_u) == []      # unrelated role: filtered in SQL
+        assert len(approvals._candidate_requests(s, other_u)) == 0   # …before can_act even runs
+
+
+def test_indexes_created_and_backfilled(app, client):
+    """Declared indexes exist after boot and are re-created on existing DBs."""
+    from app.metadata.schema_service import ensure_meta_schema
+    from sqlalchemy import inspect as _inspect
+    _setup(client)
+    with app.app_context():
+        eng = get_engine()
+
+        def _names(tbl):
+            return {i["name"] for i in _inspect(eng).get_indexes(tbl)}
+
+        assert "ix_audit_table_row" in _names("app_audit_log")
+        assert {"ix_approval_req_record", "ix_approval_req_state"} <= _names("app_approval_request")
+        assert "ix_sla_clock_state" in _names("app_sla_clock")
+        # existing-DB path: drop one, ensure_meta_schema puts it back
+        with eng.begin() as c:
+            c.execute(text("DROP INDEX ix_audit_table_row ON app_audit_log"))
+        assert "ix_audit_table_row" not in _names("app_audit_log")
+        ensure_meta_schema(eng)
+        assert "ix_audit_table_row" in _names("app_audit_log")
+
+
+def test_login_throttling(app, client):
+    """Failed sign-ins lock the account/IP; successes never count."""
+    _setup(client)
+    client.get("/auth/logout")
+    app.config["LOGIN_RATE_LIMIT"] = 3
+    try:
+        for _ in range(3):
+            client.post("/auth/login", data={"username": "boss", "password": "WRONG"})
+        # 4th attempt refused even with the CORRECT password
+        r = client.post("/auth/login", data={"username": "boss", "password": "secret1"})
+        assert "Too many failed attempts" in r.get_data(as_text=True)
+        assert client.get("/auth/account").status_code == 302    # still signed out
+        with app.app_context():                                  # clear the lockout
+            s = SessionLocal()
+            s.query(RateHit).delete()
+            s.commit()
+        _ok(client.post("/auth/login", data={"username": "boss", "password": "secret1"},
+                        follow_redirects=True))
+        assert client.get("/auth/account").status_code == 200    # signed in
+        # successful logins don't accumulate toward a lockout
+        with app.app_context():
+            assert SessionLocal().scalar(select(func.count()).select_from(RateHit)
+                                         .where(RateHit.key.like("login%"))) == 0
+    finally:
+        app.config["LOGIN_RATE_LIMIT"] = 10
+
+
+def test_session_lifetime_cookie(app, client):
+    """SESSION_LIFETIME_MINUTES makes the login cookie expiring (permanent session)."""
+    _setup(client)
+    client.get("/auth/logout")
+    r = client.post("/auth/login", data={"username": "boss", "password": "secret1"})
+    assert "Expires=" not in (r.headers.get("Set-Cookie") or "")   # default: session cookie
+    client.get("/auth/logout")
+    app.config["SESSION_LIFETIME_MINUTES"] = 60
+    try:
+        r = client.post("/auth/login", data={"username": "boss", "password": "secret1"})
+        assert "Expires=" in (r.headers.get("Set-Cookie") or "")   # now an expiring cookie
+    finally:
+        app.config["SESSION_LIFETIME_MINUTES"] = 0
