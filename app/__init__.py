@@ -8,7 +8,7 @@ from .config import Config
 from .db import SessionLocal, init_engine
 from .extensions import csrf, login_manager
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 
 def _configure_logging(app):

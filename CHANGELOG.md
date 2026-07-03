@@ -4,6 +4,31 @@ All notable changes to Biggy are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] — 2026-07-03
+
+### Added
+- **Global full-text search**: the *Search all…* page matches every text field of
+  every viewable table, with the matched field named and the term highlighted, plus
+  "view all" links into filtered lists; the per-list search box now also matches
+  across all of a table's text columns.
+- **Reconciliation**: upserts (webhooks, pull sources, CSV import) match on
+  **composite keys** (comma-separated columns) with normalized (case-insensitive,
+  trimmed) comparison; a **Merge records** designer tool folds a duplicate into a
+  survivor — references repointed, links moved, blanks filled, audit-logged.
+- **SLA escalation chains**: JSON levels fired in order as a breach ages (notify the
+  owner/a user, email), tracked per clock.
+- **Create-record trigger action**: a rule can create a templated record in another
+  table (chained creation depth-capped); **Slack / Microsoft Teams** delivery via a
+  `{"text": …}` webhook payload option.
+- **Service catalog & self-service portal**: flag any form as a catalog card
+  (grouped) on `/u/catalog`; users track their submissions under **My requests**.
+- **Markdown field type** (rendered safely — raw HTML neutralized) and a
+  **Knowledge base** example (categorized markdown articles with a
+  draft/published workflow), searchable via global search.
+
+### Changed
+- OpenAPI info version now follows the app version.
+
 ## [1.0.0] — 2026-07-03
 
 First tagged release. Biggy is a metadata-driven, low-code platform for building

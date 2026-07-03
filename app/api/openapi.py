@@ -8,7 +8,7 @@ import json
 
 from sqlalchemy import select
 
-from .. import helpers
+from .. import __version__, helpers
 from ..metadata.field_types import FILE_TYPES, RELATION_TYPE
 from ..metadata.models import MetaTable
 
@@ -151,7 +151,7 @@ def build_spec(session, user):
     schemas["Error"] = {"type": "object", "properties": {"error": {"type": "string"}}}
     return {
         "openapi": "3.0.3",
-        "info": {"title": "Biggy API", "version": "1.0.0",
+        "info": {"title": "Biggy API", "version": __version__,
                  "description": "Auto-generated from the Biggy table metadata. "
                                 "Authenticate with `Authorization: Bearer <token>`."},
         "servers": [{"url": "/api/v1"}],
