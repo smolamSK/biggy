@@ -847,6 +847,19 @@ def form_edit(form_id):
     )
 
 
+@bp.route("/forms/<int:form_id>/catalog", methods=["POST"])
+def form_catalog(form_id):
+    """Toggle a form's service-catalog card (+ its group)."""
+    session = _s()
+    mf = session.get(MetaForm, form_id)
+    if mf:
+        mf.in_catalog = bool(request.form.get("in_catalog"))
+        mf.catalog_group = (request.form.get("catalog_group") or "").strip() or None
+        session.commit()
+        flash("Catalog settings saved.", "success")
+    return redirect(url_for("designer.form_edit", form_id=form_id))
+
+
 def _mn_relations_for(session, table_id):
     return session.scalars(
         select(MetaRelation).where(

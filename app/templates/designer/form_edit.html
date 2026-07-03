@@ -72,4 +72,16 @@
   <p class="help">Choose <em>Field</em> + a field, <em>Many-to-many</em> + a relation, or
     <em>Section heading</em> + a Label to group the fields that follow into a tab.</p>
 </div>
+<div class="panel" style="max-width:520px">
+  <h2 style="margin:.2rem 0">Service catalog</h2>
+  <p class="help">Show this form as a request card on the User-mode <em>Catalog</em> page.</p>
+  <form method="post" action="{{ url_for('designer.form_catalog', form_id=mf.id) }}" class="toolbar" style="margin:0;flex-wrap:wrap">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="checkline"><input type="checkbox" name="in_catalog" value="y"
+           {{ 'checked' if mf.in_catalog }}> In catalog</label>
+    <input type="text" name="catalog_group" value="{{ mf.catalog_group or '' }}"
+           placeholder="Group (e.g. IT requests)">
+    <button class="btn sm primary" type="submit">Save</button>
+  </form>
+</div>
 {% endblock %}

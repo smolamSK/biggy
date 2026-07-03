@@ -180,6 +180,9 @@ class MetaForm(Base):
     title: Mapped[str] = mapped_column(String(160), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     purpose: Mapped[str] = mapped_column(String(10), nullable=False, default="data")  # data | view
+    # service catalog: show this form as a request card on /u/catalog
+    in_catalog: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    catalog_group: Mapped[str | None] = mapped_column(String(80))
 
     table: Mapped["MetaTable"] = relationship(back_populates="forms")
     items: Mapped[list["MetaFormField"]] = relationship(

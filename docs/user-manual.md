@@ -93,6 +93,9 @@ page can also show:
   pending request, the decision trail, and (if you're an approver) Approve / Reject
   buttons — see below.
 
+Fields of the **Markdown** type render formatted (headings, lists, links, code)
+on the record page; you write plain markdown in the form.
+
 ## Files and images
 
 Where a designer added a **file** or **image** field, you can upload from the
@@ -155,6 +158,13 @@ text notes.
 - **Your own:** open **My dashboards** (top of the menu) to create personal
   dashboards. Add chart/KPI tiles from a report's **Add to dashboard** button, and
   list/text tiles on the dashboard itself. Only you see your personal dashboards.
+
+## Service catalog & My requests
+
+If your team publishes a **Catalog** (top of the menu), it lists request cards —
+*new laptop*, *report an incident*, … Submitting one creates a record the responsible
+team works on. Track everything you've submitted under **My requests** (type, status
+chip, created date, link to the record).
 
 ## Notifications
 

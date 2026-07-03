@@ -663,6 +663,47 @@ def build_netcmdb():
     return b.schema(), b.data()
 
 
+def build_kb():
+    """A knowledge base: markdown articles with tags and a draft/published workflow."""
+    b = ModelBuilder()
+    cat = b.table("kb_category", "Category")
+    b.field(cat, "name", "string", length=80, nullable=False, display=True)
+    art = b.table("kb_article", "Article", track_audit=True, soft_delete=True)
+    b.field(art, "title", "string", length=200, nullable=False, display=True)
+    b.field(art, "body", "markdown", label="Body (markdown)")
+    b.field(art, "tags", "tags", enum=["how-to", "faq", "policy", "troubleshooting"])
+    st = b.field(art, "status", "enum", enum=["draft", "published", "archived"],
+                 default="draft")
+    b.m1(art, cat, "category_id", "Category")
+    b.workflow(art, st,
+               [{"from": "draft", "to": "published", "roles": []},
+                {"from": "published", "to": "draft", "roles": []},
+                {"from": "published", "to": "archived", "roles": []}],
+               "draft")
+
+    g = b.menu_group("Knowledge base")
+    b.menu_form("Articles", b.form("kb_form", "Articles", art), g)
+    b.menu_form("Categories", b.form("kb_cat_form", "Categories", cat), g)
+    b.view_form("kb_view", "Article", art)
+
+    b.rows(cat, [{"id": 1, "name": "Accounts"}, {"id": 2, "name": "Network"},
+                 {"id": 3, "name": "Hardware"}])
+    b.rows(art, [
+        {"id": 1, "title": "How to reset your password",
+         "body": "1. Open **Account** (top right)\n2. Choose *Change password*\n\n"
+                 "> Locked out? An admin can reset it under **Users**.",
+         "tags": '["how-to", "faq"]', "status": "published", "category_id": 1},
+        {"id": 2, "title": "VPN troubleshooting",
+         "body": "## Common fixes\n\n- Restart the client\n- Check the gateway: "
+                 "`vpn.example.com`\n- Still stuck? Raise an incident from the catalog.",
+         "tags": '["troubleshooting"]', "status": "published", "category_id": 2},
+        {"id": 3, "title": "Laptop refresh policy (draft)",
+         "body": "Laptops are refreshed every **3 years**. _Draft — pending approval._",
+         "tags": '["policy"]', "status": "draft", "category_id": 3},
+    ])
+    return b.schema(), b.data()
+
+
 EXAMPLES = {
     "cmdb": {"title": "CMDB", "build": build_cmdb,
              "description": "Configuration items, environments, teams and applications "
@@ -677,6 +718,9 @@ EXAMPLES = {
                  "description": "Projects, tasks (status/priority) and a tasks-labels many-to-many."},
     "hr": {"title": "HR / employees", "build": build_hr,
            "description": "Departments and employees with a manager self-relation."},
+    "kb": {"title": "Knowledge base", "build": build_kb,
+           "description": "Markdown articles with tags and a draft/published workflow — "
+                          "searchable via global search."},
     "netcmdb": {"title": "Network CMDB (large)", "build": build_netcmdb,
                 "description": "12 tables (organizations, sites, racks, routers, switches, access "
                                "points, servers, subnets, circuits, change requests, incidents) with "

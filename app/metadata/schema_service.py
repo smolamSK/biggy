@@ -47,7 +47,7 @@ def sa_type_for_field(field):
     dt = field.data_type
     if dt == "string":
         return String(field.length or 255)
-    if dt == "text":
+    if dt in ("text", "markdown"):
         return Text()
     if dt == "integer":
         return Integer()
@@ -164,6 +164,8 @@ _META_ADDITIONS = {
     ],
     "app_meta_form": [
         {"name": "purpose", "type": String(10), "nullable": False, "default": "'data'"},
+        {"name": "in_catalog", "type": Boolean(), "nullable": False, "default": "false"},
+        {"name": "catalog_group", "type": String(80)},
     ],
     "app_report": [
         {"name": "pinned", "type": Boolean(), "nullable": False, "default": "false"},

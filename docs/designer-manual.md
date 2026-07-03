@@ -43,6 +43,8 @@ Open a table to add, edit, reorder (▲▼), or drop fields. Each field has a **
 - **Auto-number** — a generated sequence (e.g. `INV-0001`); read-only on forms.
 - **Formula** — a value computed from this row (and **related tables** via
   `lookup()` / `rollup()`); recalculated automatically on save. Read-only.
+- **Markdown** — long rich text written as markdown, rendered as formatted HTML on
+  record pages (raw HTML is neutralized). Great for knowledge-base articles.
 - **Image / File** — uploads, shown as a thumbnail or download link.
 
 Per-field options include **length / precision / scale**, **nullable**,
@@ -77,6 +79,11 @@ relations (no setup needed).
 
 - **Data entry** — the add/edit form used in User mode.
 - **View** — the read-only record page.
+
+A data-entry form can also join the **service catalog** (a checkbox + group on the
+form-edit page): it then appears as a request card on the User-mode *Catalog* page,
+and submissions show up under each user's *My requests* (enable **row ownership** or
+**audit** on the table so submissions are owner-stamped).
 
 Add **items** to a form: **fields**, **many-to-many** pickers, and **section
 headings** to group the layout. Per item you can set a label override, help text,

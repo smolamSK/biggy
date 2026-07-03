@@ -69,7 +69,8 @@ _FIELD_COLS = ["id", "table_id", "phys_name", "label", "data_type", "length", "p
 _RELATION_COLS = ["id", "name", "kind", "from_table_id", "to_table_id", "from_field_id",
                   "junction_phys_name", "on_delete", "to_display_field_ids",
                   "from_display_field_ids"]
-_FORM_COLS = ["id", "table_id", "name", "title", "description", "purpose"]
+_FORM_COLS = ["id", "table_id", "name", "title", "description", "purpose",
+              "in_catalog", "catalog_group"]
 _FORMFIELD_COLS = ["id", "form_id", "kind", "field_id", "relation_id", "label_override",
                    "widget", "required", "readonly", "help_text", "position",
                    "parent_field_id", "filter_field_id"]
@@ -398,7 +399,9 @@ def import_schema(session, engine, data, replace=False):
         for fm in forms:
             mform = MetaForm(table_id=tmap[fm["table_id"]], name=fm["name"],
                              title=fm["title"], description=fm.get("description"),
-                             purpose=fm.get("purpose", "data"))
+                             purpose=fm.get("purpose", "data"),
+                             in_catalog=fm.get("in_catalog", False),
+                             catalog_group=fm.get("catalog_group"))
             session.add(mform)
             session.flush()
             formmap[fm["id"]] = mform.id

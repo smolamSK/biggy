@@ -261,6 +261,51 @@ def report_to_dashboard(table_id):
     return redirect(url_for("user.dashboard_view", dash_id=dash.id))
 
 
+@bp.route("/catalog")
+def catalog():
+    """Service catalog: request cards for forms flagged in_catalog."""
+    session = _s()
+    groups = {}
+    for f in session.scalars(select(MetaForm).where(MetaForm.in_catalog.is_(True))
+                             .order_by(MetaForm.title)):
+        if f.purpose == "view" or not can_read(form_access(session, current_user, f.id)):
+            continue
+        groups.setdefault(f.catalog_group or "General", []).append(f)
+    return render_template("user/catalog.html", groups=dict(sorted(groups.items())))
+
+
+@bp.route("/my-requests")
+def my_requests():
+    """The caller's submissions across catalog-backed tables (owner-stamped)."""
+    session = _s()
+    uid = current_user_id()
+    items, seen = [], set()
+    for f in session.scalars(select(MetaForm).where(MetaForm.in_catalog.is_(True))
+                             .order_by(MetaForm.title)):
+        t = f.table
+        if t.id in seen or f.purpose == "view" \
+                or not can_read(form_access(session, current_user, f.id)) \
+                or not (t.track_audit or t.row_owned):   # needs created_by stamps
+            continue
+        seen.add(t.id)
+        engine = engine_for_table(t)
+        disp = display_field_name(session, t)
+        status_col = next((fd.phys_name for fd in t.fields if fd.data_type == "enum"), None)
+        rows, _total = record_service.list_records(
+            engine, t, user_id=uid, is_designer=True,        # explicit owner filter below
+            filters=[{"col": "created_by", "op": "eq", "value": uid}],
+            sort="created_at", order="desc", per_page=50)
+        for r in rows:
+            items.append({"table": t, "pk": r[t.pk_col],
+                          "label": str(r.get(disp)) if r.get(disp) not in (None, "")
+                          else f"#{r[t.pk_col]}",
+                          "status": r.get(status_col) if status_col else None,
+                          "created_at": r.get("created_at"),
+                          "viewable": table_view_form(session, t.id) is not None})
+    items.sort(key=lambda x: (x["created_at"] is None, x["created_at"]), reverse=True)
+    return render_template("user/my_requests.html", items=items)
+
+
 def _q_filter(session, table, q):
     """An OR-group matching ``q`` against every text-like column of ``table``."""
     cols = [f.phys_name for f in table.fields if is_text_search(f.data_type)]

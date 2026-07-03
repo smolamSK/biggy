@@ -469,3 +469,29 @@ def test_adopt_string_pk_on_sqlite(app, client, sqlite_source):
     with sqlite_source["engine"].connect() as c:
         assert c.execute(text("SELECT name FROM account WHERE uuid='u-1'")).scalar() == "Acme"
     assert "Acme" in client.get(f"/u/view/{aid}/u-1").get_data(as_text=True)   # string-key view URL
+
+
+def test_markdown_field(app, client):
+    """Markdown fields store text, render HTML on view pages, and neutralize raw HTML."""
+    _setup(client)
+    tid = _make_table(client, app, "article", "Article", "title")
+    _add_field(client, tid, "body", "markdown")
+    fid = _make_form(client, app, "article_form", "Articles", tid)
+    _make_form_p(client, app, "article_view", "Article", tid, "view")
+
+    body = "**Bold move** and a list:\n\n- one\n- two\n\n<script>alert('xss')</script>"
+    _ok(client.post(f"/u/forms/{fid}/new", data={"title": "A1", "body": body},
+                    follow_redirects=True))
+    with app.app_context():
+        with get_engine().connect() as c:
+            stored = c.execute(text("SELECT body FROM article WHERE id=1")).scalar()
+    assert stored == body                                   # stored as plain text
+
+    vh = client.get(f"/u/view/{tid}/1").get_data(as_text=True)
+    assert "<strong>Bold move</strong>" in vh               # rendered
+    assert "<li>one</li>" in vh
+    assert "<script>alert" not in vh                        # raw HTML neutralized
+    assert "&lt;script&gt;" in vh
+
+    # searchable via global search (markdown is a text-like type)
+    assert "A1" in client.get("/u/search?q=Bold+move").get_data(as_text=True)

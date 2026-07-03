@@ -522,3 +522,8 @@ details > summary { cursor: pointer; }
 
 /* Search-result match highlight */
 mark { background: var(--chip-amber-bg, #fef3c7); color: inherit; padding: 0 .15em; border-radius: 3px; }
+
+/* Rendered markdown fields */
+.md-content { max-width: 62ch; }
+.md-content > :first-child { margin-top: 0; }
+.md-content > :last-child { margin-bottom: 0; }

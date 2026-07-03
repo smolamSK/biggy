@@ -120,7 +120,7 @@ def _scalar_field(meta: MetaField, label, required, render_kw=None):
     if dt == "string":
         validators += _text_rules(meta)
         return StringField(label, validators=validators, render_kw=rk or None)
-    if dt == "text":
+    if dt in ("text", "markdown"):
         validators += _text_rules(meta)
         return TextAreaField(label, validators=validators, render_kw=rk or None)
     if dt in ("integer", "bigint"):
@@ -283,7 +283,7 @@ def display_field_name(session, meta_table):
         if f:
             return f.phys_name
     for f in meta_table.fields:
-        if f.data_type in ("string", "text"):
+        if f.data_type in ("string", "text", "markdown"):
             return f.phys_name
     return "id"
 

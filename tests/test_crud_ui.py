@@ -946,3 +946,61 @@ def test_merge_duplicates(app, client):
                     data={"table_id": cust_tid, "survivor": "1", "duplicate": "1"},
                     follow_redirects=True)
     assert "same record" in r.get_data(as_text=True)
+
+
+def test_service_catalog_and_my_requests(app, client):
+    """Catalog cards from flagged forms; my-requests shows only the caller's records."""
+    _setup(client)
+    tid = _make_table(client, app, "it_request", "IT request", "title")
+    _add_field(client, tid, "status", "enum", enum_options="new\ndone")
+    _ok(client.post(f"/designer/tables/{tid}/flags", data=dict(row_owned="y"),
+                    follow_redirects=True))
+    fid = _make_form(client, app, "it_req_form", "New IT request", tid)
+    other_tid = _make_table(client, app, "misc", "Misc", "name")
+    _make_form(client, app, "misc_form", "Misc", other_tid)      # NOT flagged
+
+    # not yet in the catalog
+    assert "New IT request" not in client.get("/u/catalog").get_data(as_text=True)
+    _ok(client.post(f"/designer/forms/{fid}/catalog",
+                    data={"in_catalog": "y", "catalog_group": "IT"}, follow_redirects=True))
+    cat = client.get("/u/catalog").get_data(as_text=True)
+    assert "New IT request" in cat and "IT" in cat and f"/u/forms/{fid}/new" in cat
+    assert "Misc" not in cat                                   # unflagged form absent
+
+    # amy submits a request; each user sees only their own under My requests
+    _new_amy(app, client)
+    amy = app.test_client()
+    _ok(amy.post("/auth/login", data=dict(username="amy", password="pw123456"),
+                 follow_redirects=True))
+    _ok(amy.post(f"/u/forms/{fid}/new", data={"title": "Laptop please", "status": "new"},
+                 follow_redirects=True))
+    _ok(client.post(f"/u/forms/{fid}/new", data={"title": "Boss request", "status": "new"},
+                    follow_redirects=True))
+    mine = amy.get("/u/my-requests").get_data(as_text=True)
+    assert "Laptop please" in mine and "Boss request" not in mine
+    boss = client.get("/u/my-requests").get_data(as_text=True)
+    assert "Boss request" in boss and "Laptop please" not in boss
+
+    # the catalog flags round-trip through schema export/import
+    exp = client.get("/designer/schema/export.json")
+    _ok(exp)
+    _ok(client.post("/designer/schema/import",
+                    data={"file": (io.BytesIO(exp.get_data()), "s.json"), "replace_existing": "y"},
+                    content_type="multipart/form-data"))
+    with app.app_context():
+        mf = SessionLocal().scalar(select(MetaForm).where(MetaForm.name == "it_req_form"))
+        assert mf.in_catalog and mf.catalog_group == "IT"
+
+
+def test_kb_example_searchable(app, client):
+    """The knowledge-base example loads; articles render markdown + hit global search."""
+    _setup(client)
+    _ok(client.post("/designer/examples/kb/load", follow_redirects=True))
+    res = client.get("/u/search?q=VPN").get_data(as_text=True)
+    assert "VPN troubleshooting" in res
+    with app.app_context():
+        art = SessionLocal().scalar(select(MetaTable).where(
+            MetaTable.phys_name == "kb_article"))
+    vh = client.get(f"/u/view/{art.id}/2").get_data(as_text=True)
+    assert "<h2>Common fixes</h2>" in vh                       # markdown rendered
+    assert "<code>vpn.example.com</code>" in vh

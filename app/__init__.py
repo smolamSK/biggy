@@ -74,6 +74,19 @@ def create_app(config_object=Config):
         except (ValueError, TypeError):
             return s
 
+    @app.template_filter("markdown_safe")
+    def _markdown_safe(value):
+        """User-authored markdown -> HTML. Raw HTML is escaped first (no injection)."""
+        from html import escape
+        if not value:
+            return ""
+        text = escape(str(value))
+        try:
+            import markdown as _md
+            return _md.markdown(text, extensions=["fenced_code", "tables", "sane_lists"])
+        except ImportError:  # pragma: no cover - markdown is a listed dependency
+            return "<p>" + text.replace("\n", "<br>") + "</p>"
+
     # Deterministic value -> status-chip hue. Mirrors chipHue() in static/inline.js
     # (char-code sum mod 7) so inline-edited cells re-render the same color.
     _CHIP_HUES = ["green", "amber", "red", "blue", "violet", "teal", "gray"]

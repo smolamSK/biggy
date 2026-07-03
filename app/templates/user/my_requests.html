@@ -1,0 +1,27 @@
+{% extends "user/_base.html" %}
+{% from "_macros.html" import record_link with context %}
+{% block title %}My requests · Biggy{% endblock %}
+{% block inner %}
+<h1>My requests</h1>
+<p class="muted">Everything you have submitted through the
+  <a href="{{ url_for('user.catalog') }}">catalog</a>.</p>
+
+<div class="panel">
+  <table class="grid">
+    <tr><th>Type</th><th>Request</th><th>Status</th><th>Created</th></tr>
+    {% for it in items %}
+      <tr>
+        <td>{{ it.table.label }}</td>
+        <td>{% if it.viewable %}{{ record_link(it.table.id, it.pk, it.label) }}
+            {% else %}{{ it.label }}{% endif %}</td>
+        <td>{% if it.status %}<span class="chip c-{{ it.status|chip_hue }}">{{ it.status }}</span>
+            {% else %}<span class="muted">—</span>{% endif %}</td>
+        <td class="muted">{{ it.created_at.strftime('%Y-%m-%d %H:%M') if it.created_at else '—' }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" class="muted">No requests yet — pick something from the
+        <a href="{{ url_for('user.catalog') }}">catalog</a>.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

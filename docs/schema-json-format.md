@@ -139,6 +139,7 @@ must live in the same data source.
 |---|---|---|
 | `string` | text | `length` (e.g. 255); validators `min_length`/`max_length`/`pattern` |
 | `text` | long text | multi-line |
+| `markdown` | markdown text | rendered as HTML on record pages (raw HTML neutralized) |
 | `integer` | number | validators `min_value`/`max_value` (as strings) |
 | `bigint` | number | 64-bit |
 | `float` | number | |
@@ -196,7 +197,8 @@ See [§4](#4-relations). `id`, `name`, `kind` (`m1`|`mn`), `from_table_id`,
 
 ### `forms`
 `id`, `table_id`, `name` (identifier), `title`, `description`, `purpose`
-(`"data"` = create/edit, `"view"` = read-only view).
+(`"data"` = create/edit, `"view"` = read-only view). Optional service catalog:
+`in_catalog` (bool — show as a request card on `/u/catalog`) + `catalog_group`.
 
 ### `form_fields` — which fields appear on a form, in order
 `id`, `form_id`, `kind` (`"field"` = a table field via `field_id`; `"relation"` = a

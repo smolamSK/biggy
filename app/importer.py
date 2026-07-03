@@ -36,7 +36,7 @@ def _check_rules(field, value):
 
     Uses getattr so lightweight field stand-ins without rule attrs still work.
     """
-    if field.data_type in ("string", "text"):
+    if field.data_type in ("string", "text", "markdown"):
         minlen = getattr(field, "min_length", None)
         maxlen = getattr(field, "max_length", None)
         pattern = getattr(field, "pattern", None)
@@ -106,7 +106,7 @@ def coerce_value(field, raw, resolver=None):
     dt = field.data_type
     name = field.phys_name
     try:
-        if dt in ("string", "text"):
+        if dt in ("string", "text", "markdown"):
             _check_rules(field, raw)
             return raw
         if dt in ("integer", "bigint"):

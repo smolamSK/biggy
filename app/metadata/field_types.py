@@ -11,6 +11,7 @@ foreign key) is created via the Relations UI, not the plain add-field form.
 SCALAR_TYPES = {
     "string": {"label": "Text (short)", "needs_length": True, "default_length": 255},
     "text": {"label": "Text (long)"},
+    "markdown": {"label": "Markdown (rich text)"},
     "integer": {"label": "Integer"},
     "bigint": {"label": "Big integer"},
     "decimal": {"label": "Decimal", "needs_precision": True},
@@ -60,5 +61,5 @@ def is_file(data_type):
 
 def is_text_search(data_type):
     """Whether 'contains' search makes sense for this type."""
-    return data_type in {"string", "text", "enum", "email", "url", "phone", "json",
-                         "tags", "autonumber", "formula"}
+    return data_type in {"string", "text", "markdown", "enum", "email", "url", "phone",
+                         "json", "tags", "autonumber", "formula"}

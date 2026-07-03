@@ -15,6 +15,7 @@ from ..metadata.models import MetaTable
 # data_type → JSON-schema fragment (relation/enum handled specially below)
 _TYPE_MAP = {
     "string": {"type": "string"}, "text": {"type": "string"},
+    "markdown": {"type": "string"},
     "integer": {"type": "integer"}, "bigint": {"type": "integer", "format": "int64"},
     "float": {"type": "number"}, "decimal": {"type": "number"},
     "currency": {"type": "number"}, "percent": {"type": "number"},

@@ -1,0 +1,25 @@
+{% extends "user/_base.html" %}
+{% block title %}Catalog · Biggy{% endblock %}
+{% block inner %}
+<h1>Service catalog</h1>
+<p class="muted">Pick what you need — submitting a request creates a record the team works on.
+  Track yours under <a href="{{ url_for('user.my_requests') }}">My requests</a>.</p>
+
+{% for group, forms in groups.items() %}
+  <h2 style="margin:1rem 0 .4rem">{{ group }}</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.8rem">
+    {% for f in forms %}
+      <div class="panel" style="display:flex;flex-direction:column;gap:.4rem;margin:0">
+        <strong>{{ f.title }}</strong>
+        {% if f.description %}<span class="muted" style="font-size:var(--fs-sm)">{{ f.description }}</span>{% endif %}
+        <span style="flex:1"></span>
+        <a class="btn primary" style="align-self:flex-start"
+           href="{{ url_for('user.record_new', form_id=f.id) }}">Request →</a>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="panel"><p class="muted">Nothing in the catalog yet. A designer can add a form
+    to the catalog from its form-edit page.</p></div>
+{% endfor %}
+{% endblock %}
