@@ -34,7 +34,8 @@ the same page and enter a current code. If you lose your device, a designer can
   **Sign out**.
 - **Left menu** — the navigation a designer built: groups you can expand/collapse,
   and links that open a **list** of records. A **Search all…** box at the top
-  searches across everything you can see.
+  searches **every text field of every table you can see**; results are grouped by
+  table and show which field matched, with the term highlighted.
 - **Main area** — whatever you opened (a list, a record, a report…).
 
 ## Opening a list
@@ -42,7 +43,8 @@ the same page and enter a current code. If you lose your device, a designer can
 Click a menu entry to open a **list** of records (for example *Customers*). From
 a list you can:
 
-- **Search** — type in the search box to match text across columns.
+- **Search** — type in the search box to match text across all the table's text
+  columns (names, notes, emails, statuses, tags, …).
 - **Filter** — click **+ Add condition** to filter by a field (equals, contains,
   greater than, is empty, …), then **Apply**.
 - **Sort** — click a column header to sort; click again to reverse.

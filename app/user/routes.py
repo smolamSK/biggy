@@ -44,7 +44,7 @@ from ..db import SessionLocal, engine_for_table
 from ..forms.admin_forms import ImportForm
 from ..forms.builder import build_form, display_field_name, m1_target_and_columns
 from ..helpers import can_read, can_write, current_user_id, form_access, table_view_form
-from ..metadata.field_types import RELATION_TYPE, type_label
+from ..metadata.field_types import RELATION_TYPE, is_text_search, type_label
 from ..metadata.models import (
     ApiToken,
     ApprovalRequest,
@@ -261,9 +261,43 @@ def report_to_dashboard(table_id):
     return redirect(url_for("user.dashboard_view", dash_id=dash.id))
 
 
+def _q_filter(session, table, q):
+    """An OR-group matching ``q`` against every text-like column of ``table``."""
+    cols = [f.phys_name for f in table.fields if is_text_search(f.data_type)]
+    if not cols:
+        cols = [display_field_name(session, table)]
+    return {"any": [{"col": c, "op": "contains", "value": q, "is_text": True}
+                    for c in cols]}
+
+
+def _match_snippet(session, table, row, q):
+    """(field_label, before, match, after) for the first column containing ``q``."""
+    ql = q.lower()
+    disp = display_field_name(session, table)
+    fields = sorted((f for f in table.fields if is_text_search(f.data_type)),
+                    key=lambda f: f.phys_name != disp)     # display field first
+    for f in fields:
+        s = "" if row.get(f.phys_name) is None else str(row.get(f.phys_name))
+        i = s.lower().find(ql)
+        if i >= 0:
+            start, end = max(0, i - 40), min(len(s), i + len(q) + 40)
+            return (f.label, ("…" if start else "") + s[start:i], s[i:i + len(q)],
+                    s[i + len(q):end] + ("…" if end < len(s) else ""))
+    return None
+
+
+def _first_readable_form(session, table_id):
+    for f in session.scalars(select(MetaForm).where(MetaForm.table_id == table_id,
+                                                    MetaForm.purpose != "view")
+                             .order_by(MetaForm.id)):
+        if can_read(form_access(session, current_user, f.id)):
+            return f
+    return None
+
+
 @bp.route("/search")
 def search():
-    """Global search: the display field of every table the user can view."""
+    """Global search: every text-like column of every table the user can view."""
     q = (request.args.get("q") or "").strip()
     session = _s()
     user_id, is_designer = _ctx()
@@ -276,15 +310,18 @@ def search():
             disp = display_field_name(session, table)
             rows, total = record_service.list_records(
                 engine_for_table(table), table, user_id=user_id, is_designer=is_designer,
-                filters=[{"col": disp, "op": "contains", "value": q, "is_text": True}],
-                per_page=10)
+                filters=[_q_filter(session, table, q)], per_page=10)
             if not rows:
                 continue
             records = [{"pk": r[table.pk_col],
                         "label": str(r.get(disp)) if r.get(disp) not in (None, "")
-                        else f"#{r[table.pk_col]}"} for r in rows]
+                        else f"#{r[table.pk_col]}",
+                        "snippet": _match_snippet(session, table, r, q)} for r in rows]
+            lf = _first_readable_form(session, table.id)
             groups.append({"table_id": table.id, "label": table.label,
-                           "records": records, "total": total})
+                           "records": records, "total": total,
+                           "list_url": url_for("user.form_list", form_id=lf.id, q=q)
+                           if lf else None})
     return render_template("user/search.html", q=q, groups=groups)
 
 
@@ -396,8 +433,8 @@ def _list_query(mf, session, engine):
 
     filters, conditions = [], []
     if q:
-        filters.append({"col": display_field_name(session, mf.table),
-                        "op": "contains", "value": q})
+        # match across every text-like column of the table (not just the display field)
+        filters.append(_q_filter(session, mf.table, q))
     for col, op, val in zip(request.args.getlist("fcol"),
                             request.args.getlist("fop"),
                             request.args.getlist("fval")):

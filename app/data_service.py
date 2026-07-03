@@ -136,18 +136,31 @@ def delete_where(engine, phys_name, col, value):
         conn.execute(delete(table).where(table.c[col] == value))
 
 
-def _apply_filters(stmt, table, filters):
+def _clause_for(table, f):
+    """One condition dict -> a boolean clause (or None when invalid/empty)."""
     from .filters import NO_VALUE_OPS, build_clause
 
+    col = f.get("col")
+    if col not in table.c:
+        return None
+    op = f.get("op") or "contains"
+    value = f.get("value")
+    if op not in NO_VALUE_OPS and value in (None, ""):
+        return None
+    return build_clause(table.c[col], op, value, is_text=bool(f.get("is_text")))
+
+
+def _apply_filters(stmt, table, filters):
+    from sqlalchemy import or_
+
     for f in filters or []:
-        col = f.get("col")
-        if col not in table.c:
+        if "any" in f:                       # OR-group: match any sub-condition
+            clauses = [c for c in (_clause_for(table, sub) for sub in f["any"] or [])
+                       if c is not None]
+            if clauses:
+                stmt = stmt.where(or_(*clauses))
             continue
-        op = f.get("op") or "contains"
-        value = f.get("value")
-        if op not in NO_VALUE_OPS and value in (None, ""):
-            continue
-        clause = build_clause(table.c[col], op, value, is_text=bool(f.get("is_text")))
+        clause = _clause_for(table, f)
         if clause is not None:
             stmt = stmt.where(clause)
     return stmt

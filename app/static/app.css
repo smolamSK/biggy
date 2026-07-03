@@ -519,3 +519,6 @@ details > summary { cursor: pointer; }
 .markdown blockquote { margin: .6rem 0; padding: .3rem .9rem; border-left: 3px solid var(--brand); color: var(--muted); }
 .markdown table { border-collapse: collapse; margin: .6rem 0; }
 .markdown th, .markdown td { border: 1px solid var(--line); padding: .3rem .5rem; text-align: left; }
+
+/* Search-result match highlight */
+mark { background: var(--chip-amber-bg, #fef3c7); color: inherit; padding: 0 .15em; border-radius: 3px; }

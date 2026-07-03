@@ -456,17 +456,43 @@ def test_saved_views(app, client):
 def test_global_search(app, client):
     _setup(client)
     comp_tid = _make_table(client, app, "company", "Company", "name")
+    _add_field(client, comp_tid, "notes", "text")
+    _add_field(client, comp_tid, "employees", "integer")
     wid_tid = _make_table(client, app, "widget", "Widget", "name")
     _make_form_p(client, app, "company_view", "Company", comp_tid, "view")  # viewable
     comp_fid = _make_form(client, app, "company_form", "Companies", comp_tid)
     wid_fid = _make_form(client, app, "widget_form", "Widgets", wid_tid)    # no view form
-    _ok(client.post(f"/u/forms/{comp_fid}/new", data={"name": "Acme Corp"}, follow_redirects=True))
+    _ok(client.post(f"/u/forms/{comp_fid}/new",
+                    data={"name": "Acme Corp", "notes": "leading zeppelin manufacturer",
+                          "employees": "77145"}, follow_redirects=True))
     _ok(client.post(f"/u/forms/{wid_fid}/new", data={"name": "Acme Gadget"}, follow_redirects=True))
 
     res = client.get("/u/search?q=Acme").get_data(as_text=True)
     assert "Acme Corp" in res
     assert "Acme Gadget" not in res                  # no view form -> not searchable
     assert f"/u/view/{comp_tid}/" in res
+
+    # cross-column: a term living only in a non-display text column is found, with
+    # the matched field named + highlighted, and a working "view all" link
+    res = client.get("/u/search?q=zeppelin").get_data(as_text=True)
+    assert "Acme Corp" in res and "Notes" in res
+    assert "<mark>zeppelin</mark>" in res
+    assert f"/u/forms/{comp_fid}?q=zeppelin" in res
+    # numeric columns are not text-searched
+    assert "Acme Corp" not in client.get("/u/search?q=77145").get_data(as_text=True)
+
+    # the per-list search box also matches across text columns now
+    lst = client.get(f"/u/forms/{comp_fid}?q=zeppelin").get_data(as_text=True)
+    assert "Acme Corp" in lst
+    assert "Acme Corp" not in client.get(
+        f"/u/forms/{comp_fid}?q=dirigible").get_data(as_text=True)
+
+    # the data-layer OR-group: any-of semantics in one filter entry
+    with app.app_context():
+        rows, total = data_service.list_rows(get_engine(), "company", filters=[
+            {"any": [{"col": "name", "op": "contains", "value": "no-such"},
+                     {"col": "notes", "op": "contains", "value": "zeppelin"}]}])
+        assert total == 1 and rows[0]["name"] == "Acme Corp"
 
 def test_csv_upsert(app, client):
     from app import importer

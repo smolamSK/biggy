@@ -14,9 +14,21 @@
   {% if groups %}
     {% for g in groups %}
       <div class="panel">
-        <h2 style="margin:.2rem 0">{{ g.label }} <span class="muted">({{ g.total }})</span></h2>
+        <div class="toolbar" style="margin:0">
+          <h2 style="margin:.2rem 0">{{ g.label }} <span class="muted">({{ g.total }})</span></h2>
+          <span style="flex:1"></span>
+          {% if g.list_url %}<a class="btn sm" href="{{ g.list_url }}">view all {{ g.total }} →</a>{% endif %}
+        </div>
         <ul style="margin:.3rem 0;padding-left:1.2rem">
-          {% for it in g.records %}<li>{{ record_link(g.table_id, it.pk, it.label) }}</li>{% endfor %}
+          {% for it in g.records %}
+            <li>{{ record_link(g.table_id, it.pk, it.label) }}
+              {% if it.snippet %}
+                {% set flabel, before, match, after = it.snippet %}
+                <span class="muted" style="font-size:var(--fs-xs)"> — {{ flabel }}:
+                  {{ before }}<mark>{{ match }}</mark>{{ after }}</span>
+              {% endif %}
+            </li>
+          {% endfor %}
           {% if g.total > g.records|length %}
             <li class="muted">… and {{ g.total - g.records|length }} more</li>
           {% endif %}
