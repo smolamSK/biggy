@@ -7,9 +7,13 @@ from flask_login import current_user
 from sqlalchemy import select
 
 from .. import approvals, record_service, workflow
-from ..db import SessionLocal, engine_for_table, get_engine
+from ..db import SessionLocal, engine_for_table
 from ..helpers import (
-    current_user_id, readable_fields, table_readable, table_writable, writable_fields,
+    current_user_id,
+    readable_fields,
+    table_readable,
+    table_writable,
+    writable_fields,
 )
 from ..metadata.models import MetaTable
 from . import openapi, serialization

@@ -42,6 +42,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Lint
+        run: ruff check .
+
       - name: Create databases
         run: |
           mysql --host 127.0.0.1 --port 3306 -uroot -proot -e "

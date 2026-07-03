@@ -17,6 +17,7 @@ the rest. Idempotency for scheduled triggers is by design: the designer pairs a
 **condition** with a **set_field** action so an already-handled row stops matching
 (no per-row run ledger needed).
 """
+import logging
 import threading
 import time
 from datetime import datetime, timedelta, timezone
@@ -28,6 +29,9 @@ from werkzeug.datastructures import MultiDict
 from . import feeds, jobs, pull, record_service, reporting, sla, triggers
 from .db import SessionLocal, engine_for_table, get_engine
 from .metadata.models import AppUser, MetaTable, Notification, RateHit, ReportDef, TriggerRule
+
+_log = logging.getLogger(__name__)
+
 
 
 def _now():
@@ -44,6 +48,7 @@ def _due(last_run_at, schedule_minutes, now):
 
 
 def _log_error(kind, name, exc):
+    _log.warning("scheduled %s '%s' failed: %s", kind, name, exc)
     s = SessionLocal()  # re-acquire: a failed feed push may have removed the scoped session
     s.add(Notification(channel="error", event="schedule", subject=f"{kind}: {name}"[:255],
                        status="failed", detail=str(exc)[:300]))

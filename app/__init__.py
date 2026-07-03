@@ -1,10 +1,24 @@
 """Application factory."""
+import logging
+
 import click
-from flask import Flask, g, redirect, request, url_for
+from flask import Flask, redirect, request, url_for
 
 from .config import Config
 from .db import SessionLocal, init_engine
 from .extensions import csrf, login_manager
+
+__version__ = "1.0.0"
+
+
+def _configure_logging(app):
+    """Root logging at LOG_LEVEL (idempotent — never duplicates handlers)."""
+    root = logging.getLogger()
+    if not root.handlers:
+        logging.basicConfig(
+            format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    root.setLevel(app.config.get("LOG_LEVEL", "INFO"))
+    logging.getLogger("alembic").setLevel(logging.WARNING)  # chatty at INFO
 
 
 def create_app(config_object=Config):
@@ -12,6 +26,8 @@ def create_app(config_object=Config):
 
     app = Flask(__name__)
     app.config.from_object(config_object)
+    app.config["APP_VERSION"] = __version__
+    _configure_logging(app)
     if not app.config.get("UPLOAD_FOLDER"):
         app.config["UPLOAD_FOLDER"] = os.path.join(app.instance_path, "uploads")
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
@@ -34,7 +50,6 @@ def create_app(config_object=Config):
 
     # import side-effect: registers user_loader
     from . import helpers  # noqa: F401
-
     from .api.routes import bp as api_bp
     from .auth.routes import bp as auth_bp
     from .core.routes import bp as core_bp
@@ -126,10 +141,10 @@ def _register_context(app):
     @app.context_processor
     def inject_globals():
         from flask_login import current_user
-        from .helpers import menu_tree, menu_url, menu_visible
-
         from sqlalchemy import func, select
+
         from .db import SessionLocal
+        from .helpers import menu_tree, menu_url, menu_visible
         from .metadata.models import MetaTable, Notification
 
         nav, designer_tables, unread, pending_appr = [], [], 0, 0
@@ -187,7 +202,7 @@ def _register_cli(app):
     def create_designer(username, password):
         """Create a designer account."""
         from .db import SessionLocal
-        from .metadata.models import AppUser, ROLE_DESIGNER
+        from .metadata.models import ROLE_DESIGNER, AppUser
 
         session = SessionLocal()
         user = AppUser(username=username, role=ROLE_DESIGNER)

@@ -62,6 +62,9 @@ class Config:
     # authenticated user without MFA is forced to enroll before using the app.
     REQUIRE_MFA = _as_bool(os.environ.get("REQUIRE_MFA"))
 
+    # Root log level for operational logging (DEBUG/INFO/WARNING/ERROR).
+    LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
+
     # Login lockout: after N *failed* attempts (per username and per IP) within the
     # window, further sign-in attempts are refused. 0 disables. Successful logins
     # never count. Also bounds wrong MFA-code attempts.

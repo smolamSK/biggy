@@ -23,7 +23,7 @@
 </head>
 <body>
   <header class="topbar">
-    <span class="brand">Biggy</span>
+    <span class="brand">Biggy <span class="muted" style="font-size:var(--fs-xs);font-weight:400" title="Version">v{{ config.APP_VERSION }}</span></span>
     {% block mode %}{% endblock %}
     <span class="spacer"></span>
     <select id="theme-select" aria-label="Theme" title="Theme">

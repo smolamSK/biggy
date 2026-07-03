@@ -9,6 +9,7 @@ fire). The mirror of :mod:`app.feeds` (outbound). Auth: a secret token in the UR
 import hashlib
 import hmac
 import json
+import logging
 from datetime import datetime, timezone
 
 from flask import Blueprint, current_app, g, jsonify, request
@@ -22,6 +23,8 @@ from ..importer import coerce_value
 from ..metadata.models import MetaTable, Notification, Webhook
 
 bp = Blueprint("hooks", __name__, url_prefix="/hooks")
+
+_logger = logging.getLogger(__name__)
 
 
 def _err(status, message, **headers):
@@ -151,6 +154,7 @@ def receive(token):
             pk = record_service.create(session, engine, mt, values, wh.user_id)
             code, event = 201, "create"
     except Exception as exc:  # noqa: BLE001 - surface DB errors (FK, unique, …)
+        _logger.warning("webhook '%s' failed to save into %s: %s", wh.name, mt.phys_name, exc)
         session.rollback()    # clear any half-applied metadata writes before logging
         _log(session, wh, mt, None, "create", "failed", str(exc))
         return _err(409, f"Could not save: {exc}")

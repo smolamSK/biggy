@@ -8,12 +8,12 @@ from flask import (
     render_template,
     url_for,
 )
-from flask_login import current_user, login_required, login_user
+from flask_login import current_user, login_required
 
 from ..db import SessionLocal, build_url, get_engine, test_connection
 from ..forms.admin_forms import SetupForm
 from ..helpers import designer_required, is_bootstrapped
-from ..metadata.models import AppUser, Base, ROLE_DESIGNER
+from ..metadata.models import ROLE_DESIGNER, AppUser, Base
 from ..metadata.schema_service import ensure_meta_schema
 
 bp = Blueprint("core", __name__)

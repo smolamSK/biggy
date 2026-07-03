@@ -11,3 +11,4 @@ cryptography>=42.0
 qrcode>=7.0
 gunicorn>=21.0
 pytest>=8.0
+ruff>=0.6

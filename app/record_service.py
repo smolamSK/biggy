@@ -4,6 +4,7 @@ Wraps the generic :mod:`app.data_service` so that module stays free of policy
 (and untouched for importer/schema_io/data_io). User-mode routes call this.
 """
 import json
+import logging
 from datetime import date, datetime, timezone
 
 from sqlalchemy import select
@@ -13,6 +14,8 @@ from .identifiers import junction_name
 from .metadata.models import AuditLog, MetaField, MetaRelation, MetaTable
 
 _MANAGED = {"created_by", "created_at", "updated_by", "updated_at", "deleted_at", "deleted_by"}
+
+_logger = logging.getLogger(__name__)
 
 
 def _now():
@@ -46,17 +49,17 @@ def _fire(session, engine, meta_table, event, pk, old_row, user_id):
     try:
         triggers.fire(session, engine, meta_table, event, pk, old_row, user_id)
     except Exception:  # noqa: BLE001 - triggers must never break the write
-        pass
+        _logger.exception("trigger dispatch failed on %s #%s", meta_table.phys_name, pk)
     from . import feeds
     try:
         feeds.run_for_event(session, engine, meta_table, event, pk, old_row, user_id)
     except Exception:  # noqa: BLE001 - feeds must never break the write
-        pass
+        _logger.exception("feed dispatch failed on %s #%s", meta_table.phys_name, pk)
     from . import sla
     try:
         sla.run_for_event(session, engine, meta_table, event, pk, old_row, user_id)
     except Exception:  # noqa: BLE001 - SLA must never break the write
-        pass
+        _logger.exception("SLA dispatch failed on %s #%s", meta_table.phys_name, pk)
 
 
 _DEFAULT_TOKENS = {"now", "today", "current_user", "me"}

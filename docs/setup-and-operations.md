@@ -70,6 +70,7 @@ All settings are environment variables, loaded from `.env` at startup (see
 | Variable | Default | Meaning |
 |---|---|---|
 | `SECRET_KEY` | dev value | **Set this in production** — Flask session signing key |
+| `LOG_LEVEL` | `INFO` | root logging level (`DEBUG`/`INFO`/`WARNING`/`ERROR`); job/trigger/webhook failures are logged as warnings |
 | `DB_DRIVER` | `mysql+pymysql` | SQLAlchemy driver |
 | `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | `127.0.0.1` / `3306` / `biggy` / `biggy` / `biggy` | connection parts |
 | `DATABASE_URL` | — | full SQLAlchemy URL; **overrides** the `DB_*` parts |

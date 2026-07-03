@@ -8,6 +8,7 @@ configured or under TESTING**, so the engine never needs the network to work.
 An action failure is logged, never raised — it must not break the write.
 """
 import json
+import logging
 import re
 import smtplib
 import urllib.request
@@ -19,6 +20,9 @@ from sqlalchemy import select
 
 from . import data_service
 from .metadata.models import Notification, TriggerRule
+
+_log = logging.getLogger(__name__)
+
 
 _TOKEN = re.compile(r"\{(\w+)\}")
 
@@ -52,6 +56,8 @@ def fire(session, engine, meta_table, event, pk, old_row, user_id):
                 new_row = _run(session, engine, meta_table, rule, event, pk,
                                old_row, new_row, user_id, fields)
         except Exception as exc:  # noqa: BLE001 - a rule must never break the write
+            _log.warning("trigger rule '%s' failed on %s #%s: %s", rule.name,
+                         meta_table.phys_name, pk, exc)
             session.add(Notification(rule_id=rule.id, table_phys=meta_table.phys_name,
                                      row_pk=pk, event=event, channel="error",
                                      status="failed", detail=str(exc)[:300]))

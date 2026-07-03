@@ -1,4 +1,5 @@
 """Authentication and (designer-only) user management."""
+import logging
 import secrets
 
 from flask import (
@@ -9,8 +10,10 @@ from flask import (
     redirect,
     render_template,
     request,
-    session as web_session,
     url_for,
+)
+from flask import (
+    session as web_session,
 )
 from flask_login import current_user, login_required, login_user, logout_user
 from sqlalchemy import select
@@ -20,9 +23,11 @@ from .. import oidc, rate_limit, totp
 from ..db import SessionLocal
 from ..forms.admin_forms import LoginForm, MfaCodeForm, PasswordChangeForm, UserForm
 from ..helpers import designer_required, ensure_roles
-from ..metadata.models import AppUser, ROLE_USER, Role
+from ..metadata.models import ROLE_USER, AppUser, Role
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
+
+_logger = logging.getLogger(__name__)
 
 
 def _role_choices(session):
@@ -223,6 +228,7 @@ def oidc_callback():
         tokens = oidc.exchange_code(code, _oidc_redirect_uri())
         claims = oidc.verify_id_token(tokens["id_token"], nonce)
     except oidc.OidcError as exc:
+        _logger.warning("OIDC sign-in failed: %s", exc)
         flash(f"SSO sign-in failed: {exc}", "danger")
         return redirect(url_for("auth.login"))
 

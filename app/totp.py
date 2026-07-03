@@ -70,6 +70,7 @@ def qr_svg(data):
         return None
     try:
         import io
+
         import qrcode
         import qrcode.image.svg
 

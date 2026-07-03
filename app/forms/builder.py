@@ -5,9 +5,11 @@ A :class:`BuiltForm` carries the generated form class plus an ordered list of
 and map submitted data back to physical columns / many-to-many link sets.
 """
 import json
-from dataclasses import dataclass, field as dc_field
+from dataclasses import dataclass
+from dataclasses import field as dc_field
 
 from flask_wtf import FlaskForm
+from sqlalchemy import select
 from wtforms import (
     BooleanField,
     DateField,
@@ -19,11 +21,19 @@ from wtforms import (
     StringField,
     TextAreaField,
 )
-from sqlalchemy import select
 from wtforms.fields import DateTimeLocalField, TimeField
 from wtforms.validators import (
-    InputRequired, Length, NumberRange, Optional, Regexp, ValidationError,
+    InputRequired,
+    Length,
+    NumberRange,
+    Optional,
+    Regexp,
+    ValidationError,
 )
+
+from .. import data_service
+from ..metadata.field_types import FILE_TYPES, RELATION_TYPE
+from ..metadata.models import MetaField, MetaRelation, MetaTable
 
 
 def _valid_json(form, field):
@@ -32,10 +42,6 @@ def _valid_json(form, field):
             json.loads(field.data)
         except (ValueError, TypeError):
             raise ValidationError("Enter valid JSON.")
-
-from .. import data_service
-from ..metadata.field_types import FILE_TYPES, RELATION_TYPE
-from ..metadata.models import MetaField, MetaRelation, MetaTable
 
 _NONE = ""  # select value representing "no selection"
 

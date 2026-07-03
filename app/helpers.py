@@ -1,7 +1,7 @@
 """Shared helpers: access-control decorators, bootstrap detection, menu tree."""
 from functools import wraps
 
-from flask import abort, current_app, flash, redirect, url_for
+from flask import abort, current_app, url_for
 from flask_login import current_user
 from sqlalchemy import inspect, select
 
@@ -11,13 +11,13 @@ from .metadata.models import (
     ACCESS_NONE,
     ACCESS_READ,
     ACCESS_WRITE,
+    ROLE_DESIGNER,
+    ROLE_USER,
     AppUser,
     MetaFieldPermission,
     MetaForm,
     MetaMenu,
     MetaPermission,
-    ROLE_DESIGNER,
-    ROLE_USER,
     Role,
 )
 
@@ -229,7 +229,6 @@ def menu_tree():
 
 def menu_url(item):
     """Resolve a menu item to a User-mode URL ('#' if it targets nothing)."""
-    from flask import url_for
     from .db import SessionLocal
     from .metadata.models import MetaForm
 

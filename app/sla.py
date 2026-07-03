@@ -15,6 +15,7 @@ break a write). ``run_breach_sweep`` is called from :func:`app.scheduler.run_due
 (cron / ticker) and reuses the trigger engine's email/notify/set-field primitives to
 escalate. Breach granularity equals the scheduler cadence.
 """
+import logging
 from datetime import datetime, timedelta, timezone
 
 from flask import current_app
@@ -27,6 +28,8 @@ from .metadata.models import MetaTable, Notification, SlaClock, SlaPolicy
 # write-back state tokens
 ON_TRACK, DUE_SOON, PAUSED, MET, BREACHED = "on_track", "due_soon", "paused", "met", "breached"
 _TERMINAL = ("met", "breached", "stopped")
+
+_log = logging.getLogger(__name__)
 
 
 def _now():
@@ -223,6 +226,8 @@ def run_for_event(session, engine, meta_table, event, pk, old_row, user_id):
         try:
             _apply(session, engine, meta_table, policy, event, pk, row, fields)
         except Exception as exc:  # noqa: BLE001 - SLA must never break the write
+            _log.warning("SLA policy '%s' failed on %s #%s: %s", policy.name,
+                         meta_table.phys_name, pk, exc)
             session.add(Notification(table_phys=meta_table.phys_name, row_pk=_int_or_none(pk),
                                      event="sla", channel="error", status="failed",
                                      detail=str(exc)[:300]))
@@ -291,6 +296,7 @@ def run_breach_sweep(session, now=None):
             _writeback(session, engine, mt, policy, clock.row_pk, clock, fields, now)
             session.commit()
         except Exception as exc:  # noqa: BLE001 - one bad clock must not stop the sweep
+            _log.warning("SLA sweep failed for %s #%s: %s", clock.table_phys, clock.row_pk, exc)
             session.rollback()
             session.add(Notification(table_phys=clock.table_phys, row_pk=_int_or_none(clock.row_pk),
                                      event="sla", channel="error", status="failed",

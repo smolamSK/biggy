@@ -19,10 +19,10 @@ from sqlalchemy import and_, or_, select
 from . import record_service, workflow
 from .db import engine_for_table
 from .metadata.models import (
-    AppUser,
     ApprovalAction,
     ApprovalRequest,
     ApprovalStep,
+    AppUser,
     MetaField,
     MetaTable,
     Notification,
