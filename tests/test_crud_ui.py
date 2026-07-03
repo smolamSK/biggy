@@ -1004,3 +1004,42 @@ def test_kb_example_searchable(app, client):
     vh = client.get(f"/u/view/{art.id}/2").get_data(as_text=True)
     assert "<h2>Common fixes</h2>" in vh                       # markdown rendered
     assert "<code>vpn.example.com</code>" in vh
+
+
+def test_ui_polish(app, client):
+    """Pickers, breadcrumbs, live-badge endpoint, unsaved guard, htmx removal."""
+    _setup(client)
+    cust_tid = _make_table(client, app, "customer", "Customer", "name")
+    _make_form(client, app, "customer_form", "Customers", cust_tid)
+    _make_form_p(client, app, "customer_view", "Customer", cust_tid, "view")
+    order_tid = _make_table(client, app, "ordr", "Order", "code")
+    _ok(client.post("/designer/relations/new-m1",
+                    data=dict(name="Customer", from_table_id=order_tid, to_table_id=cust_tid,
+                              field_name="customer_id", on_delete="SET NULL", nullable="y"),
+                    follow_redirects=True))
+    order_fid = _make_form(client, app, "order_form", "Orders", order_tid)
+    with app.app_context():
+        with get_engine().begin() as c:
+            c.execute(text("INSERT INTO customer (id, name) VALUES (1, 'Acme')"))
+
+    page = client.get(f"/u/forms/{order_fid}/new").get_data(as_text=True)
+    assert 'data-picker' in page                       # relation select is enhanceable
+    assert 'pickers.js' in page
+    assert 'data-guard' in page                        # unsaved-changes guard armed
+    assert 'class="crumbs"' in page                    # breadcrumb on the edit/new page
+
+    vh = client.get(f"/u/view/{cust_tid}/1").get_data(as_text=True)
+    assert 'class="crumbs"' in vh                      # breadcrumb back to the list
+    assert f"/u/forms/" in vh
+
+    r = client.get("/u/badges")
+    assert r.status_code == 200
+    d = r.get_json()
+    assert set(d) == {"notifications", "approvals"}    # live-badge JSON shape
+
+    base = client.get("/u/").get_data(as_text=True)
+    assert "htmx" not in base                          # dead dependency dropped
+    assert 'id="badge-notif"' in base and 'id="nav-burger"' in base
+
+    anon = app.test_client()
+    assert anon.get("/u/badges").status_code == 302    # login required

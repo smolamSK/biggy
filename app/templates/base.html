@@ -16,13 +16,13 @@
     })();
   </script>
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
-  <script src="{{ url_for('static', filename='htmx.min.js') }}" defer></script>
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
   <script src="{{ url_for('static', filename='theme.js') }}" defer></script>
   <script src="{{ url_for('static', filename='shortcuts.js') }}" defer></script>
 </head>
 <body>
   <header class="topbar">
+    <button id="nav-burger" class="nav-burger" type="button" aria-label="Menu">☰</button>
     <span class="brand">Biggy <span class="muted" style="font-size:var(--fs-xs);font-weight:400" title="Version">v{{ config.APP_VERSION }}</span></span>
     {% block mode %}{% endblock %}
     <span class="spacer"></span>
@@ -40,8 +40,8 @@
         <a href="{{ url_for('auth.users') }}">Users</a>
         <a href="{{ url_for('core.connection') }}">Connection</a>
       {% endif %}
-      <a href="{{ url_for('user.approvals_inbox') }}" title="Approvals">✓{% if pending_approvals %} <span class="badge">{{ pending_approvals }}</span>{% endif %}</a>
-      <a href="{{ url_for('user.notifications') }}" title="Notifications">🔔{% if unread_notifications %} <span class="badge">{{ unread_notifications }}</span>{% endif %}</a>
+      <a id="badge-appr" href="{{ url_for('user.approvals_inbox') }}" title="Approvals">✓{% if pending_approvals %} <span class="badge">{{ pending_approvals }}</span>{% endif %}</a>
+      <a id="badge-notif" href="{{ url_for('user.notifications') }}" title="Notifications">🔔{% if unread_notifications %} <span class="badge">{{ unread_notifications }}</span>{% endif %}</a>
       <a href="{{ url_for('core.help_page', topic='user') }}" title="Help">Help</a>
       <a href="{{ url_for('auth.account') }}" class="muted" title="Account">{{ current_user.username }}</a>
       <a href="{{ url_for('auth.logout') }}">Sign out</a>

@@ -3,6 +3,7 @@
 {% from "user/_related.html" import related_table, history_table with context %}
 {% block title %}{{ label }} · Biggy{% endblock %}
 {% block inner %}
+{% if list_url %}<div class="crumbs"><a href="{{ list_url }}">← {{ table.label }}</a> / {{ label }}</div>{% endif %}
 <div class="toolbar">
   <h1 style="margin:0">{{ table.label }}: {{ label }}
     {% if deleted %}<span class="badge">deleted</span>{% endif %}</h1>

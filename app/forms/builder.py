@@ -224,6 +224,9 @@ def build_form(meta_form, session, engine, user=None):
                     choices = [(str(i), lbl) for i, lbl in opts]
                     if not required:
                         choices = [(_NONE, "— none —")] + choices
+                    # type-to-filter enhancement (static/pickers.js); dependent
+                    # pickers are managed by dependent.js instead
+                    render_kw = {"data-picker": "1"}
                 if locked:
                     render_kw = dict(render_kw or {}, disabled=True)
                 coerce = _fk_coerce if _target_pk_is_int(session, target) else _str_fk_coerce
@@ -263,7 +266,7 @@ def build_form(meta_form, session, engine, user=None):
             name = f"rel_{rel.id}"
             attrs[name] = SelectMultipleField(
                 label, choices=[(str(i), lbl) for i, lbl in opts], coerce=int,
-                validators=[Optional()],
+                validators=[Optional()], render_kw={"data-picker": "1"},
             )
             items.append(FormItem(name=name, label=label, kind="relation_mn",
                                   help_text=it.help_text or "", readonly=it.readonly,

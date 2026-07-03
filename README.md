@@ -14,7 +14,7 @@ connection is configurable; the default target is a local MariaDB.
 
 ## Stack
 
-Flask + Jinja + HTMX (server-rendered, no JS build step), SQLAlchemy 2 (Core for dynamic DDL +
+Flask + Jinja (server-rendered, hand-rolled vanilla JS, no build step), SQLAlchemy 2 (Core for dynamic DDL +
 reflection, ORM for the metadata), PyMySQL driver, Flask-Login (accounts + `designer`/`user` roles,
 TOTP 2FA, OIDC SSO), Flask-WTF/WTForms, `cryptography` (secrets at rest), `qrcode` (MFA enrollment).
 
@@ -143,7 +143,7 @@ app/
   api/ routes.py serialization.py tokens.py openapi.py  # REST API + OpenAPI + bulk
   schema_io.py adopt.py                        # JSON schema/data import-export; adopt external tables
   core/ auth/ designer/ user/ (routes.py)      # blueprints
-  templates/ static/                           # Jinja templates, CSS, HTMX, hand-rolled SVG charts
+  templates/ static/                           # Jinja templates, CSS, vanilla JS, hand-rolled SVG charts
 tests/                                         # unit + integration tests (biggy_test)
 run.py requirements.txt .env.example
 ```

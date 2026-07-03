@@ -63,3 +63,85 @@
     if (col) col.addEventListener("click", function (e) { e.preventDefault(); setAll(false); });
   });
 })();
+
+// ---- Liveness: auto-dismiss flashes, live badges, unsaved-changes guard ----
+(function () {
+  "use strict";
+  document.addEventListener("DOMContentLoaded", function () {
+    // flashes: success/info fade out; danger/warning stay but get a dismiss ✕
+    document.querySelectorAll(".flash").forEach(function (f) {
+      var x = document.createElement("button");
+      x.className = "flash-x";
+      x.type = "button";
+      x.textContent = "×";
+      x.title = "Dismiss";
+      x.addEventListener("click", function () { f.remove(); });
+      f.appendChild(x);
+      if (f.classList.contains("success") || f.classList.contains("info")) {
+        setTimeout(function () {
+          f.classList.add("flash-out");
+          setTimeout(function () { f.remove(); }, 400);
+        }, 6000);
+      }
+    });
+
+    // live 🔔 / ✓ badges: poll a tiny JSON endpoint while the tab is visible
+    var bell = document.getElementById("badge-notif");
+    var appr = document.getElementById("badge-appr");
+    function setBadge(anchor, n) {
+      if (!anchor) return;
+      var b = anchor.querySelector(".badge");
+      if (n > 0) {
+        if (!b) {
+          b = document.createElement("span");
+          b.className = "badge";
+          anchor.appendChild(document.createTextNode(" "));
+          anchor.appendChild(b);
+        }
+        b.textContent = n;
+      } else if (b) {
+        b.remove();
+      }
+    }
+    if (bell || appr) {
+      setInterval(function () {
+        if (document.visibilityState !== "visible") return;
+        fetch("/u/badges", { headers: { Accept: "application/json" } })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) {
+            if (!d) return;
+            setBadge(bell, d.notifications);
+            setBadge(appr, d.approvals);
+          })
+          .catch(function () { /* offline — try again next tick */ });
+      }, 60000);
+    }
+
+    // unsaved-changes guard on forms marked data-guard
+    document.querySelectorAll("form[data-guard]").forEach(function (form) {
+      var dirty = false;
+      form.addEventListener("input", function () { dirty = true; });
+      form.addEventListener("change", function () { dirty = true; });
+      form.addEventListener("submit", function () { dirty = false; });
+      window.addEventListener("beforeunload", function (e) {
+        if (dirty) { e.preventDefault(); e.returnValue = ""; }
+      });
+    });
+
+    // mobile: ☰ toggles the off-canvas sidebar (scrim click closes)
+    var burger = document.getElementById("nav-burger");
+    var sidebar = document.querySelector(".sidebar");
+    if (burger && sidebar) {
+      var scrim = document.createElement("div");
+      scrim.className = "nav-scrim";
+      document.body.appendChild(scrim);
+      function toggle(open) {
+        document.body.classList.toggle("sidebar-open", open);
+      }
+      burger.addEventListener("click", function () {
+        toggle(!document.body.classList.contains("sidebar-open"));
+      });
+      scrim.addEventListener("click", function () { toggle(false); });
+    }
+  });
+})();

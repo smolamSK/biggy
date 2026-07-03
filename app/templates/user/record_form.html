@@ -2,6 +2,7 @@
 {% from "_macros.html" import render_field, delete_form, record_link with context %}
 {% block title %}{{ mode }} · {{ mf.title }}{% endblock %}
 {% block inner %}
+<div class="crumbs"><a href="{{ url_for('user.form_list', form_id=mf.id) }}">← {{ mf.title }}</a> / {{ mode }}</div>
 <div class="toolbar">
   <h1 style="margin:0">{{ mode }} — {{ mf.title }}</h1>
   <span style="flex:1"></span>
@@ -22,7 +23,7 @@
 
 {% macro details_form() %}
   <div class="panel" style="max-width:620px">
-    <form method="post" enctype="multipart/form-data">
+    <form method="post" enctype="multipart/form-data" data-guard>
       {{ form.hidden_tag() }}
       {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
       {% if sections %}
@@ -102,5 +103,6 @@
 {% endif %}
 
 <script src="{{ url_for('static', filename='dependent.js') }}" defer></script>
+<script src="{{ url_for('static', filename='pickers.js') }}" defer></script>
 <script src="{{ url_for('static', filename='tabs.js') }}" defer></script>
 {% endblock %}

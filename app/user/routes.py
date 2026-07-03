@@ -20,7 +20,7 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
-from sqlalchemy import select
+from sqlalchemy import func, select
 from werkzeug.datastructures import MultiDict
 
 from .. import (
@@ -259,6 +259,18 @@ def report_to_dashboard(table_id):
     session.commit()
     flash(f"Added to “{dash.name}”.", "success")
     return redirect(url_for("user.dashboard_view", dash_id=dash.id))
+
+
+@bp.route("/badges")
+def badges():
+    """Tiny JSON for live topbar badges (polled by app.js)."""
+    from .. import approvals
+    session = _s()
+    unread = session.scalar(select(func.count()).select_from(Notification).where(
+        Notification.channel == "in_app", Notification.user_id == current_user_id(),
+        Notification.status == "unread")) or 0
+    return jsonify(notifications=unread,
+                   approvals=approvals.pending_count_for_user(session, current_user))
 
 
 @bp.route("/catalog")
@@ -1300,7 +1312,10 @@ def record_view(table_id, pk):
     approval_reqs = approvals.requests_for_record(session, table.phys_name, pk)
     can_approve = {r["req"].id: approvals.can_act(session, r["req"], current_user)
                    for r in approval_reqs}
+    lf = _first_readable_form(session, table_id)
+    list_url = url_for("user.form_list", form_id=lf.id) if lf else None
     return render_template("user/view.html", table=table, pk=pk, label=label, items=items,
+                           list_url=list_url,
                            edit_url=edit_url, deleted=bool(row.get("deleted_at")),
                            send_form_id=send_form_id, related=related, history=history,
                            sla_clocks=sla_clocks, approval_reqs=approval_reqs,

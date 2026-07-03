@@ -26,7 +26,7 @@ Two consequences shape the whole codebase:
 
 ## Stack
 
-Flask + Jinja + HTMX (server-rendered, no JS build), SQLAlchemy 2 (Core for dynamic
+Flask + Jinja (server-rendered, hand-rolled vanilla JS, no build step), SQLAlchemy 2 (Core for dynamic
 DDL/reflection, ORM for the `app_*` metadata), Alembic operations for `ALTER`,
 PyMySQL, Flask-Login (token + session), Flask-WTF/WTForms, Markdown. Charts are
 hand-rolled inline SVG (`static/charts.js`) — no chart library.
