@@ -329,10 +329,10 @@ def run_one(session, engine, source):
             if not values:
                 continue
             existing = None
-            if source.mode == "upsert" and source.match_field \
-                    and values.get(source.match_field) is not None:
-                existing = data_service.find_id_by(
-                    target_engine, phys, source.match_field, values[source.match_field])
+            if source.mode == "upsert" and source.match_field:
+                # match_field may be a comma-separated composite key; matching normalized
+                existing = data_service.find_id_by_key(target_engine, phys,
+                                                       source.match_field, values)
             if existing is not None:
                 record_service.update(session, target_engine, mt, existing, values, source.user_id)
             else:

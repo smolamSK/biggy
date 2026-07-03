@@ -269,8 +269,10 @@ rejection cancels it. (The running **requests/actions** are runtime — not expo
   `allow_manual`, `skip_api_writes`.
 
 ### `webhooks` — receive a push *in*
-`id`, `name`, `active`, `target_table_id`, `mode` (`create`|`upsert`), `match_field`,
-`field_map` (JSON-string list of `{"target": local col, "source": dotted JSON path}`),
+`id`, `name`, `active`, `target_table_id`, `mode` (`create`|`upsert`), `match_field`
+(a column, or a comma-separated **composite** key like `"serial,site_id"`; matching is
+case-insensitive and trimmed), `field_map` (JSON-string list of
+`{"target": local col, "source": dotted JSON path}`),
 `user_id`, abuse limits `max_body_bytes`/`rate_limit`/`rate_window`. A fresh receive
 token is minted on import (rotate it in the UI to get the URL); the optional HMAC
 `secret` is not imported.
@@ -279,7 +281,8 @@ token is minted on import (rotate it in the UI to get the URL); the optional HMA
 `id`, `name`, `active`, `target_table_id`, `kind` (`"peer"` via a `connection_id` +
 `remote_table`, or `"rest"` via `url`), `records_path` (dotted path to the records
 array), `config` (JSON-string of advanced options: auth/pagination/request
-templating/filter/transforms), `field_map`, `mode`, `match_field`, `cursor_field`
+templating/filter/transforms), `field_map`, `mode`, `match_field` (column or comma-separated composite;
+normalized matching), `cursor_field`
 (incremental watermark), `page_size`, `user_id`. Request `headers`/`auth_secret` are
 secrets (re-enter after import); the `watermark` resets.
 

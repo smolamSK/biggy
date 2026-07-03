@@ -888,3 +888,61 @@ def test_notification_links_to_record(app, client):
         pk = get_engine().connect().execute(text("SELECT id FROM doc LIMIT 1")).scalar()
 
     assert f"/u/view/{tid}/{pk}" in client.get("/u/notifications").get_data(as_text=True)
+
+
+def test_merge_duplicates(app, client):
+    """The merge tool repoints FKs, moves mn links, fills blanks, deletes the dup."""
+    _setup(client)
+    cust_tid = _make_table(client, app, "customer", "Customer", "name")
+    _add_field(client, cust_tid, "email", "email")
+    _ok(client.post(f"/designer/tables/{cust_tid}/flags", data=dict(track_audit="y"),
+                    follow_redirects=True))
+    order_tid = _make_table(client, app, "ordr", "Order", "code")
+    _ok(client.post("/designer/relations/new-m1",
+                    data=dict(name="Customer", from_table_id=order_tid, to_table_id=cust_tid,
+                              field_name="customer_id", on_delete="SET NULL", nullable="y"),
+                    follow_redirects=True))
+    tag_tid = _make_table(client, app, "tag", "Tag", "name")
+    _ok(client.post("/designer/relations/new-mn",
+                    data=dict(name="Tags", from_table_id=cust_tid, to_table_id=tag_tid),
+                    follow_redirects=True))
+    with app.app_context():
+        with get_engine().begin() as c:
+            c.execute(text("INSERT INTO customer (id, name, email) VALUES (1, 'Acme', NULL)"))
+            c.execute(text("INSERT INTO customer (id, name, email) "
+                           "VALUES (2, 'acme ', 'sales@acme.io')"))
+            c.execute(text("INSERT INTO tag (id, name) VALUES (1, 'vip'), (2, 'eu')"))
+            c.execute(text("INSERT INTO ordr (id, code, customer_id) VALUES "
+                           "(10, 'O-1', 2), (11, 'O-2', 1)"))
+            c.execute(text("INSERT INTO j_customer_tag (customer_id, tag_id) VALUES "
+                           "(1, 1), (2, 1), (2, 2)"))   # tag 1 on both, tag 2 only on the dup
+
+    # preview names what will happen
+    prev = client.get(f"/designer/reconcile?table_id={cust_tid}&survivor=1&duplicate=2"
+                      ).get_data(as_text=True)
+    assert "sales@acme.io" in prev and "Order (1)" in prev and "Merge #2 into #1" in prev
+
+    _ok(client.post("/designer/reconcile",
+                    data={"table_id": cust_tid, "survivor": "1", "duplicate": "2"},
+                    follow_redirects=True))
+    with app.app_context():
+        with get_engine().connect() as c:
+            assert c.execute(text("SELECT customer_id FROM ordr WHERE id=10")).scalar() == 1
+            assert c.execute(text("SELECT email FROM customer WHERE id=1")).scalar() \
+                == "sales@acme.io"                              # blank filled from the dup
+            tags = {r[0] for r in c.execute(
+                text("SELECT tag_id FROM j_customer_tag WHERE customer_id=1")).all()}
+            assert tags == {1, 2}                               # union, no duplicates
+            assert c.execute(text("SELECT COUNT(*) FROM j_customer_tag WHERE customer_id=2")
+                             ).scalar() == 0
+            assert c.execute(text("SELECT COUNT(*) FROM customer WHERE id=2")).scalar() == 0
+        s = SessionLocal()
+        actions = [a.action for a in s.scalars(select(AuditLog).where(
+            AuditLog.table_phys == "customer"))]
+        assert "update" in actions and "delete" in actions      # the merge is audit-logged
+
+    # merging a record into itself is refused
+    r = client.post("/designer/reconcile",
+                    data={"table_id": cust_tid, "survivor": "1", "duplicate": "1"},
+                    follow_redirects=True)
+    assert "same record" in r.get_data(as_text=True)

@@ -34,6 +34,7 @@ from .. import (
     formula,
     helpers,
     pull,
+    reconcile,
     reporting,
     scheduler,
     schema_io,
@@ -2425,6 +2426,44 @@ def sla_policy_delete(policy_id):
         session.commit()
         flash("SLA policy deleted.", "info")
     return redirect(url_for("designer.sla_policies"))
+
+
+# --------------------------------------------------------------------------- #
+# Reconciliation: merge duplicate records
+# --------------------------------------------------------------------------- #
+@bp.route("/reconcile")
+def reconcile_home():
+    session = _s()
+    table = session.get(MetaTable, request.args.get("table_id", type=int) or 0)
+    survivor = (request.args.get("survivor") or "").strip()
+    duplicate = (request.args.get("duplicate") or "").strip()
+    prev = None
+    if table and survivor and duplicate:
+        prev = reconcile.preview(session, engine_for_table(table), table, survivor, duplicate)
+        if prev is None:
+            flash("Both records must exist in the chosen table.", "warning")
+    return render_template("designer/reconcile.html", tables=_tables(session), table=table,
+                           survivor=survivor, duplicate=duplicate, preview=prev)
+
+
+@bp.route("/reconcile", methods=["POST"])
+def reconcile_merge():
+    session = _s()
+    table = session.get(MetaTable, request.form.get("table_id", type=int) or 0)
+    survivor = (request.form.get("survivor") or "").strip()
+    duplicate = (request.form.get("duplicate") or "").strip()
+    if not table or not survivor or not duplicate:
+        flash("Pick a table and both record ids.", "warning")
+        return redirect(url_for("designer.reconcile_home"))
+    try:
+        summary = reconcile.merge(session, engine_for_table(table), table, survivor,
+                                  duplicate, current_user.id)
+        flash(f"Merged #{duplicate} into #{survivor}: {summary['repointed']} reference(s) "
+              f"repointed, {summary['moved_links']} link(s) moved, "
+              f"{summary['filled']} field(s) filled.", "success")
+    except ValueError as exc:
+        flash(str(exc), "danger")
+    return redirect(url_for("designer.reconcile_home", table_id=table.id))
 
 
 # --------------------------------------------------------------------------- #

@@ -259,12 +259,15 @@ def import_rows(session, engine, meta_table, file_text, skip_invalid,
 
 
 def _resolve_key(engine, meta_table, key_field, row, values):
-    """Return the existing row id matching the upsert key, or None to insert."""
+    """Return the existing row id matching the upsert key, or None to insert.
+
+    ``key_field`` may be a comma-separated composite ("serial,site_id"); matching
+    is normalized (case-insensitive, trimmed) — see ``data_service.find_id_by_key``.
+    """
     if key_field == "id":
         raw = (row.get("id") or "").strip()
         key_val = int(raw) if raw.lstrip("-").isdigit() else None
-    else:
-        key_val = values.get(key_field)
-    if key_val in (None, ""):
-        return None
-    return data_service.find_id_by(engine, meta_table.phys_name, key_field, key_val)
+        if key_val is None:
+            return None
+        return data_service.find_id_by(engine, meta_table.phys_name, "id", key_val)
+    return data_service.find_id_by_key(engine, meta_table.phys_name, key_field, values)

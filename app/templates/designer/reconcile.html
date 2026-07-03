@@ -1,0 +1,51 @@
+{% extends "designer/_base.html" %}
+{% block title %}Merge records · Biggy{% endblock %}
+{% block inner %}
+<h1>Merge duplicate records</h1>
+<p class="muted">Fold a duplicate into a survivor: every reference to the duplicate is
+  repointed, its many-to-many links move over, the survivor's empty fields are filled from
+  the duplicate, and the duplicate is deleted (to Trash when the table soft-deletes).</p>
+
+<form method="get" class="panel toolbar" style="flex-wrap:wrap;gap:.5rem">
+  <label>Table
+    <select name="table_id">
+      {% for t in tables %}<option value="{{ t.id }}" {{ 'selected' if table and t.id == table.id }}>{{ t.label }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Survivor id <input type="text" name="survivor" value="{{ survivor }}" style="width:7rem"></label>
+  <label>Duplicate id <input type="text" name="duplicate" value="{{ duplicate }}" style="width:7rem"></label>
+  <button class="btn" type="submit">Preview</button>
+</form>
+
+{% if preview %}
+<div class="panel">
+  <h2 style="margin:.2rem 0">Preview</h2>
+  <table class="grid">
+    <tr><th>Field</th><th>Survivor #{{ survivor }}</th><th>Duplicate #{{ duplicate }}</th></tr>
+    {% for col, val in preview.duplicate.items() %}
+      <tr {% if col in preview.fills %}style="background:var(--chip-amber-bg)" title="Will be copied to the survivor"{% endif %}>
+        <td><code>{{ col }}</code></td>
+        <td>{{ preview.survivor.get(col) if preview.survivor.get(col) is not none else '—' }}</td>
+        <td>{{ val if val is not none else '—' }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+  <p class="muted" style="margin:.5rem 0 0">
+    {% if preview.children %}References to repoint:
+      {% for c in preview.children %}{{ c.label }} ({{ c.count }}){{ ', ' if not loop.last }}{% endfor %}.{% endif %}
+    {% if preview.links %} Links to move:
+      {% for l in preview.links %}{{ l.label }} ({{ l.count }}){{ ', ' if not loop.last }}{% endfor %}.{% endif %}
+    Highlighted fields will be filled into the survivor.
+  </p>
+  <form method="post" style="margin-top:.6rem">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="table_id" value="{{ table.id }}">
+    <input type="hidden" name="survivor" value="{{ survivor }}">
+    <input type="hidden" name="duplicate" value="{{ duplicate }}">
+    <button class="btn danger" type="submit"
+            onclick="return confirm('Merge #{{ duplicate }} into #{{ survivor }}? This cannot be undone.')">
+      Merge #{{ duplicate }} into #{{ survivor }}</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

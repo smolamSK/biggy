@@ -127,6 +127,17 @@ def clear_fk(engine, phys_name, col, value):
         conn.execute(update(table).where(table.c[col] == value).values(**{col: None}))
 
 
+def repoint_fk(engine, phys_name, col, old_value, new_value):
+    """Repoint ``col`` from ``old_value`` to ``new_value``; returns rows changed."""
+    table = reflect_table(engine, phys_name)
+    if col not in table.c:
+        return 0
+    with engine.begin() as conn:
+        res = conn.execute(update(table).where(table.c[col] == old_value)
+                           .values(**{col: new_value}))
+        return res.rowcount
+
+
 def delete_where(engine, phys_name, col, value):
     """Delete rows where ``col == value`` (junction cleanup / required children)."""
     table = reflect_table(engine, phys_name)
@@ -293,20 +304,48 @@ def rows_by_ids(engine, phys_name, ids):
         return [dict(r) for r in conn.execute(stmt).mappings().all()]
 
 
-def find_id_by(engine, phys_name, col, value):
+def _match_clause(column, value, normalize):
+    """``column == value``, optionally case-insensitive + whitespace-trimmed."""
+    if normalize and isinstance(value, str):
+        return func.lower(func.trim(column)) == value.strip().lower()
+    return column == value
+
+
+def find_id_by(engine, phys_name, col, value, *, normalize=False):
     """Return the single id where ``col == value`` (None if none).
 
-    Raises ValueError if the column is missing or the match is ambiguous (>1).
+    ``col``/``value`` may be lists of equal length — a **composite** key where all
+    parts must match. ``normalize=True`` compares strings case-insensitively and
+    whitespace-trimmed (reconciliation-friendly). Raises ValueError if a column is
+    missing or the match is ambiguous (>1).
     """
     table = reflect_table(engine, phys_name)
-    if col not in table.c:
-        raise ValueError(f"unknown column '{col}'")
-    stmt = select(_pk(table)).where(table.c[col] == value).limit(2)
+    cols = col if isinstance(col, (list, tuple)) else [col]
+    values = value if isinstance(value, (list, tuple)) else [value]
+    for c in cols:
+        if c not in table.c:
+            raise ValueError(f"unknown column '{c}'")
+    stmt = select(_pk(table)).where(
+        *[_match_clause(table.c[c], v, normalize) for c, v in zip(cols, values)]).limit(2)
     with engine.connect() as conn:
         found = [r[0] for r in conn.execute(stmt).all()]
     if len(found) > 1:
         raise ValueError(f"'{value}' matches multiple rows on {col}")
     return found[0] if found else None
+
+
+def find_id_by_key(engine, phys_name, key_spec, values, *, normalize=True):
+    """Upsert-key lookup shared by webhooks / pulls / the importer.
+
+    ``key_spec`` is a column name or a comma-separated **composite** ("serial,site").
+    Returns None (→ insert) unless every key part has a non-None value in ``values``;
+    matching is normalized (case-insensitive, trimmed) by default.
+    """
+    keys = [k.strip() for k in (key_spec or "").split(",") if k.strip()]
+    if not keys or any(values.get(k) in (None, "") for k in keys):
+        return None
+    return find_id_by(engine, phys_name, keys, [values[k] for k in keys],
+                      normalize=normalize)
 
 
 # --------------------------------------------------------------------------- #

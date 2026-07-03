@@ -289,7 +289,7 @@ class WebhookForm(FlaskForm):
     mode = SelectField("Mode", choices=[("create", "Always create a new record"),
                                         ("upsert", "Upsert (match on a key field)")],
                        validate_choice=False)
-    match_field = StringField("Upsert key — target field",
+    match_field = StringField("Upsert key — target field(s), comma-separated for composite",
                               validators=[Optional(), Length(max=64)])
     secret = StringField("HMAC secret (optional — blank keeps existing)",
                          validators=[Optional(), Length(max=255)])
@@ -323,7 +323,8 @@ class PullSourceForm(FlaskForm):
     mode = SelectField("Mode", choices=[("upsert", "Upsert (match on a key field)"),
                                         ("create", "Always create a new record")],
                        validate_choice=False)
-    match_field = StringField("Upsert key — local field", validators=[Optional(), Length(max=64)])
+    match_field = StringField("Upsert key — local field(s), comma-separated for composite",
+                              validators=[Optional(), Length(max=64)])
     cursor_field = StringField("Cursor field (remote; blank = full refresh)",
                                validators=[Optional(), Length(max=64)])
     page_size = IntegerField("Page size", validators=[Optional()])

@@ -139,10 +139,10 @@ def receive(token):
     g.via_api = True  # loop guard: feeds skip API/webhook-originated writes
 
     existing = None
-    if wh.mode == "upsert" and wh.match_field and values.get(wh.match_field) is not None:
-        try:
-            existing = data_service.find_id_by(
-                engine, mt.phys_name, wh.match_field, values[wh.match_field])
+    if wh.mode == "upsert" and wh.match_field:
+        try:  # match_field may be a comma-separated composite key; matching is normalized
+            existing = data_service.find_id_by_key(engine, mt.phys_name,
+                                                   wh.match_field, values)
         except ValueError as exc:
             return _err(400, str(exc))
 

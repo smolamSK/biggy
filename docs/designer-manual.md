@@ -94,6 +94,10 @@ groups, and add an optional icon.
 - **Data sources** (*Data → Data sources*) — register another database (MariaDB,
   SQLite, …). New tables can be created in it, and its existing tables can be
   mapped (below).
+- **Merge records** (*Model → Merge records*) — reconcile duplicates: pick a survivor
+  and a duplicate; references are repointed, links move over, the survivor's empty
+  fields are filled, and the duplicate is deleted. Upserts from webhooks/pulls/CSV can
+  also match on **composite keys** (comma-separated columns, case-insensitive).
 - **Adopt tables** (*Model → Adopt tables*) — map a table that already exists in a
   database (yours or a registered source) into Biggy without recreating it. Adopted
   tables are **read-only structurally** (Biggy never alters them) but get forms,

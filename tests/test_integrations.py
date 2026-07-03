@@ -671,3 +671,31 @@ def test_pull_advanced_config_roundtrip(app, client):
         src = SessionLocal().scalar(select(PullSource))
         assert json.loads(src.config)["auth"]["type"] == "bearer"   # config round-trips
         assert src.auth_secret is None and src.headers is None      # secrets re-entered on import
+
+
+def test_webhook_composite_upsert(app, client):
+    """Upsert match on a comma-separated composite key, normalized (case/trim)."""
+    _setup(client)
+    tid = _make_table(client, app, "asset", "Asset", "name")
+    _add_field(client, tid, "serial", "string")
+    _add_field(client, tid, "site", "string")
+    _, token = _make_webhook(client, app, tid,
+                             [("name", "name"), ("serial", "serial"), ("site", "site")],
+                             mode="upsert", match_field="serial,site")
+
+    assert client.post(f"/hooks/{token}", json={"name": "A", "serial": "S1", "site": "X"}
+                       ).status_code == 201                        # first: insert
+    # same composite key, case/whitespace variants -> normalized match -> update
+    r = client.post(f"/hooks/{token}", json={"name": "B", "serial": " s1", "site": "x "})
+    assert r.status_code == 200
+    # same serial but different site -> different composite -> insert
+    assert client.post(f"/hooks/{token}", json={"name": "C", "serial": "S1", "site": "Y"}
+                       ).status_code == 201
+    with app.app_context():
+        with get_engine().connect() as c:
+            rows = c.execute(text("SELECT name, serial, site FROM asset ORDER BY id")).all()
+        assert len(rows) == 2
+        assert rows[0][0] == "B"                                   # updated in place
+    # a missing key part means "no match key" -> insert, never a partial match
+    assert client.post(f"/hooks/{token}", json={"name": "D", "serial": "S1"}
+                       ).status_code == 201
