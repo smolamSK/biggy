@@ -1030,7 +1030,7 @@ def test_ui_polish(app, client):
 
     vh = client.get(f"/u/view/{cust_tid}/1").get_data(as_text=True)
     assert 'class="crumbs"' in vh                      # breadcrumb back to the list
-    assert f"/u/forms/" in vh
+    assert "/u/forms/" in vh
 
     r = client.get("/u/badges")
     assert r.status_code == 200
