@@ -2264,6 +2264,8 @@ def _trigger_choices(session, form, table):
         (f.id, f.label) for f in fields if f.data_type not in (RELATION_TYPE, "file", "image")]
     form.notify_user_id.choices = [(0, "— none —")] + [
         (u.id, u.username) for u in session.scalars(select(AppUser).order_by(AppUser.username))]
+    form.create_table_id.choices = [(0, "— none —")] + [
+        (t.id, t.label) for t in _tables(session)]
 
 
 @bp.route("/triggers/<int:rule_id>", methods=["GET", "POST"])
@@ -2285,6 +2287,8 @@ def trigger_edit(rule_id):
         form.cond_field_id.data = tr.cond_field_id or 0
         form.set_field_id.data = tr.set_field_id or 0
         form.notify_user_id.data = tr.notify_user_id or 0
+        form.create_table_id.data = tr.create_table_id or 0
+        form.webhook_format.data = tr.webhook_format or "json"
 
     if form.validate_on_submit():
         tr.name = form.name.data
@@ -2306,6 +2310,9 @@ def trigger_edit(rule_id):
         tr.webhook_url = form.webhook_url.data or None
         tr.set_field_id = form.set_field_id.data or None
         tr.set_value = form.set_value.data or None
+        tr.create_table_id = form.create_table_id.data or None
+        tr.create_field_map = form.create_field_map.data or None
+        tr.webhook_format = form.webhook_format.data or None
         tr.schedule_minutes = form.schedule_minutes.data or None
         session.commit()
         flash("Trigger saved.", "success")
@@ -2411,6 +2418,7 @@ def sla_policy_edit(policy_id):
         policy.breach_email_body = form.breach_email_body.data or None
         policy.breach_set_field_id = form.breach_set_field_id.data or None
         policy.breach_set_value = form.breach_set_value.data or None
+        policy.escalations = form.escalations.data or None
         session.commit()
         flash("SLA policy saved.", "success")
         return redirect(url_for("designer.sla_policies"))

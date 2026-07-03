@@ -398,10 +398,19 @@ class TriggerRuleForm(FlaskForm):
     email_to = StringField("Email to (address or {field})", validators=[Optional(), Length(max=255)])
     email_subject = StringField("Email subject", validators=[Optional(), Length(max=255)])
     email_body = TextAreaField("Email body", validators=[Optional()])
-    webhook_url = StringField("Webhook URL (POST JSON)", validators=[Optional(), Length(max=400)])
+    webhook_url = StringField("Webhook URL (POST)", validators=[Optional(), Length(max=400)])
+    webhook_format = SelectField("Webhook payload", validate_choice=False,
+                                 validators=[Optional()],
+                                 choices=[("json", "Full event JSON"),
+                                          ("text", 'Message text — {"text": …} (Slack / Teams)')])
     set_field_id = SelectField("Set field", coerce=int, validate_choice=False,
                                validators=[Optional()])
     set_value = StringField("To value (or now / today)", validators=[Optional(), Length(max=255)])
+    create_table_id = SelectField("Create a record in", coerce=int, validate_choice=False,
+                                  validators=[Optional()])
+    create_field_map = TextAreaField(
+        "Field map (JSON — [{\"target\": col, \"source\": \"{field} template\"}])",
+        validators=[Optional()])
 
 
 class SlaPolicyForm(FlaskForm):
@@ -449,3 +458,5 @@ class SlaPolicyForm(FlaskForm):
                                       validators=[Optional()])
     breach_set_value = StringField("To value (or now / today)",
                                    validators=[Optional(), Length(max=255)])
+    escalations = TextAreaField(
+        "Escalation chain (JSON — see help below)", validators=[Optional()])

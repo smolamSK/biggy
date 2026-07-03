@@ -112,15 +112,19 @@ These features are optional — add them as your app grows.
   visual editor. User-mode edits and the API are held to the graph.
 - **Triggers & notifications** (*Admin → Triggers*) — when a record is created,
   updated, transitions, is deleted, or on a **schedule** (with an optional
-  condition), run actions: an in-app notification, an email, a webhook, or **set a
-  field**. Messages use `{field}` placeholders. *Scheduled* triggers run over every
+  condition), run actions: an in-app notification, an email, a webhook (full JSON or
+  a `{"text": …}` message for **Slack / Microsoft Teams** incoming webhooks), **set a
+  field**, or **create a record** in another table (templated field map; chained
+  creation is depth-capped). Messages use `{field}` placeholders. *Scheduled* triggers run over every
   matching row — pair a condition with a *set-field* so a row isn't actioned twice.
 - **SLA policies** (*Admin → SLA policies*) — put a service-level target on a table.
   A per-record clock starts/pauses/stops from a **status field** (you list the running
   / paused / done states) and measures 24×7 time against the target; the live state and
   deadline are **written back to fields you pick** (so they show in lists/reports and
   can drive triggers). The scheduler detects **breaches** and escalates (in-app / email
-  / set a field). A live SLA panel appears on the record's view page.
+  / set a field), then walks an optional **escalation chain** — JSON levels fired as
+  the breach ages (e.g. notify the owner after 30 min, email the NOC after 60). A live
+  SLA panel appears on the record's view page.
 - **Approvals** (*Admin → Approvals*) — require multi-step **sign-off on a workflow
   transition**. Add approver **steps** (a role or a specific user) to a transition;
   same *position* runs in parallel (all must approve), different positions run in

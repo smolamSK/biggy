@@ -179,6 +179,15 @@ _META_ADDITIONS = {
     "app_trigger_rule": [
         {"name": "schedule_minutes", "type": Integer()},
         {"name": "last_run_at", "type": DateTime()},
+        {"name": "create_table_id", "type": Integer()},
+        {"name": "create_field_map", "type": Text()},
+        {"name": "webhook_format", "type": String(10)},
+    ],
+    "app_sla_policy": [
+        {"name": "escalations", "type": Text()},
+    ],
+    "app_sla_clock": [
+        {"name": "escalation_level", "type": Integer(), "nullable": False, "default": "0"},
     ],
     "app_pull_source": [
         {"name": "config", "type": Text()},

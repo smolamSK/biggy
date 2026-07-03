@@ -263,3 +263,65 @@ def test_workflow_roles_include_custom(app, client):
     html2 = client.get(f"/designer/workflows/{wid}").get_data(as_text=True)
     graph2 = json.loads(re.search(r'id="wf-graph">(.*?)</script>', html2, re.S).group(1))
     assert graph2["transitions"][0]["roles"] == ["approver"]
+
+
+def test_trigger_create_record_and_depth_guard(app, client):
+    """The create-record action makes a templated record; chains are depth-capped."""
+    _setup(client)
+    inc_tid = _make_table(client, app, "incident", "Incident", "title")
+    _add_field(client, inc_tid, "severity", "enum", enum_options="sev1\nsev2")
+    inc_fid = _make_form(client, app, "incident_form", "Incidents", inc_tid)
+    cr_tid = _make_table(client, app, "change_req", "Change", "title")
+
+    _make_trigger(app, "incident", name="Auto-CR", event="create",
+                  cond_field_id=_fid(app, "incident", "severity"), cond_op="eq",
+                  cond_value="sev1", create_table_id=cr_tid,
+                  create_field_map=json.dumps([{"target": "title",
+                                                "source": "CR for {title}"}]))
+
+    _ok(client.post(f"/u/forms/{inc_fid}/new", data={"title": "Minor", "severity": "sev2"},
+                    follow_redirects=True))
+    _ok(client.post(f"/u/forms/{inc_fid}/new", data={"title": "Outage", "severity": "sev1"},
+                    follow_redirects=True))
+    with app.app_context():
+        with get_engine().connect() as c:
+            titles = [r[0] for r in c.execute(text("SELECT title FROM change_req")).all()]
+    assert titles == ["CR for Outage"]                 # only the sev1 incident spawned a CR
+
+    # a self-referential chain is capped at depth 3 (1 manual + 3 chained)
+    loop_tid = _make_table(client, app, "loopy", "Loopy", "title")
+    loop_fid = _make_form(client, app, "loopy_form", "Loopies", loop_tid)
+    _make_trigger(app, "loopy", name="Self-spawn", event="create",
+                  create_table_id=loop_tid,
+                  create_field_map=json.dumps([{"target": "title",
+                                                "source": "again {title}"}]))
+    _ok(client.post(f"/u/forms/{loop_fid}/new", data={"title": "seed"},
+                    follow_redirects=True))
+    with app.app_context():
+        s = SessionLocal()
+        with get_engine().connect() as c:
+            n = c.execute(text("SELECT COUNT(*) FROM loopy")).scalar()
+        assert n == 4                                  # no runaway loop
+        capped = s.scalar(select(Notification).where(
+            Notification.channel == "error", Notification.status == "skipped"))
+        assert capped is not None and "depth cap" in capped.detail
+
+
+def test_trigger_webhook_text_payload(app, client):
+    """webhook_format='text' posts {"text": message} — the Slack/Teams shape."""
+    from app.metadata.models import MetaTable, TriggerRule
+    from app.triggers import _webhook_payload
+    _setup(client)
+    mt = MetaTable(phys_name="thing", label="Thing")
+    row = {"id": 7, "name": "Router-9"}
+    text_rule = TriggerRule(table_id=1, name="r", event="update",
+                            webhook_url="http://chat", webhook_format="text",
+                            message="Alert: {name}")
+    with app.app_context():
+        assert _webhook_payload(text_rule, "update", mt, row, None) == \
+            {"text": "Alert: Router-9"}
+        json_rule = TriggerRule(table_id=1, name="r", event="update",
+                                webhook_url="http://x", webhook_format="json")
+        p = _webhook_payload(json_rule, "update", mt, row, {"id": 7, "name": "Old"})
+        assert p["event"] == "update" and p["table"] == "thing"
+        assert p["record"]["name"] == "Router-9" and p["old"]["name"] == "Old"

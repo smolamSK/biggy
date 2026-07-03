@@ -228,7 +228,10 @@ sign-off instead of applying immediately.
 `scheduled`), transition match (`field_id`,`from_state`,`to_state`), optional
 condition (`cond_field_id`,`cond_op`,`cond_value`), and actions: `in_app`+`notify_target`
 (`actor`|`owner`|`user`)+`notify_user_id`+`message`; `email_to`/`email_subject`/
-`email_body`; `webhook_url`; `set_field_id`+`set_value`. For `event:"scheduled"`,
+`email_body`; `webhook_url` (+ `webhook_format`: `"json"` full payload |
+`"text"` → `{"text": message}` for Slack/Teams); `set_field_id`+`set_value`;
+`create_table_id`+`create_field_map` (JSON-string list of `{"target","source"}`
+with `{field}` templates — creates a record in another table, depth-capped). For `event:"scheduled"`,
 set `schedule_minutes` (and use a condition + a `set_field` so a row isn't acted on
 twice). `cond_op` ∈ `eq, ne, contains, not_contains, starts_with, ends_with, gt,
 gte, lt, lte, empty, not_empty, is_true, is_false`. Messages support `{field}`
@@ -247,8 +250,9 @@ triggers. Optional applies-when: `cond_field_id`/`cond_op`/`cond_value` (same op
 as a trigger). On breach: `breach_in_app` + `breach_notify_target`
 (`owner`|`actor`|`user`) + `breach_notify_user_id` + `breach_message`;
 `breach_email_to`/`breach_email_subject`/`breach_email_body`;
-`breach_set_field_id` + `breach_set_value`. (Per-record **clocks** are runtime — not
-exported.)
+`breach_set_field_id` + `breach_set_value`. Optional `escalations` (JSON-string list
+of levels `{"after_minutes", "notify_target"|"notify_user_id", "email_to", "message"}`,
+fired in order as the breach ages). (Per-record **clocks** are runtime — not exported.)
 
 ### `approval_steps` — multi-step sign-off on a workflow transition
 `id`, `workflow_id` (a `workflows[].id`), `from_state`, `to_state` (the transition this

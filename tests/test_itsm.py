@@ -377,3 +377,80 @@ def test_pending_approvals_candidates(app, client):
         assert approvals.pending_count_for_user(s, appr_u) == 1  # the badge count matches
         assert approvals.pending_for_user(s, other_u) == []      # unrelated role: filtered in SQL
         assert len(approvals._candidate_requests(s, other_u)) == 0   # …before can_act even runs
+
+
+def test_sla_escalation_chain(app, client):
+    """After a breach, escalation levels fire in order on successive sweeps."""
+    from app import scheduler
+    _setup(client)
+    tid = _make_table(client, app, "ticket", "Ticket", "title")
+    _ok(client.post(f"/designer/tables/{tid}/flags", data=dict(track_audit="y"),
+                    follow_redirects=True))          # created_by → owner-notify works
+    _add_field(client, tid, "status", "enum", enum_options="open\nresolved")
+    fid = _make_form(client, app, "ticket_form", "Tickets", tid)
+    status_fid = _fid(app, "ticket", "status")
+    with app.app_context():
+        s = SessionLocal()
+        s.add(SlaPolicy(table_id=tid, name="Resolve", active=True, target_minutes=60,
+                        status_field_id=status_fid, start_on_create=True,
+                        stop_states="resolved",
+                        escalations=json.dumps([
+                            {"after_minutes": 5, "notify_target": "owner",
+                             "message": "L1 escalation: {title}"},
+                            {"after_minutes": 15, "email_to": "noc@example.com",
+                             "message": "L2 escalation: {title}"}])))
+        s.commit()
+        pol_id = s.scalar(select(SlaPolicy.id).where(SlaPolicy.name == "Resolve"))
+
+    _ok(client.post(f"/u/forms/{fid}/new", data={"title": "T1", "status": "open"},
+                    follow_redirects=True))
+
+    def _clock(s):
+        return s.scalar(select(SlaClock).where(SlaClock.policy_id == pol_id))
+
+    def _set_ages(due_min_ago, breached_min_ago=None):
+        with app.app_context():
+            s = SessionLocal()
+            c = _clock(s)
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
+            if due_min_ago is not None:
+                c.due_at = now - timedelta(minutes=due_min_ago)
+            if breached_min_ago is not None:
+                c.breached_at = now - timedelta(minutes=breached_min_ago)
+            s.commit()
+
+    def _sweep():
+        with app.app_context():
+            return scheduler.run_due(SessionLocal(), get_engine())["sla"]
+
+    _set_ages(due_min_ago=1)
+    assert _sweep() >= 1                                  # breach detected
+    with app.app_context():
+        c = _clock(SessionLocal())
+        assert c.state == "breached" and c.escalation_level == 0   # 5 min not elapsed yet
+
+    _set_ages(due_min_ago=None, breached_min_ago=6)       # past level 1, before level 2
+    _sweep()
+    with app.app_context():
+        s = SessionLocal()
+        assert _clock(s).escalation_level == 1
+        l1 = s.scalar(select(Notification).where(Notification.event == "escalation",
+                                                 Notification.channel == "in_app"))
+        assert l1 is not None and "L1 escalation: T1" in l1.body
+
+    _sweep()                                              # level 2 not due yet -> no change
+    with app.app_context():
+        assert _clock(SessionLocal()).escalation_level == 1
+
+    _set_ages(due_min_ago=None, breached_min_ago=16)      # past level 2
+    _sweep()
+    with app.app_context():
+        s = SessionLocal()
+        assert _clock(s).escalation_level == 2
+        l2 = s.scalar(select(Notification).where(Notification.event == "escalation",
+                                                 Notification.channel == "email"))
+        assert l2 is not None and "L2 escalation: T1" in l2.subject
+
+    _sweep()                                              # chain exhausted -> stable
+    with app.app_context():
+        assert _clock(SessionLocal()).escalation_level == 2

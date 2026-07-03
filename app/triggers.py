@@ -7,6 +7,7 @@ the in-app inbox); email/webhook delivery is best-effort and **skipped when not
 configured or under TESTING**, so the engine never needs the network to work.
 An action failure is logged, never raised — it must not break the write.
 """
+import contextvars
 import json
 import logging
 import re
@@ -25,6 +26,11 @@ _log = logging.getLogger(__name__)
 
 
 _TOKEN = re.compile(r"\{(\w+)\}")
+
+# Depth of trigger-chained record creation (create-record action -> triggers on the
+# new record -> ...). Caps runaway chains; contextvar = safe under threaded workers.
+_CREATE_DEPTH = contextvars.ContextVar("trigger_create_depth", default=0)
+_MAX_CREATE_DEPTH = 3
 
 
 def has_rules(session, table_id):
@@ -183,12 +189,67 @@ def _run(session, engine, mt, rule, event, pk, old_row, new_row, user_id, fields
                body=body, status=status, detail=detail)
 
     if rule.webhook_url:
-        payload = {"event": event, "table": mt.phys_name,
-                   "record": _jsonable(new_row), "old": _jsonable(old_row) if old_row else None}
+        payload = _webhook_payload(rule, event, mt, new_row, old_row)
         status, detail = _deliver_webhook(rule.webhook_url, payload)
         _notif(session, rule, mt, pk, event, "webhook", target=rule.webhook_url,
                body=json.dumps(payload, default=str), status=status, detail=detail)
+
+    if rule.create_table_id and event != "delete":
+        _create_record(session, rule, mt, pk, event, new_row, user_id)
     return new_row
+
+
+def _webhook_payload(rule, event, mt, new_row, old_row):
+    """The POST body: full event JSON, or {"text": message} for Slack/Teams."""
+    if rule.webhook_format == "text":
+        return {"text": _render(rule.message or f"{mt.label}: {event} on record {{id}}",
+                                new_row)}
+    return {"event": event, "table": mt.phys_name,
+            "record": _jsonable(new_row), "old": _jsonable(old_row) if old_row else None}
+
+
+def _create_record(session, rule, mt, pk, event, new_row, user_id):
+    """The create-record action: build values from the field map and insert.
+
+    Runs through ``record_service.create`` (so audit/triggers/SLA apply to the new
+    record); a contextvar depth cap stops trigger-chained creation loops.
+    """
+    from . import record_service
+    from .db import engine_for_table
+    from .metadata.models import MetaTable
+
+    depth = _CREATE_DEPTH.get()
+    if depth >= _MAX_CREATE_DEPTH:
+        _notif(session, rule, mt, pk, event, "error", status="skipped",
+               detail=f"create-record chain depth cap ({_MAX_CREATE_DEPTH}) reached")
+        return
+    target = session.get(MetaTable, rule.create_table_id)
+    if not target:
+        return
+    try:
+        fmap = json.loads(rule.create_field_map or "[]")
+    except (ValueError, TypeError):
+        fmap = []
+    target_fields = {f.phys_name: f for f in target.fields}
+    values = {}
+    for m in fmap:
+        f = target_fields.get((m or {}).get("target"))
+        if f is None:
+            continue
+        values[f.phys_name] = _set_value(f, _render(str(m.get("source", "")), new_row))
+    if not values:
+        return
+    token = _CREATE_DEPTH.set(depth + 1)
+    try:
+        new_pk = record_service.create(session, engine_for_table(target), target,
+                                       values, user_id)
+        _notif(session, rule, mt, pk, event, "set_field", status="sent",
+               body=f"created {target.phys_name} #{new_pk}")
+    except Exception as exc:  # noqa: BLE001 - the action must never break the write
+        _notif(session, rule, mt, pk, event, "error", status="failed",
+               detail=f"create-record: {exc}"[:300])
+    finally:
+        _CREATE_DEPTH.reset(token)
 
 
 def _jsonable(row):

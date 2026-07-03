@@ -45,10 +45,23 @@
 
     <h3>Do — webhook</h3>
     {{ render_field(form.webhook_url) }}
+    {{ render_field(form.webhook_format) }}
+    <p class="help">Pick <em>Message text</em> for a Slack or Microsoft Teams incoming-webhook
+      URL — the message (with <code>{field}</code> placeholders) is sent as
+      <code>{"text": …}</code>.</p>
 
     <h3>Do — set a field</h3>
     {{ render_field(form.set_field_id) }}
     {{ render_field(form.set_value) }}
+
+    <h3>Do — create a record</h3>
+    <p class="help">Create a record in another table when this rule fires. The field map lists
+      target columns and their values — literals, <code>now</code>/<code>today</code>, or
+      <code>{field}</code> templates from this record, e.g.
+      <code>[{"target": "title", "source": "CR for {title}"}]</code>. Chained creation is
+      capped at depth 3.</p>
+    {{ render_field(form.create_table_id) }}
+    {{ render_field(form.create_field_map) }}
 
     <button class="btn primary" type="submit">Save</button>
     <a class="btn" href="{{ url_for('designer.triggers') }}">Cancel</a>

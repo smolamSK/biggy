@@ -15,6 +15,7 @@ break a write). ``run_breach_sweep`` is called from :func:`app.scheduler.run_due
 (cron / ticker) and reuses the trigger engine's email/notify/set-field primitives to
 escalate. Breach granularity equals the scheduler cadence.
 """
+import json
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -272,6 +273,36 @@ def _escalate(session, engine, mt, policy, clock, row, fields):
             body=body, status=status, detail=detail))
 
 
+def _escalation_levels(policy):
+    """The policy's escalation chain: a JSON list of level dicts (possibly empty)."""
+    try:
+        levels = json.loads(policy.escalations or "[]")
+    except (ValueError, TypeError):
+        return []
+    return [lv for lv in levels if isinstance(lv, dict)]
+
+
+def _fire_escalation(session, mt, policy, clock, row, level):
+    """One escalation level: in-app to owner/a user and/or an email."""
+    msg = triggers._render(level.get("message")
+                           or f"SLA escalation on {mt.label} #{clock.row_pk}", row)
+    uid = None
+    if level.get("notify_target") == "owner":
+        uid = row.get("created_by")
+    elif level.get("notify_user_id"):
+        uid = level.get("notify_user_id")
+    if uid:
+        session.add(Notification(table_phys=mt.phys_name, row_pk=_int_or_none(clock.row_pk),
+                                 event="escalation", channel="in_app", user_id=uid,
+                                 status="unread", body=msg))
+    if level.get("email_to"):
+        to = triggers._render(level["email_to"], row)
+        status, detail = triggers._deliver_email(to, msg, msg)
+        session.add(Notification(table_phys=mt.phys_name, row_pk=_int_or_none(clock.row_pk),
+                                 event="escalation", channel="email", target=(to or "")[:400],
+                                 subject=msg[:255], body=msg, status=status, detail=detail))
+
+
 def run_breach_sweep(session, now=None):
     """Mark overdue running clocks breached + escalate (once). Returns breach count."""
     now = now or _now()
@@ -302,6 +333,33 @@ def run_breach_sweep(session, now=None):
                                      event="sla", channel="error", status="failed",
                                      detail=str(exc)[:300]))
             session.commit()
+
+    # escalation chains: for breached clocks, fire the next overdue level (one per pass)
+    for clock in session.scalars(select(SlaClock).where(SlaClock.state == "breached")).all():
+        policy = session.get(SlaPolicy, clock.policy_id)
+        mt = session.scalar(select(MetaTable).where(MetaTable.phys_name == clock.table_phys))
+        if not policy or not mt or not clock.breached_at:
+            continue
+        levels = _escalation_levels(policy)
+        idx = clock.escalation_level or 0
+        if idx >= len(levels):
+            continue
+        level = levels[idx]
+        after = int(level.get("after_minutes") or 0)
+        if now < clock.breached_at + timedelta(minutes=after):
+            continue
+        try:
+            engine = engine_for_table(mt)
+            row = data_service.get_row(engine, mt.phys_name, clock.row_pk) or {}
+            _fire_escalation(session, mt, policy, clock, row, level)
+            clock.escalation_level = idx + 1
+            clock.updated_at = now
+            breaches += 1
+            session.commit()
+        except Exception as exc:  # noqa: BLE001 - one bad level must not stop the sweep
+            _log.warning("SLA escalation failed for %s #%s: %s",
+                         clock.table_phys, clock.row_pk, exc)
+            session.rollback()
     return breaches
 
 

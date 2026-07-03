@@ -86,14 +86,15 @@ _APPROVAL_STEP_COLS = ["id", "workflow_id", "from_state", "to_state", "position"
 _TRIGGER_COLS = ["id", "table_id", "name", "active", "event", "field_id", "from_state",
                  "to_state", "cond_field_id", "cond_op", "cond_value", "in_app",
                  "notify_target", "notify_user_id", "message", "email_to", "email_subject",
-                 "email_body", "webhook_url", "set_field_id", "set_value", "schedule_minutes"]
+                 "email_body", "webhook_url", "set_field_id", "set_value", "schedule_minutes",
+                 "create_table_id", "create_field_map", "webhook_format"]
 _SLA_POLICY_COLS = ["id", "table_id", "name", "active", "target_minutes", "warn_minutes",
                     "status_field_id", "start_on_create", "start_states", "pause_states",
                     "stop_states", "cond_field_id", "cond_op", "cond_value", "state_field_id",
                     "due_field_id", "breach_in_app", "breach_notify_target",
                     "breach_notify_user_id", "breach_message", "breach_email_to",
                     "breach_email_subject", "breach_email_body", "breach_set_field_id",
-                    "breach_set_value"]
+                    "breach_set_value", "escalations"]
 # fields on SlaPolicy that reference a MetaField id and must be remapped via fmap
 _SLA_FIELD_REFS = ("status_field_id", "cond_field_id", "state_field_id", "due_field_id",
                    "breach_set_field_id")
@@ -494,7 +495,10 @@ def import_schema(session, engine, data, replace=False):
                 email_to=tr.get("email_to"), email_subject=tr.get("email_subject"),
                 email_body=tr.get("email_body"), webhook_url=tr.get("webhook_url"),
                 set_field_id=fmap.get(tr.get("set_field_id")), set_value=tr.get("set_value"),
-                schedule_minutes=tr.get("schedule_minutes")))
+                schedule_minutes=tr.get("schedule_minutes"),
+                create_table_id=tmap.get(tr.get("create_table_id")),
+                create_field_map=tr.get("create_field_map"),
+                webhook_format=tr.get("webhook_format")))
 
         # 9b. SLA policies (remap table + every field reference; clocks are runtime, not imported)
         for sp in data.get("sla_policies", []):

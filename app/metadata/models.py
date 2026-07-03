@@ -415,6 +415,11 @@ class TriggerRule(Base):
     webhook_url: Mapped[str | None] = mapped_column(String(400))
     set_field_id: Mapped[int | None] = mapped_column(Integer)
     set_value: Mapped[str | None] = mapped_column(String(255))
+    # create a record in another table: JSON [{"target", "source"}] with {field} templates
+    create_table_id: Mapped[int | None] = mapped_column(Integer)
+    create_field_map: Mapped[str | None] = mapped_column(Text)
+    # webhook payload shape: json (full event payload) | text ({"text": message} - Slack/Teams)
+    webhook_format: Mapped[str | None] = mapped_column(String(10))
     # time-driven firing (event="scheduled"): run actions over matching rows every N minutes
     schedule_minutes: Mapped[int | None] = mapped_column(Integer)
     last_run_at: Mapped[datetime | None] = mapped_column(DateTime)
@@ -745,6 +750,9 @@ class SlaPolicy(Base):
     breach_email_body: Mapped[str | None] = mapped_column(Text)
     breach_set_field_id: Mapped[int | None] = mapped_column(Integer)
     breach_set_value: Mapped[str | None] = mapped_column(String(255))
+    # escalation chain after the breach: JSON list of levels, each
+    # {"after_minutes", "notify_target"|"notify_user_id", "email_to", "message"}
+    escalations: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
 
@@ -772,6 +780,7 @@ class SlaClock(Base):
     remaining_seconds: Mapped[int | None] = mapped_column(Integer)
     breached_at: Mapped[datetime | None] = mapped_column(DateTime)
     breach_notified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    escalation_level: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
 

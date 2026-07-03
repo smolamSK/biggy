@@ -53,6 +53,13 @@
     {{ render_field(form.breach_set_field_id) }}
     {{ render_field(form.breach_set_value) }}
 
+    <h3>Escalation chain (after the breach)</h3>
+    <p class="help">Optional JSON list of levels, fired in order by the scheduler once the
+      breach is this old. Each level: <code>{"after_minutes": 30, "notify_target": "owner"}</code>
+      or <code>{"after_minutes": 60, "notify_user_id": 2, "email_to": "noc@example.com",
+      "message": "Still breached: {title}"}</code>.</p>
+    {{ render_field(form.escalations) }}
+
     <button class="btn primary" type="submit">Save</button>
     <a class="btn" href="{{ url_for('designer.sla_policies') }}">Cancel</a>
   </form>
