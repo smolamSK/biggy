@@ -566,8 +566,12 @@ mark { background: var(--chip-amber-bg, #fef3c7); color: inherit; padding: 0 .15
 /* ---- Responsive: off-canvas sidebar + scrolling tables -------------------- */
 .nav-burger { display: none; border: none; background: none; color: var(--topbar-ink);
   font-size: var(--fs-lg); cursor: pointer; padding: .2rem .45rem; }
-.panel { overflow-x: auto; }                    /* wide tables scroll, never break */
 @media (max-width: 860px) {
+  /* wide tables scroll inside their panel instead of breaking the layout; the
+     panel becomes a scroll container, so cancel the page-level 48px sticky
+     offset (it would float the header over the first row). */
+  .panel { overflow-x: auto; }
+  table.grid th { top: 0; }
   .nav-burger { display: inline-block; }
   .layout { display: block; }
   .sidebar { position: fixed; top: 48px; bottom: 0; left: 0; z-index: 60;
