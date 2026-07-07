@@ -126,6 +126,41 @@ def _safe_next(default):
     return default
 
 
+def _recent_records(session, user_id, limit=8):
+    """The user's most recently created/updated records, from the audit log.
+
+    Only tables the user can read; rows that no longer resolve (deleted,
+    table dropped, source down) are skipped.
+    """
+    tables = {t.phys_name: t for t in session.scalars(select(MetaTable))}
+    seen, out = set(), []
+    logs = session.scalars(
+        select(AuditLog)
+        .where(AuditLog.user_id == user_id, AuditLog.action.in_(("create", "update")))
+        .order_by(AuditLog.id.desc()).limit(60))
+    for log in logs:
+        key = (log.table_phys, str(log.row_pk))
+        if log.row_pk is None or key in seen:
+            continue
+        seen.add(key)
+        table = tables.get(log.table_phys)
+        if not table or not helpers.table_readable(session, current_user, table):
+            continue
+        try:
+            row = data_service.get_row(engine_for_table(table), table.phys_name, log.row_pk)
+        except Exception:  # noqa: BLE001 - a broken source must not break the home page
+            continue
+        if not row or row.get("deleted_at"):
+            continue
+        label = row.get(display_field_name(session, table))
+        out.append({"table": table, "pk": log.row_pk,
+                    "label": label if label not in (None, "") else f"#{log.row_pk}",
+                    "at": log.at})
+        if len(out) >= limit:
+            break
+    return out
+
+
 @bp.route("/")
 def dashboard():
     session = _s()
@@ -153,7 +188,8 @@ def dashboard():
         select(Dashboard).where(Dashboard.owner_user_id.is_(None)).order_by(Dashboard.name))
         if dashboards.visible(session, current_user, d)]
     return render_template("user/dashboard.html", has_forms=has_forms, tiles=tiles,
-                           personal=personal, shared=shared)
+                           personal=personal, shared=shared,
+                           recent=_recent_records(session, user_id))
 
 
 # --------------------------------------------------------------------------- #

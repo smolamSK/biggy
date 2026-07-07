@@ -24,6 +24,7 @@
   {% endif %}
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to content</a>
   {% from "_icons.html" import icon %}
   <header class="topbar">
     <button id="nav-burger" class="nav-burger" type="button" aria-label="Menu">{{ icon('menu', 18) }}</button>
@@ -64,10 +65,10 @@
 
   <div class="layout">
     {% block sidebar %}{% endblock %}
-    <main class="content">
+    <main class="content" id="main" tabindex="-1">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, message in messages %}
-          <div class="flash {{ category }}">{{ message }}</div>
+          <div class="flash {{ category }}"{% if category in ('danger', 'warning') %} role="alert"{% endif %}>{{ message }}</div>
         {% endfor %}
       {% endwith %}
       {% block content %}{% endblock %}

@@ -20,6 +20,14 @@
     return t;
   }
   function clip(s, n) { s = String(s); return s.length > n ? s.slice(0, n - 1) + "…" : s; }
+  function fmt(v) { return String(+v.toFixed(2)).replace(/\.00$/, ""); }
+  function titled(node, s) {
+    // native SVG tooltip: shown on hover, read by screen readers
+    var t = svgEl("title");
+    t.textContent = s;
+    node.appendChild(t);
+    return node;
+  }
 
   function frame() {
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, class: "chart-svg",
@@ -45,11 +53,11 @@
       var h = (v / max) * ph, y = T + ph - h;
       if (type === "bar") {
         var bw = Math.min(48, (pw / n) * 0.7);
-        svg.appendChild(svgEl("rect", { x: cx - bw / 2, y: y, width: bw, height: h,
-          fill: PAL[i % PAL.length], rx: 2 }));
+        svg.appendChild(titled(svgEl("rect", { x: cx - bw / 2, y: y, width: bw, height: h,
+          fill: PAL[i % PAL.length], rx: 2 }), labels[i] + ": " + fmt(v)));
       }
       pts.push(cx + "," + y);
-      svg.appendChild(text(cx, y - 4, String(+v.toFixed(2)).replace(/\.00$/, ""),
+      svg.appendChild(text(cx, y - 4, fmt(v),
         { "text-anchor": "middle", class: "chart-val" }));
       svg.appendChild(text(cx, T + ph + 16, clip(labels[i], 10),
         { "text-anchor": "middle", class: "chart-lbl" }));
@@ -57,9 +65,10 @@
     if (type === "line") {
       svg.appendChild(svgEl("polyline", { points: pts.join(" "), fill: "none",
         stroke: PAL[0], "stroke-width": 2 }));
-      pts.forEach(function (p) {
+      pts.forEach(function (p, i) {
         var xy = p.split(",");
-        svg.appendChild(svgEl("circle", { cx: xy[0], cy: xy[1], r: 3, fill: PAL[0] }));
+        svg.appendChild(titled(svgEl("circle", { cx: xy[0], cy: xy[1], r: 3, fill: PAL[0] }),
+          labels[i] + ": " + fmt(values[i])));
       });
     }
     svg.appendChild(text(L, T - 6, name, { class: "chart-lbl" }));
@@ -76,18 +85,19 @@
       var large = (a2 - ang) > Math.PI ? 1 : 0;
       var x1 = cx + r * Math.cos(ang), y1 = cy + r * Math.sin(ang);
       var x2 = cx + r * Math.cos(a2), y2 = cy + r * Math.sin(a2);
-      svg.appendChild(svgEl("path", {
+      svg.appendChild(titled(svgEl("path", {
         d: "M" + cx + "," + cy + " L" + x1 + "," + y1 +
            " A" + r + "," + r + " 0 " + large + " 1 " + x2 + "," + y2 + " Z",
-        fill: PAL[i % PAL.length] }));
+        fill: PAL[i % PAL.length] }),
+        labels[i] + ": " + fmt(v) + " (" + Math.round((v / total) * 100) + "%)"));
       ang = a2;
     });
     labels.forEach(function (lbl, i) {
       var y = 30 + i * 20;
       svg.appendChild(svgEl("rect", { x: 280, y: y - 10, width: 12, height: 12,
         fill: PAL[i % PAL.length], rx: 2 }));
-      svg.appendChild(text(298, y, clip(lbl, 22) + " — " +
-        String(+values[i].toFixed(2)).replace(/\.00$/, ""), { class: "chart-lbl" }));
+      svg.appendChild(text(298, y, clip(lbl, 22) + " — " + fmt(values[i]),
+        { class: "chart-lbl" }));
     });
     el.appendChild(svg);
   }

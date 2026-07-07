@@ -16,6 +16,9 @@
   function build() {
     var d = document.createElement("div");
     d.id = "sc-help";
+    d.setAttribute("role", "dialog");
+    d.setAttribute("aria-modal", "true");
+    d.setAttribute("aria-label", "Keyboard shortcuts");
     d.innerHTML =
       '<div class="sc-card"><h2 style="margin-top:0">Keyboard shortcuts</h2><table>' +
       '<tr><td><kbd>Ctrl</kbd>+<kbd>K</kbd></td><td>Command palette</td></tr>' +

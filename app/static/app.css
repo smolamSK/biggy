@@ -403,6 +403,7 @@ details > summary { cursor: pointer; }
 .js-chart .chart-val { font-size: 11px; fill: var(--muted); }
 .js-chart .chart-lbl { font-size: 11px; fill: var(--ink); }
 .js-chart .chart-svg { display: block; }
+.js-chart rect:hover, .js-chart path:hover, .js-chart circle:hover { opacity: .8; }
 
 /* ============================================================================
    Kanban
@@ -609,6 +610,19 @@ details.menu.left > .menu-panel { right: auto; left: 0; }
 .menu-panel a.danger { color: var(--danger); }
 .menu-panel hr { border: none; border-top: 1px solid var(--line); margin: .3rem 0; }
 .menu-panel form.inline { display: block; }
+
+/* ---- Skip-to-content link (visible only when focused) ----------------------- */
+.skip-link { position: absolute; left: -9999px; top: 0; z-index: 2000;
+  background: var(--panel); color: var(--brand); font-weight: 600;
+  padding: .5rem .8rem; border-radius: var(--radius); box-shadow: var(--shadow-pop); }
+.skip-link:focus { left: var(--space-3); top: var(--space-2); }
+
+/* ---- Home quick-access cards ------------------------------------------------ */
+a.qa-card { display: flex; align-items: center; gap: .5rem; font-weight: 600;
+  color: var(--ink); transition: border-color var(--motion-fast) var(--ease-out); }
+a.qa-card:hover { text-decoration: none; border-color: var(--brand); color: var(--brand); }
+a.qa-card .icon { color: var(--muted); }
+a.qa-card:hover .icon { color: inherit; }
 
 /* ---- Active-filter chips (list pages) --------------------------------------- */
 .fchips { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center;

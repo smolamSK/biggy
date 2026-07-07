@@ -1,21 +1,52 @@
 {% extends "user/_base.html" %}
-{% from "_macros.html" import empty_state with context %}
+{% from "_macros.html" import empty_state, record_link with context %}
+{% from "_icons.html" import icon %}
 {% block title %}Home · Biggy{% endblock %}
 {% block inner %}
 <h1>Welcome</h1>
+{% if not has_forms %}
 <div class="panel">
-  {% if has_forms %}
-    <p>Choose an item from the menu on the left to view and manage your data.</p>
+  {% if current_user.is_designer %}
+    {% call empty_state('kanban', 'Nothing here yet', 'Create tables and forms in Designer mode to get started.') %}
+      <a class="btn primary" href="{{ url_for('designer.dashboard') }}">Go to Designer mode</a>
+    {% endcall %}
   {% else %}
-    {% if current_user.is_designer %}
-      {% call empty_state('kanban', 'Nothing here yet', 'Create tables and forms in Designer mode to get started.') %}
-        <a class="btn primary" href="{{ url_for('designer.dashboard') }}">Go to Designer mode</a>
-      {% endcall %}
-    {% else %}
-      {{ empty_state('kanban', 'Nothing here yet', 'Ask a designer to set up forms and menus.') }}
-    {% endif %}
+    {{ empty_state('kanban', 'Nothing here yet', 'Ask a designer to set up forms and menus.') }}
   {% endif %}
 </div>
+{% endif %}
+
+{% set leaves = [] %}
+{% for item in nav_menu %}
+  {% if item.kind == 'group' %}
+    {% for child in item.children if menu_can_see(child) %}{% set _ = leaves.append(child) %}{% endfor %}
+  {% else %}
+    {% set _ = leaves.append(item) %}
+  {% endif %}
+{% endfor %}
+{% if leaves %}
+<h2>Quick access</h2>
+<div class="cards">
+  {% for it in leaves[:12] %}
+    <a class="card qa-card" href="{{ menu_url(it) }}">{{ icon('list') }} {{ it.label }}</a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if recent %}
+<h2>Recently updated by you</h2>
+<div class="panel" style="max-width:680px">
+  <table class="grid">
+    {% for r in recent %}
+      <tr>
+        <td class="display">{{ record_link(r.table.id, r.pk, r.label) }}</td>
+        <td class="muted">{{ r.table.label }}</td>
+        <td class="muted num">{{ r.at.strftime('%Y-%m-%d %H:%M') }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
 
 {% if shared or personal %}
 <div class="panel">

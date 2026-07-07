@@ -1,6 +1,7 @@
 """CRUD, lists, record pages, attachments and UI chrome. (Split from test_features.py.)"""
 import io
 import os
+import re
 
 from sqlalchemy import select, text
 
@@ -1043,3 +1044,59 @@ def test_ui_polish(app, client):
 
     anon = app.test_client()
     assert anon.get("/u/badges").status_code == 302    # login required
+
+
+def test_ui_modern(app, client):
+    """SVG icons, account menu, list kebab/chips/aria-sort, palette, home page."""
+    _setup(client)
+    tid = _make_table(client, app, "gadget", "Gadget", "name")
+    _ok(client.post(f"/designer/tables/{tid}/flags", data=dict(track_audit="y"),
+                    follow_redirects=True))
+    fid = _make_form(client, app, "gadget_form", "Gadgets", tid)
+    _make_form_p(client, app, "gadget_view", "Gadget", tid, "view")
+    _ok(client.post("/designer/menus/new", data={"label": "Gadgets", "kind": "form",
+                    "parent_id": 0, "target_form_id": fid, "target_table_id": 0,
+                    "position": 0}, follow_redirects=True))
+    _ok(client.post(f"/u/forms/{fid}/new", data={"name": "Widget"}, follow_redirects=True))
+
+    # topbar: SVG icons replace emoji; account dropdown; skip link; palette wired
+    base = client.get("/u/").get_data(as_text=True)
+    assert "<svg" in base and "\U0001f514" not in base       # no 🔔 emoji
+    assert 'class="menu account-menu"' in base and "Sign out" in base
+    assert 'class="skip-link"' in base and 'id="main"' in base
+    assert "palette.js" in base
+
+    # home: quick-access card for the menu item + the record just touched
+    assert 'class="card qa-card"' in base
+    assert "Recently updated" in base and "Widget" in base
+
+    # sign-in: brand header; no palette for anonymous visitors
+    anon = app.test_client()
+    login_page = anon.get("/auth/login").get_data(as_text=True)
+    assert 'class="auth-brand"' in login_page
+    assert "palette.js" not in login_page
+
+    # list page: aria-sort, row kebab, toolbar overflow menu
+    lst = client.get(f"/u/forms/{fid}", query_string={"sort": "name"}).get_data(as_text=True)
+    assert 'aria-sort="ascending"' in lst
+    assert 'aria-label="Row actions"' in lst
+    assert 'class="menu-panel"' in lst and "Export CSV" in lst
+
+    # filter chips: one per active condition; removing one keeps the other
+    lst = client.get(
+        f"/u/forms/{fid}?fcol=name&fop=contains&fval=Wid&fcol=name&fop=ne&fval=zzz"
+    ).get_data(as_text=True)
+    assert lst.count('class="fchip"') == 2
+    m = re.search(r'<span class="fchip">.*?href="([^"]+)"', lst, re.S)
+    after = client.get(m.group(1).replace("&amp;", "&")).get_data(as_text=True)
+    assert after.count('class="fchip"') == 1
+    assert "Widget" in after                              # row still matches "ne zzz"
+
+    # empty state with a filter active vs. without records
+    none = client.get(f"/u/forms/{fid}?fcol=name&fop=eq&fval=nope").get_data(as_text=True)
+    assert "No matching records" in none
+
+    # shipped assets: the Inter font and the palette actually serve
+    assert client.get("/static/fonts/InterVariable.woff2").status_code == 200
+    assert "@font-face" in client.get("/static/app.css").get_data(as_text=True)
+    assert client.get("/static/palette.js").status_code == 200
