@@ -639,6 +639,22 @@ details.menu.left > .menu-panel { right: auto; left: 0; }
 .center-card h1 { font-size: var(--fs-lg); text-align: center; }
 .center-card .btn.primary { width: 100%; justify-content: center; margin-top: .25rem; }
 
+/* ---- Command palette (static/palette.js, Ctrl+K) --------------------------- */
+#palette { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, .45); z-index: 1000; }
+#palette.open { display: flex; align-items: flex-start; justify-content: center; padding-top: 12vh; }
+.palette-card { width: min(560px, 92vw); background: var(--panel); border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-pop); overflow: hidden; }
+.palette-card input { width: 100%; max-width: none; border: none; border-bottom: 1px solid var(--line);
+  border-radius: 0; padding: .7rem .9rem; font-size: var(--fs-md); background: var(--panel); color: var(--ink); }
+.palette-card input:focus { outline: none; box-shadow: none; border-color: var(--line); }
+.palette-list { list-style: none; margin: 0; padding: .3rem; max-height: 46vh; overflow-y: auto; }
+.palette-list li { display: flex; align-items: center; gap: .5rem; padding: .45rem .6rem;
+  border-radius: var(--radius); cursor: pointer; font-size: var(--fs-base); }
+.palette-list li.active { background: var(--hover); }
+.palette-list li .muted { margin-left: auto; font-size: var(--fs-xs); flex: none; }
+.palette-list li span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.palette-list .palette-empty { color: var(--muted); cursor: default; }
+
 /* ---- Responsive: off-canvas sidebar + scrolling tables -------------------- */
 .nav-burger { display: none; border: none; background: none; color: var(--topbar-ink);
   font-size: var(--fs-lg); cursor: pointer; padding: .2rem .45rem; }

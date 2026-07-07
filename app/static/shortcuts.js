@@ -18,6 +18,7 @@
     d.id = "sc-help";
     d.innerHTML =
       '<div class="sc-card"><h2 style="margin-top:0">Keyboard shortcuts</h2><table>' +
+      '<tr><td><kbd>Ctrl</kbd>+<kbd>K</kbd></td><td>Command palette</td></tr>' +
       '<tr><td><kbd>/</kbd></td><td>Focus search</td></tr>' +
       '<tr><td><kbd>n</kbd></td><td>New record</td></tr>' +
       '<tr><td><kbd>?</kbd></td><td>Show this help</td></tr>' +
