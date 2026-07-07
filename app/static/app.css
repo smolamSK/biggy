@@ -610,6 +610,15 @@ details.menu.left > .menu-panel { right: auto; left: 0; }
 .menu-panel hr { border: none; border-top: 1px solid var(--line); margin: .3rem 0; }
 .menu-panel form.inline { display: block; }
 
+/* ---- Active-filter chips (list pages) --------------------------------------- */
+.fchips { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center;
+  margin-bottom: var(--space-3); font-size: var(--fs-sm); }
+.fchip { display: inline-flex; align-items: center; gap: .25rem;
+  background: var(--brand-soft); color: var(--brand); font-weight: 550;
+  border-radius: var(--radius-pill); padding: .12rem .35rem .12rem .6rem; }
+.fchip a { display: inline-flex; color: inherit; border-radius: 50%; padding: .1rem; }
+.fchip a:hover { background: color-mix(in srgb, var(--brand) 18%, transparent); text-decoration: none; }
+
 /* ---- Empty states ----------------------------------------------------------- */
 .empty { text-align: center; padding: var(--space-5) var(--space-4); color: var(--muted); }
 .empty .icon { width: 28px; height: 28px; opacity: .5; margin-bottom: .4rem; }

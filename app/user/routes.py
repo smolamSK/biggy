@@ -492,19 +492,51 @@ def _list_query(mf, session, engine):
     if q:
         # match across every text-like column of the table (not just the display field)
         filters.append(_q_filter(session, mf.table, q))
-    for col, op, val in zip(request.args.getlist("fcol"),
-                            request.args.getlist("fop"),
-                            request.args.getlist("fval")):
+    for i, (col, op, val) in enumerate(zip(request.args.getlist("fcol"),
+                                           request.args.getlist("fop"),
+                                           request.args.getlist("fval"))):
         meta = filter_meta.get(col)
         if not meta or not filt.valid_op(meta["kind"], op):
             continue
-        conditions.append({"col": col, "op": op, "val": val})
+        # idx = position in the raw fcol/fop/fval lists (for chip remove-URLs)
+        conditions.append({"col": col, "op": op, "val": val, "idx": i})
         if op in filt.NO_VALUE_OPS or val != "":
             filters.append({"col": col, "op": op, "value": val,
                             "is_text": meta["kind"] == "text"})
 
     return ListQuery(built, columns, filter_meta, filter_order, label_maps,
                      m1_targets, q, page, per_page, sort, order, conditions, filters)
+
+
+def _filter_chips(mf, lq, all_args):
+    """Removable-chip descriptions of the active quick search + conditions.
+
+    Each chip's URL is the current list URL minus that one criterion (and minus
+    the page, which may no longer exist once the filter loosens).
+    """
+    def url_without(*, drop_q=False, drop_idx=None):
+        args = {k: list(v) for k, v in all_args.items() if k != "page"}
+        if drop_q:
+            args.pop("q", None)
+        if drop_idx is not None:
+            for key in ("fcol", "fop", "fval"):
+                vals = args.get(key)
+                if vals and drop_idx < len(vals):
+                    del vals[drop_idx]
+        return url_for("user.form_list", form_id=mf.id, **args)
+
+    chips = []
+    if lq.q:
+        chips.append({"text": f'search: “{lq.q}”', "url": url_without(drop_q=True)})
+    for c in lq.conditions:
+        meta = lq.filter_meta[c["col"]]
+        op_label = next((lbl for key, lbl, _ in meta["ops"] if key == c["op"]), c["op"])
+        val = "" if c["op"] in filt.NO_VALUE_OPS else c["val"]
+        if val and meta.get("choices"):  # m1/enum: show the display label, not the id
+            val = next((lbl for v, lbl in meta["choices"] if str(v) == str(val)), val)
+        chips.append({"text": " ".join(str(p) for p in (meta["label"], op_label, val) if p != ""),
+                      "url": url_without(drop_idx=c["idx"])})
+    return chips
 
 
 @bp.route("/forms/<int:form_id>")
@@ -541,6 +573,7 @@ def form_list(form_id):
         page=lq.page, pages=pages, total=total, sort=lq.sort, order=lq.order,
         per_page=lq.per_page, allowed_per_page=ALLOWED_PER_PAGE,
         filter_meta=lq.filter_meta, filter_order=lq.filter_order, conditions=lq.conditions,
+        filter_chips=_filter_chips(mf, lq, all_args),
         can_edit=can_write(access), has_trash=mf.table.soft_delete,
         label_maps=lq.label_maps, m1_targets=lq.m1_targets,
         display_col=display_field_name(session, mf.table), view_table_id=mf.table.id,

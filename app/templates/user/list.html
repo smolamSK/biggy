@@ -1,20 +1,26 @@
 {% extends "user/_base.html" %}
-{% from "_macros.html" import delete_form, record_link, typed_value with context %}
+{% from "_macros.html" import delete_form, empty_state, record_link, typed_value with context %}
+{% from "_icons.html" import icon %}
 {% block title %}{{ mf.title }} · Biggy{% endblock %}
 {% block inner %}
 {% set active = conditions|length + (1 if q else 0) %}
 <div class="toolbar">
   <h1 style="margin:0">{{ mf.title }}</h1>
   <span style="flex:1"></span>
-  {% if has_enum %}<a class="btn" href="{{ url_for('user.form_kanban', form_id=mf.id) }}">Board</a>{% endif %}
-  {% if has_dates %}<a class="btn" href="{{ url_for('user.form_calendar', form_id=mf.id) }}">Calendar</a>{% endif %}
-  <a class="btn" href="{{ url_for('user.report', table_id=mf.table.id) }}">Report</a>
-  <a class="btn" href="{{ url_for('user.export_list_csv', form_id=mf.id, **args_pg) }}">Export CSV</a>
-  {% if has_trash and can_edit %}
-    <a class="btn" href="{{ url_for('user.form_trash', form_id=mf.id) }}">Trash</a>
-  {% endif %}
+  {% if has_enum %}<a class="btn" href="{{ url_for('user.form_kanban', form_id=mf.id) }}">{{ icon('kanban') }} Board</a>{% endif %}
+  {% if has_dates %}<a class="btn" href="{{ url_for('user.form_calendar', form_id=mf.id) }}">{{ icon('calendar') }} Calendar</a>{% endif %}
+  <details class="menu">
+    <summary class="btn">More {{ icon('chevron-down', 12) }}</summary>
+    <div class="menu-panel">
+      <a href="{{ url_for('user.report', table_id=mf.table.id) }}">{{ icon('chart') }} Report</a>
+      <a href="{{ url_for('user.export_list_csv', form_id=mf.id, **args_pg) }}">{{ icon('download') }} Export CSV</a>
+      {% if has_trash and can_edit %}
+        <a href="{{ url_for('user.form_trash', form_id=mf.id) }}">{{ icon('trash') }} Trash</a>
+      {% endif %}
+    </div>
+  </details>
   {% if can_edit %}
-    <a class="btn primary" data-sc="new" href="{{ url_for('user.record_new', form_id=mf.id) }}">+ Add new</a>
+    <a class="btn primary" data-sc="new" href="{{ url_for('user.record_new', form_id=mf.id) }}">{{ icon('plus') }} Add new</a>
   {% endif %}
 </div>
 
@@ -63,6 +69,18 @@
 <script type="application/json" id="filter-conditions">{{ conditions|tojson }}</script>
 <script src="{{ url_for('static', filename='filters.js') }}" defer></script>
 
+{% if filter_chips %}
+<div class="fchips">
+  <span class="muted">{{ icon('filter', 13) }} Filtered:</span>
+  {% for c in filter_chips %}
+    <span class="fchip">{{ c.text }}
+      <a href="{{ c.url }}" title="Remove this filter" aria-label="Remove filter: {{ c.text }}">{{ icon('x', 12) }}</a></span>
+  {% endfor %}
+  <a class="muted" href="{{ url_for('user.form_list', form_id=mf.id) }}"
+     style="font-size:var(--fs-sm)">Clear all</a>
+</div>
+{% endif %}
+
 <div class="panel">
   <div class="toolbar" style="margin-bottom:.5rem">
     <button class="btn danger sm" form="bulk-form" id="bulk-delete"
@@ -76,7 +94,7 @@
     {% endif %}
     <span class="muted" id="bulk-count"></span>
     <span style="flex:1"></span>
-    <button type="button" class="btn sm" id="columns-btn">Columns ▾</button>
+    <button type="button" class="btn sm" id="columns-btn">{{ icon('columns', 13) }} Columns {{ icon('chevron-down', 11) }}</button>
     <label class="muted">Per page
       <select name="per_page" form="filter-form" onchange="this.form.submit()">
         {% for n in allowed_per_page %}
@@ -95,8 +113,9 @@
         {% for c in columns %}
           {% set nxt = 'desc' if (sort == c.column and order == 'asc') else 'asc' %}
           {% set numcol = c.kind == 'field' and c.meta and c.meta.data_type in ('integer','bigint','decimal','float','currency','percent','autonumber') %}
-          <th data-col="{{ c.column }}"{% if numcol %} class="num"{% endif %}><a href="{{ url_for('user.form_list', form_id=mf.id, sort=c.column, order=nxt, **args_sort) }}">
-            {{ c.label }}{% if sort == c.column %} {{ '▲' if order == 'asc' else '▼' }}{% endif %}</a></th>
+          <th data-col="{{ c.column }}"{% if numcol %} class="num"{% endif %}
+              {%- if sort == c.column %} aria-sort="{{ 'ascending' if order == 'asc' else 'descending' }}"{% endif %}><a href="{{ url_for('user.form_list', form_id=mf.id, sort=c.column, order=nxt, **args_sort) }}">
+            {{ c.label }}{% if sort == c.column %} {{ icon('chevron-up', 12) if order == 'asc' else icon('chevron-down', 12) }}{% endif %}</a></th>
         {% endfor %}
         <th>Actions</th>
       </tr>
@@ -135,14 +154,30 @@
               <a class="btn sm" href="{{ url_for('user.record_view', table_id=view_table_id, pk=rid) }}">View</a>
             {% endif %}
             {% if can_edit %}
-              <a class="btn sm" href="{{ url_for('user.record_edit', form_id=mf.id, pk=rid) }}">Edit</a>
-              <a class="btn sm" href="{{ url_for('user.record_clone', form_id=mf.id, pk=rid) }}">Clone</a>
-              <a class="btn danger sm" href="{{ url_for('user.record_delete_confirm', form_id=mf.id, pk=rid) }}">Delete</a>
-            {% else %}<span class="muted">—</span>{% endif %}
+              <details class="menu">
+                <summary class="btn sm" aria-label="Row actions" title="Actions">{{ icon('more-h', 14) }}</summary>
+                <div class="menu-panel">
+                  <a href="{{ url_for('user.record_edit', form_id=mf.id, pk=rid) }}">{{ icon('pencil', 14) }} Edit</a>
+                  <a href="{{ url_for('user.record_clone', form_id=mf.id, pk=rid) }}">{{ icon('copy', 14) }} Clone</a>
+                  <hr>
+                  <a class="danger" href="{{ url_for('user.record_delete_confirm', form_id=mf.id, pk=rid) }}">{{ icon('trash', 14) }} Delete</a>
+                </div>
+              </details>
+            {% elif not can_view(view_table_id) %}<span class="muted">—</span>{% endif %}
           </td>
         </tr>
       {% else %}
-        <tr><td colspan="{{ columns|length + 2 }}" class="muted">No records.</td></tr>
+        <tr><td colspan="{{ columns|length + 2 }}">
+          {% if active %}
+            {{ empty_state('filter', 'No matching records', 'Try removing a filter above.') }}
+          {% elif can_edit %}
+            {% call empty_state('inbox', 'No records yet') %}
+              <a class="btn primary" href="{{ url_for('user.record_new', form_id=mf.id) }}">{{ icon('plus') }} Add the first record</a>
+            {% endcall %}
+          {% else %}
+            {{ empty_state('inbox', 'No records yet') }}
+          {% endif %}
+        </td></tr>
       {% endfor %}
     </table>
   </form>
@@ -150,11 +185,11 @@
   {% if pages > 1 %}
   <div class="pager">
     {% if page > 1 %}
-      <a class="btn sm" href="{{ url_for('user.form_list', form_id=mf.id, page=page-1, **args_pg) }}">‹ Prev</a>
+      <a class="btn sm" href="{{ url_for('user.form_list', form_id=mf.id, page=page-1, **args_pg) }}">{{ icon('chevron-left', 12) }} Prev</a>
     {% endif %}
     <span class="muted">Page {{ page }} of {{ pages }} · {{ total }} records</span>
     {% if page < pages %}
-      <a class="btn sm" href="{{ url_for('user.form_list', form_id=mf.id, page=page+1, **args_pg) }}">Next ›</a>
+      <a class="btn sm" href="{{ url_for('user.form_list', form_id=mf.id, page=page+1, **args_pg) }}">Next {{ icon('chevron-right', 12) }}</a>
     {% endif %}
   </div>
   {% endif %}
