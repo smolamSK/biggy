@@ -33,7 +33,8 @@
       <a href="{{ menu_url(item) }}">{{ item.label }}</a>
     {% endif %}
   {% else %}
-    <span class="muted">No menu defined yet</span>
+    {% from "_macros.html" import empty_state with context %}
+    {{ empty_state('list', 'No menu yet', 'A designer can add items under Menus.') }}
   {% endfor %}
 </nav>
 {% endblock %}

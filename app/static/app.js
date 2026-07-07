@@ -128,6 +128,19 @@
       });
     });
 
+    // dropdown menus (details.menu): close when clicking elsewhere or on Esc
+    document.addEventListener("click", function (e) {
+      document.querySelectorAll("details.menu[open]").forEach(function (d) {
+        if (!d.contains(e.target)) d.removeAttribute("open");
+      });
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key !== "Escape") return;
+      document.querySelectorAll("details.menu[open]").forEach(function (d) {
+        d.removeAttribute("open");
+      });
+    });
+
     // mobile: ☰ toggles the off-canvas sidebar (scrim click closes)
     var burger = document.getElementById("nav-burger");
     var sidebar = document.querySelector(".sidebar");

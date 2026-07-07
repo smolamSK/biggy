@@ -1,3 +1,16 @@
+{% from "_icons.html" import icon %}
+
+{# Friendly empty state: centered icon + title + optional hint; wrap in
+   {% call empty_state(...) %} to add a CTA button below. #}
+{% macro empty_state(icon_name, title, hint='') %}
+  <div class="empty">
+    {{ icon(icon_name, 28) }}
+    <p class="empty-title">{{ title }}</p>
+    {% if hint %}<p class="empty-hint">{{ hint }}</p>{% endif %}
+    {% if caller %}{{ caller() }}{% endif %}
+  </div>
+{% endmacro %}
+
 {% macro render_field(field) %}
   {% if field.type in ('CSRFTokenField', 'HiddenField') %}
     {{ field() }}

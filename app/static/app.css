@@ -5,6 +5,15 @@
    ports as a drop-in. All 5 themes preserved (light/dark/sepia/ocean/contrast).
    ========================================================================== */
 
+/* ---- Typeface: self-hosted Inter (variable; SIL OFL, see fonts/LICENSE.txt) */
+@font-face {
+  font-family: "Inter";
+  src: url("fonts/InterVariable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ---- Non-color design tokens (shared across all themes) ------------------ */
 :root {
   --font-ui: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -562,6 +571,64 @@ mark { background: var(--chip-amber-bg, #fef3c7); color: inherit; padding: 0 .15
 .crumbs { font-size: var(--fs-sm); color: var(--muted); margin-bottom: .35rem; }
 .crumbs a { color: var(--muted); }
 .crumbs a:hover { color: var(--brand); }
+
+/* ---- Inline SVG icons (templates/_icons.html) ------------------------------ */
+.icon { vertical-align: -3px; flex: none; }
+.btn .icon, .tabs .icon { vertical-align: -2px; }
+
+/* ---- Dropdown menus (details.menu: kebab, toolbar overflow, account) ------- */
+details.menu { position: relative; display: inline-block; }
+details.menu > summary {
+  list-style: none; cursor: pointer; user-select: none;
+  display: inline-flex; align-items: center; gap: .35rem;
+}
+details.menu > summary::-webkit-details-marker { display: none; }
+header.topbar details.menu > summary {
+  color: var(--topbar-link); font-size: var(--fs-sm); font-weight: 500;
+  padding: .3rem .5rem; border-radius: var(--radius-sm);
+  transition: background var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out);
+}
+header.topbar details.menu > summary:hover,
+header.topbar details.menu[open] > summary { color: var(--topbar-ink); background: var(--hover); }
+details.menu > .menu-panel {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 70;
+  min-width: 160px; padding: .3rem;
+  background: var(--panel); border: 1px solid var(--line-strong);
+  border-radius: var(--radius); box-shadow: var(--shadow-pop);
+}
+details.menu.left > .menu-panel { right: auto; left: 0; }
+.menu-panel a, .menu-panel button.menu-item {
+  display: flex; align-items: center; gap: .5rem; width: 100%;
+  padding: .35rem .55rem; border: none; background: none; text-align: left;
+  border-radius: var(--radius-sm); color: var(--ink); font-size: var(--fs-sm);
+  font-family: inherit; cursor: pointer; white-space: nowrap;
+}
+.menu-panel a:hover, .menu-panel button.menu-item:hover {
+  background: var(--hover); text-decoration: none;
+}
+.menu-panel a.danger { color: var(--danger); }
+.menu-panel hr { border: none; border-top: 1px solid var(--line); margin: .3rem 0; }
+.menu-panel form.inline { display: block; }
+
+/* ---- Empty states ----------------------------------------------------------- */
+.empty { text-align: center; padding: var(--space-5) var(--space-4); color: var(--muted); }
+.empty .icon { width: 28px; height: 28px; opacity: .5; margin-bottom: .4rem; }
+.empty-title { font-weight: 600; color: var(--ink); font-size: var(--fs-md); margin: 0 0 .2rem; }
+.empty-hint { margin: 0 0 .7rem; font-size: var(--fs-sm); }
+
+/* ---- Sign-in / auth cards --------------------------------------------------- */
+.auth-brand {
+  display: flex; align-items: center; justify-content: center; gap: .55rem;
+  font-weight: 700; font-size: var(--fs-lg); letter-spacing: -0.01em;
+  margin-bottom: var(--space-4);
+}
+.auth-brand::before {
+  content: ""; width: 22px; height: 22px; border-radius: 6px;
+  background: var(--brand); box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--brand) 55%, #fff);
+}
+.center-card .panel { box-shadow: var(--shadow-pop); padding: var(--space-5); }
+.center-card h1 { font-size: var(--fs-lg); text-align: center; }
+.center-card .btn.primary { width: 100%; justify-content: center; margin-top: .25rem; }
 
 /* ---- Responsive: off-canvas sidebar + scrolling tables -------------------- */
 .nav-burger { display: none; border: none; background: none; color: var(--topbar-ink);

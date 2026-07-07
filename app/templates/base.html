@@ -21,8 +21,9 @@
   <script src="{{ url_for('static', filename='shortcuts.js') }}" defer></script>
 </head>
 <body>
+  {% from "_icons.html" import icon %}
   <header class="topbar">
-    <button id="nav-burger" class="nav-burger" type="button" aria-label="Menu">☰</button>
+    <button id="nav-burger" class="nav-burger" type="button" aria-label="Menu">{{ icon('menu', 18) }}</button>
     <span class="brand">Biggy <span class="muted" style="font-size:var(--fs-xs);font-weight:400" title="Version">v{{ config.APP_VERSION }}</span></span>
     {% block mode %}{% endblock %}
     <span class="spacer"></span>
@@ -37,14 +38,24 @@
       {% if current_user.is_designer %}
         <a href="{{ url_for('designer.dashboard') }}">Designer</a>
         <a href="{{ url_for('user.dashboard') }}">User mode</a>
-        <a href="{{ url_for('auth.users') }}">Users</a>
-        <a href="{{ url_for('core.connection') }}">Connection</a>
       {% endif %}
-      <a id="badge-appr" href="{{ url_for('user.approvals_inbox') }}" title="Approvals">✓{% if pending_approvals %} <span class="badge">{{ pending_approvals }}</span>{% endif %}</a>
-      <a id="badge-notif" href="{{ url_for('user.notifications') }}" title="Notifications">🔔{% if unread_notifications %} <span class="badge">{{ unread_notifications }}</span>{% endif %}</a>
-      <a href="{{ url_for('core.help_page', topic='user') }}" title="Help">Help</a>
-      <a href="{{ url_for('auth.account') }}" class="muted" title="Account">{{ current_user.username }}</a>
-      <a href="{{ url_for('auth.logout') }}">Sign out</a>
+      <a id="badge-appr" href="{{ url_for('user.approvals_inbox') }}" title="Approvals"
+         aria-label="Approvals">{{ icon('check-circle') }}{% if pending_approvals %} <span class="badge">{{ pending_approvals }}</span>{% endif %}</a>
+      <a id="badge-notif" href="{{ url_for('user.notifications') }}" title="Notifications"
+         aria-label="Notifications">{{ icon('bell') }}{% if unread_notifications %} <span class="badge">{{ unread_notifications }}</span>{% endif %}</a>
+      <details class="menu account-menu">
+        <summary title="Account menu">{{ icon('user') }} {{ current_user.username }} {{ icon('chevron-down', 12) }}</summary>
+        <div class="menu-panel">
+          <a href="{{ url_for('auth.account') }}">{{ icon('user') }} Account</a>
+          {% if current_user.is_designer %}
+            <a href="{{ url_for('auth.users') }}">{{ icon('list') }} Users</a>
+            <a href="{{ url_for('core.connection') }}">{{ icon('zap') }} Connection</a>
+          {% endif %}
+          <a href="{{ url_for('core.help_page', topic='user') }}">{{ icon('help') }} Help</a>
+          <hr>
+          <a href="{{ url_for('auth.logout') }}">{{ icon('log-out') }} Sign out</a>
+        </div>
+      </details>
     {% endif %}
   </header>
 
