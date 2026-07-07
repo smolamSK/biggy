@@ -155,7 +155,8 @@ def test_triggers_fire_actions(app, client):
     assert all(n.status == "skipped" for n in notifs if n.channel in ("email", "webhook"))
 
     assert "T1 resolved" in client.get("/u/notifications").get_data(as_text=True)
-    assert "🔔" in client.get("/u/").get_data(as_text=True)   # bell in the topbar
+    home = client.get("/u/").get_data(as_text=True)
+    assert 'id="badge-notif"' in home and 'class="badge">1</span>' in home  # topbar bell + count
     _ok(client.post("/u/notifications/read", follow_redirects=True))
     with app.app_context():
         n = SessionLocal().scalar(select(Notification).where(Notification.channel == "in_app"))
@@ -220,7 +221,7 @@ def test_help_pages(app, client):
     u = client.get("/help/user")
     _ok(u)
     ub = u.get_data(as_text=True)
-    assert "User Manual" in ub and 'title="Help"' in ub
+    assert "User Manual" in ub and 'href="/help/user"' in ub  # help link in the account menu
     d = client.get("/help/designer")
     _ok(d)
     assert "Designer Manual" in d.get_data(as_text=True)
