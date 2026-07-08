@@ -1,0 +1,49 @@
+{% extends "designer/_base.html" %}
+{% block title %}Catalog · {{ branding.app_name }}{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">Service catalog</h1>
+  <span style="flex:1"></span>
+  <a class="btn" href="{{ url_for('user.catalog') }}">Open in User mode</a>
+</div>
+<p class="help" style="max-width:640px">Tick a form to publish it as a request card on the
+  User-mode <em>Catalog</em> page. The <em>Catalog</em> and <em>My requests</em> menu links
+  appear automatically once anything is published.</p>
+
+<div class="panel">
+  {% if forms %}
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <table class="grid">
+      <tr><th>In catalog</th><th>Form</th><th>Table</th><th>Group</th><th>Card description</th></tr>
+      {% for f in forms %}
+        <tr>
+          <td class="col-check"><input type="checkbox" name="in_{{ f.id }}" {{ 'checked' if f.in_catalog }}></td>
+          <td><a href="{{ url_for('designer.form_edit', form_id=f.id) }}">{{ f.title }}</a>
+            {% if f.in_catalog and f.id in unstamped %}
+              <br><span class="chip c-amber" title="Enable audit or row ownership so submissions are stamped with their creator">
+                won't show under My requests —
+                <a href="{{ url_for('designer.table_view', table_id=f.table_id) }}"
+                   style="color:inherit;text-decoration:underline">fix on the table</a></span>
+            {% endif %}
+          </td>
+          <td>{{ f.table.label }}</td>
+          <td><input type="text" name="group_{{ f.id }}" value="{{ f.catalog_group or '' }}"
+                     placeholder="General" style="max-width:11rem"></td>
+          <td><input type="text" name="desc_{{ f.id }}" value="{{ f.description or '' }}"
+                     placeholder="Shown on the card" style="max-width:none"></td>
+        </tr>
+      {% endfor %}
+    </table>
+    <div style="margin-top:.7rem">
+      <button class="btn primary" type="submit">Save catalog</button>
+    </div>
+    <p class="help">The description is the form's description — it also appears on the
+      entry form itself. Cards are grouped by the Group text (blank = “General”).</p>
+  </form>
+  {% else %}
+  <p class="muted">No data-entry forms yet — create one under
+    <a href="{{ url_for('designer.forms') }}">Forms</a> first.</p>
+  {% endif %}
+</div>
+{% endblock %}

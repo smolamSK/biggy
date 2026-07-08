@@ -163,15 +163,19 @@ def _register_context(app):
 
         from .db import SessionLocal
         from .helpers import menu_tree, menu_url, menu_visible
-        from .metadata.models import MetaTable, Notification
+        from .metadata.models import MetaForm, MetaTable, Notification
 
         nav, designer_tables, unread, pending_appr = [], [], 0, 0
+        has_catalog = False
         try:
             if current_user.is_authenticated:
                 from . import approvals
                 session = SessionLocal()
                 nav = [m for m in menu_tree()
                        if menu_visible(session, current_user, m)]
+                has_catalog = session.scalar(
+                    select(MetaForm.id).where(MetaForm.in_catalog.is_(True)).limit(1)
+                ) is not None
                 if current_user.is_designer:
                     designer_tables = session.scalars(
                         select(MetaTable).order_by(MetaTable.label)
@@ -182,6 +186,7 @@ def _register_context(app):
                 pending_appr = approvals.pending_count_for_user(session, current_user)
         except Exception:  # noqa: BLE001 - never break rendering on menu/table errors
             nav, designer_tables, unread, pending_appr = [], [], 0, 0
+            has_catalog = False
 
         def can_see(item):
             try:
@@ -202,7 +207,7 @@ def _register_context(app):
                 "menu_url": menu_url, "designer_tables": designer_tables,
                 "menu_can_see": can_see, "can_view": can_view,
                 "unread_notifications": unread, "pending_approvals": pending_appr,
-                "branding": app_settings.branding()}
+                "has_catalog": has_catalog, "branding": app_settings.branding()}
 
 
 def _register_cli(app):

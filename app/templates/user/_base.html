@@ -17,8 +17,10 @@
     <input type="search" name="q" placeholder="Search all…" style="width:100%">
   </form>
   <a href="{{ url_for('user.dashboard') }}">Home</a>
-  <a href="{{ url_for('user.catalog') }}">Catalog</a>
-  <a href="{{ url_for('user.my_requests') }}">My requests</a>
+  {% if has_catalog %}
+    <a href="{{ url_for('user.catalog') }}">Catalog</a>
+    <a href="{{ url_for('user.my_requests') }}">My requests</a>
+  {% endif %}
   <a href="{{ url_for('user.my_dashboards') }}">My dashboards</a>
   <a href="{{ url_for('user.import_home') }}">Import data</a>
   <a href="{{ url_for('user.tokens') }}">API tokens</a>

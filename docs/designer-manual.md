@@ -92,10 +92,14 @@ relations (no setup needed).
 - **Data entry** — the add/edit form used in User mode.
 - **View** — the read-only record page.
 
-A data-entry form can also join the **service catalog** (a checkbox + group on the
-form-edit page): it then appears as a request card on the User-mode *Catalog* page,
-and submissions show up under each user's *My requests* (enable **row ownership** or
-**audit** on the table so submissions are owner-stamped).
+A data-entry form can also join the **service catalog**: it then appears as a
+request card on the User-mode *Catalog* page, and submissions show up under each
+user's *My requests*. Manage the whole catalog at once under *Interface →
+**Catalog*** (per-form checkbox + group + card description; the same controls also
+sit on each form-edit page). The *Catalog* and *My requests* menu links appear in
+User mode only once something is published. Enable **row ownership** or **audit**
+on the table so submissions are owner-stamped — the Catalog page warns you when
+they aren't.
 
 Add **items** to a form: **fields**, **many-to-many** pickers, and **section
 headings** to group the layout. Per item you can set a label override, help text,

@@ -161,7 +161,8 @@ text notes.
 
 ## Service catalog & My requests
 
-If your team publishes a **Catalog** (top of the menu), it lists request cards —
+If your team publishes a **Catalog** (the link appears near the top of the menu
+once it has content), it lists request cards —
 *new laptop*, *report an incident*, … Submitting one creates a record the responsible
 team works on. Track everything you've submitted under **My requests** (type, status
 chip, created date, link to the record).

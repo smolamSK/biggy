@@ -1377,6 +1377,30 @@ def form_duplicate(form_id):
     return redirect(url_for("designer.form_edit", form_id=mf.id))
 
 
+@bp.route("/catalog", methods=["GET", "POST"])
+def catalog_home():
+    """Central service-catalog editor: every data form's card in one table.
+
+    Writes the same MetaForm columns as the per-form panel (form_catalog); the
+    user-mode Catalog/My requests links appear once anything is flagged.
+    """
+    session = _s()
+    forms = session.scalars(select(MetaForm).where(MetaForm.purpose != "view")
+                            .order_by(MetaForm.title)).all()
+    if request.method == "POST":
+        for f in forms:
+            f.in_catalog = bool(request.form.get(f"in_{f.id}"))
+            f.catalog_group = (request.form.get(f"group_{f.id}") or "").strip() or None
+            f.description = (request.form.get(f"desc_{f.id}") or "").strip() or None
+        session.commit()
+        flash("Catalog saved.", "success")
+        return redirect(url_for("designer.catalog_home"))
+    # forms whose submissions can't show under "My requests" (no owner stamps)
+    unstamped = {f.id for f in forms
+                 if not (f.table.track_audit or f.table.row_owned)}
+    return render_template("designer/catalog.html", forms=forms, unstamped=unstamped)
+
+
 # --------------------------------------------------------------------------- #
 # Menus
 # --------------------------------------------------------------------------- #

@@ -277,3 +277,40 @@ def test_default_list_view(app, client):
         s.get(MetaForm, fid).default_sort = "gone_column"
         s.commit()
     _ok(client.get(f"/u/forms/{fid}"))
+
+
+def test_designer_catalog_editor(app, client):
+    _setup(client)
+    tid = _make_table(client, app, "hw_req", "Hardware request", "title")
+    _ok(client.post(f"/designer/tables/{tid}/flags", data=dict(row_owned="y"),
+                    follow_redirects=True))
+    fid = _make_form(client, app, "hw_req_form", "Request hardware", tid)
+    tid2 = _make_table(client, app, "feedback", "Feedback", "note")   # no owner stamps
+    fid2 = _make_form(client, app, "feedback_form", "Give feedback", tid2)
+
+    # Designer nav always offers Catalog; user sidebar hides the links while empty
+    assert "/designer/catalog" in client.get("/designer/").get_data(as_text=True)
+    page = client.get("/designer/catalog").get_data(as_text=True)
+    assert "Request hardware" in page and "Give feedback" in page
+    home = client.get("/u/").get_data(as_text=True)
+    assert "/u/catalog" not in home and "/u/my-requests" not in home
+
+    # publish both from the central editor
+    _ok(client.post("/designer/catalog", data={
+        f"in_{fid}": "y", f"group_{fid}": "IT", f"desc_{fid}": "Laptops etc.",
+        f"in_{fid2}": "y", f"group_{fid2}": "", f"desc_{fid2}": "",
+    }, follow_redirects=True))
+    cat = client.get("/u/catalog").get_data(as_text=True)
+    assert "Request hardware" in cat and "Laptops etc." in cat and ">IT<" in cat
+    assert "General" in cat                                   # blank group default
+    home = client.get("/u/").get_data(as_text=True)
+    assert "/u/catalog" in home and "/u/my-requests" in home  # links appeared
+
+    # the table without audit/ownership gets an owner-stamp warning
+    page = client.get("/designer/catalog").get_data(as_text=True)
+    assert page.count("fix on the table") == 1
+
+    # unpublish everything → the user-mode links disappear again
+    _ok(client.post("/designer/catalog", data={}, follow_redirects=True))
+    home = client.get("/u/").get_data(as_text=True)
+    assert "/u/catalog" not in home
