@@ -16,6 +16,11 @@
       <button class="btn" type="submit">Send to tools</button>
     </form>
   {% endif %}
+  <form method="post" action="{{ url_for('user.watch_toggle', table_id=table.id, pk=pk) }}" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn" type="submit"
+            title="Get notified of every update and comment on this record">{{ 'Unwatch' if watching else 'Watch' }}</button>
+  </form>
   {% if can_assign %}
     <form method="post" action="{{ url_for('user.assign_to_me', table_id=table.id, pk=pk) }}" class="inline">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

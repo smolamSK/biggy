@@ -893,6 +893,19 @@ class AppSetting(Base):
     value: Mapped[str | None] = mapped_column(Text)
 
 
+class Watch(Base):
+    """A user subscribed to one data record: notified on updates and comments."""
+    __tablename__ = "app_watch"
+    __table_args__ = (UniqueConstraint("user_id", "table_phys", "row_pk",
+                                       name="uq_watch_user_record"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    table_phys: Mapped[str] = mapped_column(String(64), nullable=False)
+    row_pk: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
 class Comment(Base):
     """One conversation entry on a data record (staff ⇄ customer).
 

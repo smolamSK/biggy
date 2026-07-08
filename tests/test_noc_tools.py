@@ -111,3 +111,55 @@ def test_sla_in_lists_and_home(app, client):
     _ok(client.post(f"/u/forms/{fid}/1/edit",
                     data={"title": "C1", "status": "resolved"}, follow_redirects=True))
     assert "SLA — due next" not in client.get("/u/").get_data(as_text=True)
+
+
+def test_watch_record(app, client):
+    from sqlalchemy import func
+
+    from app.metadata.models import Notification
+    _setup(client)
+    tid = _make_table(client, app, "node", "Node", "name")
+    _ok(client.post(f"/designer/tables/{tid}/flags", data=dict(track_audit="y"),
+                    follow_redirects=True))
+    fid = _make_form(client, app, "node_form", "Nodes", tid)
+    _make_form_p(client, app, "node_view", "Node", tid, "view")
+    _ok(client.post(f"/u/forms/{fid}/new", data={"name": "core-sw-1"},
+                    follow_redirects=True))
+    amy = _new_amy(app, client)
+
+    # amy subscribes to boss's record
+    assert ">Watch<" in amy.get(f"/u/view/{tid}/1").get_data(as_text=True)
+    _ok(amy.post(f"/u/watch/{tid}/1", follow_redirects=True))
+    assert ">Unwatch<" in amy.get(f"/u/view/{tid}/1").get_data(as_text=True)
+
+    # any update through the chokepoint notifies the watcher, never the actor
+    _ok(client.post(f"/u/forms/{fid}/1/edit", data={"name": "core-sw-1b"},
+                    follow_redirects=True))
+    with app.app_context():
+        s = SessionLocal()
+        amy_id = s.scalar(select(AppUser).where(AppUser.username == "amy")).id
+        boss_id = s.scalar(select(AppUser).where(AppUser.username == "boss")).id
+        n = s.scalar(select(Notification).where(Notification.user_id == amy_id,
+                                                Notification.event == "watch"))
+        assert n is not None and "name" in n.body
+        assert s.scalar(select(Notification).where(
+            Notification.user_id == boss_id, Notification.event == "watch")) is None
+
+    # a comment notifies the watcher too (she never commented herself)
+    _ok(client.post(f"/u/comments/{tid}/1",
+                    data={"body": "replacing PSU", "visibility": "internal"},
+                    follow_redirects=True))
+    with app.app_context():
+        s = SessionLocal()
+        n = s.scalar(select(Notification).where(Notification.user_id == amy_id,
+                                                Notification.event == "comment"))
+        assert n is not None and "replacing PSU" in n.body
+
+    # unwatch stops update notifications
+    _ok(amy.post(f"/u/watch/{tid}/1", follow_redirects=True))
+    _ok(client.post(f"/u/forms/{fid}/1/edit", data={"name": "core-sw-1c"},
+                    follow_redirects=True))
+    with app.app_context():
+        s = SessionLocal()
+        assert s.scalar(select(func.count()).select_from(Notification).where(
+            Notification.user_id == amy_id, Notification.event == "watch")) == 1

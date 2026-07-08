@@ -159,8 +159,17 @@ def update(session, engine, meta_table, pk, values, user_id):
     data_service.update_row(engine, meta_table.phys_name, pk, values)
     _log(session, meta_table, pk, "update", user_id, changes)
     _fire(session, engine, meta_table, "update", pk, old, user_id)
+    _notify_watchers(session, meta_table, pk, values, user_id)
     _ripple(session, engine, meta_table, data_service.get_row(engine, meta_table.phys_name, pk)
             or {**old, **values, meta_table.pk_col: pk})
+
+
+def _notify_watchers(session, meta_table, pk, values, user_id):
+    from . import watch
+    try:
+        watch.notify_update(session, meta_table, pk, values, user_id)
+    except Exception:  # noqa: BLE001 - watching must never break a write
+        _logger.exception("watch notify failed on %s #%s", meta_table.phys_name, pk)
 
 
 def _incoming_m1(session, meta_table):

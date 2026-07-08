@@ -37,6 +37,7 @@ from .. import (
     reporting,
     sla,
     topology,
+    watch,
     workflow,
 )
 from .. import filters as filt
@@ -1451,6 +1452,8 @@ def record_view(table_id, pk):
                       and row.get(assign_field.phys_name) != user_id)
     return render_template("user/view.html", table=table, pk=pk, label=label, items=items,
                            can_assign=can_assign,
+                           watching=watch.is_watching(session, user_id,
+                                                      table.phys_name, pk),
                            list_url=list_url,
                            edit_url=edit_url, deleted=bool(row.get("deleted_at")),
                            send_form_id=send_form_id, related=related, history=history,
@@ -1458,6 +1461,27 @@ def record_view(table_id, pk):
                            can_approve=can_approve,
                            thread=comments.list_for(session, table.phys_name, pk,
                                                     include_internal=True))
+
+
+@bp.route("/watch/<int:table_id>/<pk>", methods=["POST"])
+def watch_toggle(table_id, pk):
+    """Subscribe to / unsubscribe from a record's updates and comments."""
+    session = _s()
+    table = session.get(MetaTable, table_id)
+    view_form = table_view_form(session, table_id)
+    if not table or not view_form:
+        abort(404)
+    if not can_read(form_access(session, current_user, view_form.id)):
+        abort(403)
+    user_id, is_designer = _ctx()
+    if not record_service.get_record(engine_for_table(table), table, pk,
+                                     user_id=user_id, is_designer=is_designer,
+                                     allow_deleted=True):
+        abort(404)
+    now_watching = watch.toggle(session, user_id, table.phys_name, pk)
+    flash("Watching this record — you'll be notified of updates and comments."
+          if now_watching else "Stopped watching.", "info")
+    return redirect(url_for("user.record_view", table_id=table_id, pk=pk))
 
 
 @bp.route("/assign/<int:table_id>/<pk>", methods=["POST"])

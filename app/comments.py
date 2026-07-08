@@ -28,13 +28,16 @@ def list_for(session, table_phys, row_pk, *, include_internal):
 
 
 def _participants(session, table_phys, row_pk, row):
-    """User ids with a stake in the thread: prior commenters + record creator."""
+    """User ids with a stake in the thread: prior commenters, the record
+    creator, and everyone watching the record."""
+    from . import watch
     ids = set(session.scalars(
         select(Comment.user_id).where(Comment.table_phys == table_phys,
                                       Comment.row_pk == str(row_pk))
     ).all())
     if row and row.get("created_by"):
         ids.add(row["created_by"])
+    ids |= watch.watchers(session, table_phys, row_pk)
     ids.discard(None)
     return ids
 
