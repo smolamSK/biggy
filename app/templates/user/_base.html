@@ -17,6 +17,7 @@
     <input type="search" name="q" placeholder="Search all…" style="width:100%">
   </form>
   <a href="{{ url_for('user.dashboard') }}">Home</a>
+  <a href="{{ url_for('user.activity') }}">Activity</a>
   {% if has_catalog %}
     <a href="{{ url_for('user.catalog') }}">Catalog</a>
     <a href="{{ url_for('user.my_requests') }}">My requests</a>

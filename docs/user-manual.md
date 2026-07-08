@@ -167,6 +167,12 @@ once it has content), it lists request cards —
 team works on. Track everything you've submitted under **My requests** (type, status
 chip, created date, link to the record).
 
+## Activity (shift handover)
+
+**Activity** in the menu shows everything that happened across the tables you can
+read — creates, edits (with the changed columns), deletes and comments — filterable
+by table, person and time window. Built for "what happened during the night?".
+
 ## Assignments — My work
 
 Tables with a **User** (assignee) field get an **Assign to me** button on the

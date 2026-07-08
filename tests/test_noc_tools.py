@@ -163,3 +163,32 @@ def test_watch_record(app, client):
         s = SessionLocal()
         assert s.scalar(select(func.count()).select_from(Notification).where(
             Notification.user_id == amy_id, Notification.event == "watch")) == 1
+
+
+def test_activity_stream(app, client):
+    _setup(client)
+    tid = _make_table(client, app, "dev", "Dev", "name")
+    _ok(client.post(f"/designer/tables/{tid}/flags", data=dict(track_audit="y"),
+                    follow_redirects=True))
+    fid = _make_form(client, app, "dev_form", "Devs", tid)
+    _make_form_p(client, app, "dev_view", "Dev", tid, "view")
+    _ok(client.post(f"/u/forms/{fid}/new", data={"name": "fw-1"}, follow_redirects=True))
+    _ok(client.post(f"/u/forms/{fid}/1/edit", data={"name": "fw-1b"},
+                    follow_redirects=True))
+    _ok(client.post(f"/u/comments/{tid}/1",
+                    data={"body": "checking", "visibility": "internal"},
+                    follow_redirects=True))
+
+    page = client.get("/u/activity").get_data(as_text=True)
+    assert "fw-1b" in page                                   # label resolved
+    assert ">create<" in page and ">update<" in page and ">comment<" in page
+    assert "changed: name" in page and "[internal] checking" in page
+    assert "/u/activity" in client.get("/u/").get_data(as_text=True)  # sidebar link
+
+    # filters narrow the feed (amy exists but has done nothing)
+    _new_amy(app, client)
+    with app.app_context():
+        amy_id = SessionLocal().scalar(
+            select(AppUser).where(AppUser.username == "amy")).id
+    page = client.get(f"/u/activity?user={amy_id}").get_data(as_text=True)
+    assert "No activity in this window" in page

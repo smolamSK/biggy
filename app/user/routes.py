@@ -3,7 +3,7 @@ import calendar as _calendar
 import json
 import os
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from urllib.parse import parse_qsl, urlencode
 
 from flask import (
@@ -1461,6 +1461,77 @@ def record_view(table_id, pk):
                            can_approve=can_approve,
                            thread=comments.list_for(session, table.phys_name, pk,
                                                     include_internal=True))
+
+
+_ACT_HUES = {"create": "green", "update": "blue", "delete": "red",
+             "restore": "teal", "comment": "violet"}
+
+
+@bp.route("/activity")
+def activity():
+    """Cross-table activity feed (changes + comments) — built for shift handover."""
+    from ..metadata.models import Comment
+    session = _s()
+    try:
+        hours = max(1, min(int(request.args.get("hours", 24)), 24 * 14))
+    except (TypeError, ValueError):
+        hours = 24
+    table_f = request.args.get("table", "")
+    user_f = request.args.get("user", "")
+    since = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=hours)
+
+    readable = {t.phys_name: t for t in session.scalars(select(MetaTable))
+                if helpers.table_readable(session, current_user, t)}
+    phys_list = [table_f] if table_f in readable else list(readable)
+    aq = select(AuditLog).where(AuditLog.at >= since, AuditLog.table_phys.in_(phys_list))
+    cq = select(Comment).where(Comment.created_at >= since,
+                               Comment.table_phys.in_(phys_list))
+    if user_f.isdigit():
+        aq = aq.where(AuditLog.user_id == int(user_f))
+        cq = cq.where(Comment.user_id == int(user_f))
+    users_map = {u.id: u.username for u in session.scalars(select(AppUser))}
+
+    items = []
+    for a in session.scalars(aq.order_by(AuditLog.id.desc()).limit(100)):
+        if a.row_pk is None:
+            continue
+        detail = ""
+        if a.action == "update" and a.changes:
+            try:
+                detail = "changed: " + ", ".join(sorted(json.loads(a.changes)))
+            except (ValueError, TypeError):
+                pass
+        items.append({"at": a.at, "kind": a.action,
+                      "hue": _ACT_HUES.get(a.action, "gray"),
+                      "username": users_map.get(a.user_id, "—"),
+                      "table": readable[a.table_phys], "pk": a.row_pk,
+                      "detail": detail})
+    for c in session.scalars(cq.order_by(Comment.id.desc()).limit(100)):
+        snippet = c.body if len(c.body) <= 80 else c.body[:79] + "…"
+        items.append({"at": c.created_at, "kind": "comment", "hue": "violet",
+                      "username": users_map.get(c.user_id, "—"),
+                      "table": readable[c.table_phys], "pk": c.row_pk,
+                      "detail": ("[internal] " if c.internal else "") + snippet})
+    items.sort(key=lambda x: (x["at"] is None, x["at"]), reverse=True)
+    items = items[:100]
+
+    label_cache = {}                       # resolve labels only for shown items
+    for it in items:
+        key = (it["table"].phys_name, str(it["pk"]))
+        if key not in label_cache:
+            try:
+                row = data_service.get_row(engine_for_table(it["table"]),
+                                           it["table"].phys_name, it["pk"])
+            except Exception:  # noqa: BLE001 - deleted rows / broken sources
+                row = None
+            v = row.get(display_field_name(session, it["table"])) if row else None
+            label_cache[key] = str(v) if v not in (None, "") else f"#{it['pk']}"
+        it["label"] = label_cache[key]
+
+    return render_template(
+        "user/activity.html", items=items, hours=hours, table_f=table_f,
+        user_f=user_f, tables=sorted(readable.values(), key=lambda t: t.label),
+        users=session.scalars(select(AppUser).order_by(AppUser.username)).all())
 
 
 @bp.route("/watch/<int:table_id>/<pk>", methods=["POST"])

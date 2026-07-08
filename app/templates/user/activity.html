@@ -1,0 +1,47 @@
+{% extends "user/_base.html" %}
+{% from "_macros.html" import record_link with context %}
+{% block title %}Activity · Biggy{% endblock %}
+{% block inner %}
+<h1>Activity</h1>
+<form method="get" class="toolbar" style="flex-wrap:wrap">
+  <label class="muted">Table
+    <select name="table" onchange="this.form.submit()" style="width:auto">
+      <option value="">all</option>
+      {% for t in tables %}
+        <option value="{{ t.phys_name }}" {{ 'selected' if t.phys_name == table_f }}>{{ t.label }}</option>
+      {% endfor %}
+    </select></label>
+  <label class="muted">By
+    <select name="user" onchange="this.form.submit()" style="width:auto">
+      <option value="">anyone</option>
+      {% for u in users %}
+        <option value="{{ u.id }}" {{ 'selected' if u.id|string == user_f }}>{{ u.username }}</option>
+      {% endfor %}
+    </select></label>
+  <label class="muted">Window
+    <select name="hours" onchange="this.form.submit()" style="width:auto">
+      {% for h, lbl in [(8, 'last 8 hours'), (24, 'last 24 hours'), (72, 'last 3 days'), (168, 'last 7 days')] %}
+        <option value="{{ h }}" {{ 'selected' if h == hours }}>{{ lbl }}</option>
+      {% endfor %}
+    </select></label>
+  <noscript><button class="btn sm" type="submit">Apply</button></noscript>
+</form>
+
+<div class="panel">
+  {% if items %}
+  <table class="grid">
+    <tr><th>When</th><th>What</th><th>Who</th><th>Record</th><th>Table</th><th>Detail</th></tr>
+    {% for it in items %}
+      <tr>
+        <td class="muted num" style="white-space:nowrap">{{ it.at.strftime('%m-%d %H:%M') if it.at else '' }}</td>
+        <td><span class="chip c-{{ it.hue }}">{{ it.kind }}</span></td>
+        <td>{{ it.username }}</td>
+        <td class="display">{{ record_link(it.table.id, it.pk, it.label) }}</td>
+        <td class="muted">{{ it.table.label }}</td>
+        <td class="muted">{{ it.detail }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">No activity in this window.</p>{% endif %}
+</div>
+{% endblock %}
