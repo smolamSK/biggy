@@ -70,7 +70,7 @@ _RELATION_COLS = ["id", "name", "kind", "from_table_id", "to_table_id", "from_fi
                   "junction_phys_name", "on_delete", "to_display_field_ids",
                   "from_display_field_ids"]
 _FORM_COLS = ["id", "table_id", "name", "title", "description", "purpose",
-              "in_catalog", "catalog_group",
+              "in_catalog", "catalog_group", "portal_close_state",
               "default_sort", "default_order", "default_per_page"]
 _FORMFIELD_COLS = ["id", "form_id", "kind", "field_id", "relation_id", "label_override",
                    "widget", "required", "readonly", "help_text", "position",
@@ -404,6 +404,7 @@ def import_schema(session, engine, data, replace=False):
                              purpose=fm.get("purpose", "data"),
                              in_catalog=fm.get("in_catalog", False),
                              catalog_group=fm.get("catalog_group"),
+                             portal_close_state=fm.get("portal_close_state"),
                              default_sort=fm.get("default_sort"),
                              default_order=fm.get("default_order"),
                              default_per_page=fm.get("default_per_page"))

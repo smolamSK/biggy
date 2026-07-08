@@ -170,6 +170,7 @@ _META_ADDITIONS = {
         {"name": "default_sort", "type": String(64)},
         {"name": "default_order", "type": String(4)},
         {"name": "default_per_page", "type": Integer()},
+        {"name": "portal_close_state", "type": String(64)},
     ],
     "app_report": [
         {"name": "pinned", "type": Boolean(), "nullable": False, "default": "false"},

@@ -1,5 +1,6 @@
 {% extends "portal/_base.html" %}
 {% from "_macros.html" import typed_value with context %}
+{% from "_icons.html" import icon %}
 {% block title %}{{ label }} · {{ branding.app_name }}{% endblock %}
 {% block inner %}
 <div class="crumbs"><a href="{{ url_for('portal.home') }}">← My tickets</a> / {{ label }}</div>
@@ -9,6 +10,17 @@
   <span style="flex:1"></span>
   {% if created_at %}<span class="muted" style="font-size:var(--fs-sm)">opened {{ created_at.strftime('%Y-%m-%d %H:%M') }}</span>{% endif %}
 </div>
+
+{% if can_close %}
+<form method="post" action="{{ url_for('portal.ticket_close', table_id=table.id, pk=pk) }}"
+      class="toolbar" style="flex-wrap:wrap"
+      onsubmit="return confirm('Close this ticket?');">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="text" name="reason" placeholder="Optional: why? (e.g. works again since 10:30)"
+         style="flex:1;min-width:14rem;max-width:26rem">
+  <button class="btn sm" type="submit">{{ icon('check', 14) }} Close this ticket</button>
+</form>
+{% endif %}
 
 <div class="panel" style="max-width:680px">
   <table class="grid">

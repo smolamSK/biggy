@@ -8,9 +8,11 @@ from tests.helpers import (
     _make_form,
     _make_form_p,
     _make_table,
+    _make_workflow,
     _new_amy,
     _ok,
     _setup,
+    _status_field_id,
 )
 
 
@@ -149,3 +151,57 @@ def test_portal_mode(app, client):
     # mark-all-read clears the portal badge
     _ok(carl.post("/portal/notifications", follow_redirects=True))
     assert 'class="badge"' not in carl.get("/portal/").get_data(as_text=True)
+
+
+def test_portal_close_ticket(app, client):
+    _setup(client)
+    tid = _make_table(client, app, "ncase", "Net case", "title")
+    _add_field(client, tid, "status", "enum", enum_options="new\nack\nsolved")
+    _ok(client.post(f"/designer/tables/{tid}/flags", data=dict(track_audit="y"),
+                    follow_redirects=True))
+    fid = _make_form(client, app, "ncase_form", "Report a net case", tid)
+    _make_form_p(client, app, "ncase_view", "Net case", tid, "view")
+    # publish + allow closing into "solved" from the designer catalog page
+    _ok(client.post("/designer/catalog", data={f"in_{fid}": "y", f"group_{fid}": "",
+                                               f"desc_{fid}": "", f"close_{fid}": "solved"},
+                    follow_redirects=True))
+
+    carl = _new_portal_user(app, client, "carl")
+    _ok(carl.post(f"/portal/new/{fid}", data={"title": "Latency spike", "status": "new"},
+                  follow_redirects=True))
+    with app.app_context():
+        with get_engine().connect() as c:
+            pk = c.execute(text("SELECT id FROM ncase")).scalar()
+
+    # the button is offered; closing writes the status + a public comment
+    page = carl.get(f"/portal/ticket/{tid}/{pk}").get_data(as_text=True)
+    assert "Close this ticket" in page
+    _ok(carl.post(f"/portal/ticket/{tid}/{pk}/close",
+                  data={"reason": "works again since 10:30"}, follow_redirects=True))
+    with app.app_context():
+        with get_engine().connect() as c:
+            assert c.execute(text("SELECT status FROM ncase WHERE id=:i"),
+                             {"i": pk}).scalar() == "solved"
+    page = carl.get(f"/portal/ticket/{tid}/{pk}").get_data(as_text=True)
+    assert "Closed by customer: works again since 10:30" in page
+    assert "Close this ticket" not in page                  # already closed
+    # staff sees the closure in the thread + audit history exists
+    staff = client.get(f"/u/view/{tid}/{pk}").get_data(as_text=True)
+    assert "Closed by customer" in staff
+
+    # with a workflow lacking the current→close edge, the button disappears
+    # and a direct POST is refused
+    _make_workflow(client, app, _status_field_id(app, "ncase"),
+                   [{"from": "new", "to": "ack", "roles": []}], "new")
+    _ok(carl.post(f"/portal/new/{fid}", data={"title": "Port flap", "status": "new"},
+                  follow_redirects=True))
+    with app.app_context():
+        with get_engine().connect() as c:
+            pk2 = c.execute(text("SELECT MAX(id) FROM ncase")).scalar()
+    page = carl.get(f"/portal/ticket/{tid}/{pk2}").get_data(as_text=True)
+    assert "Close this ticket" not in page
+    carl.post(f"/portal/ticket/{tid}/{pk2}/close", data={}, follow_redirects=True)
+    with app.app_context():
+        with get_engine().connect() as c:
+            assert c.execute(text("SELECT status FROM ncase WHERE id=:i"),
+                             {"i": pk2}).scalar() == "new"   # unchanged

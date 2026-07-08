@@ -24,7 +24,7 @@ from flask import (
 from flask_login import current_user, login_required
 from sqlalchemy import select
 
-from .. import comments, data_service, file_store, record_service
+from .. import approvals, comments, data_service, file_store, record_service, workflow
 from ..db import SessionLocal, engine_for_table
 from ..forms.builder import build_form, display_field_name
 from ..helpers import current_user_id
@@ -84,6 +84,31 @@ def _label(session, table, row, pk):
 
 def _status_field(table):
     return next((f for f in table.fields if f.data_type == "enum"), None)
+
+
+def _close_allowed(session, mf, table, row):
+    """The close-state value when the customer may close this ticket now, else None.
+
+    Honors the designer's workflow exactly like a staff edit would: the
+    current → close transition must exist, be open to this user's role, and not
+    be gated behind an approval step.
+    """
+    close, status_f = mf.portal_close_state, _status_field(table)
+    if not close or status_f is None:
+        return None
+    if close not in json.loads(status_f.enum_options or "[]"):
+        return None                                   # stale setting (option renamed)
+    current = row.get(status_f.phys_name)
+    if current == close:
+        return None                                   # already closed
+    wf = workflow.for_table(session, table.id).get(status_f.id)
+    if wf is not None:
+        if close not in workflow.allowed_choices(wf, current, current_user):
+            return None
+        probe = {status_f.phys_name: close}           # approval-gated? then no button
+        if approvals.plan_diversions(session, table, row, probe):
+            return None
+    return close
 
 
 def _my_tickets(session, forms):
@@ -177,7 +202,8 @@ def ticket(table_id, pk):
         status=row.get(status_f.phys_name) if status_f else None,
         status_colors=json.loads(status_f.enum_colors)
         if status_f is not None and status_f.enum_colors else None,
-        created_at=row.get("created_at"))
+        created_at=row.get("created_at"),
+        can_close=_close_allowed(session, mf, table, row))
 
 
 @bp.route("/ticket/<int:table_id>/<pk>/comment", methods=["POST"])
@@ -194,6 +220,40 @@ def ticket_comment(table_id, pk):
         flash("Comment added.", "success")
     except ValueError as exc:
         flash(str(exc), "warning")
+    return redirect(url_for("portal.ticket", table_id=table_id, pk=pk))
+
+
+@bp.route("/ticket/<int:table_id>/<pk>/close", methods=["POST"])
+def ticket_close(table_id, pk):
+    """Customer closes their own ticket: a real status update through the
+    write chokepoint (audit, triggers, SLA stop) + a public comment."""
+    session = _s()
+    table = session.get(MetaTable, table_id)
+    mf = next((f for f in _catalog_forms(session) if f.table_id == table_id), None)
+    if not table or mf is None:
+        abort(404)
+    row = _own_row(session, table, pk)
+    close = _close_allowed(session, mf, table, row)
+    if not close:
+        flash("This ticket can't be closed from the portal right now.", "warning")
+        return redirect(url_for("portal.ticket", table_id=table_id, pk=pk))
+
+    status_f = _status_field(table)
+    values = {status_f.phys_name: close}
+    try:
+        workflow.check(session, table, row, values, current_user)
+    except workflow.WorkflowError as exc:
+        flash(str(exc), "danger")
+        return redirect(url_for("portal.ticket", table_id=table_id, pk=pk))
+    record_service.update(session, engine_for_table(table), table, pk, values,
+                          current_user_id())
+
+    reason = (request.form.get("reason") or "").strip()
+    comments.add(session, table.phys_name, pk, current_user,
+                 f"Closed by customer: {reason}" if reason else "Closed by customer.",
+                 internal=False, row=row,
+                 record_label=f"{table.label}: {_label(session, table, row, pk)}")
+    flash("Ticket closed — thank you!", "success")
     return redirect(url_for("portal.ticket", table_id=table_id, pk=pk))
 
 

@@ -190,6 +190,8 @@ class MetaForm(Base):
     # service catalog: show this form as a request card on /u/catalog
     in_catalog: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     catalog_group: Mapped[str | None] = mapped_column(String(80))
+    # portal: customers may close their own ticket into this status value
+    portal_close_state: Mapped[str | None] = mapped_column(String(64))
     # designer-chosen list defaults (query args and saved views still win)
     default_sort: Mapped[str | None] = mapped_column(String(64))     # physical column
     default_order: Mapped[str | None] = mapped_column(String(4))     # asc | desc

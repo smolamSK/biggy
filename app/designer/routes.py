@@ -1387,18 +1387,26 @@ def catalog_home():
     session = _s()
     forms = session.scalars(select(MetaForm).where(MetaForm.purpose != "view")
                             .order_by(MetaForm.title)).all()
+    # per form: the status (first enum) field's options — for the close-state select
+    status_opts = {}
+    for f in forms:
+        sf = next((fd for fd in f.table.fields if fd.data_type == "enum"), None)
+        status_opts[f.id] = json.loads(sf.enum_options or "[]") if sf else []
     if request.method == "POST":
         for f in forms:
             f.in_catalog = bool(request.form.get(f"in_{f.id}"))
             f.catalog_group = (request.form.get(f"group_{f.id}") or "").strip() or None
             f.description = (request.form.get(f"desc_{f.id}") or "").strip() or None
+            close = request.form.get(f"close_{f.id}") or None
+            f.portal_close_state = close if close in status_opts[f.id] else None
         session.commit()
         flash("Catalog saved.", "success")
         return redirect(url_for("designer.catalog_home"))
     # forms whose submissions can't show under "My requests" (no owner stamps)
     unstamped = {f.id for f in forms
                  if not (f.table.track_audit or f.table.row_owned)}
-    return render_template("designer/catalog.html", forms=forms, unstamped=unstamped)
+    return render_template("designer/catalog.html", forms=forms, unstamped=unstamped,
+                           status_opts=status_opts)
 
 
 # --------------------------------------------------------------------------- #

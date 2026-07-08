@@ -135,6 +135,11 @@ The third mode, next to Designer and User: a narrow surface at `/portal` for
    the ticket in User mode and replies with **Reply to customer**; **internal
    notes** never appear in the portal. Public replies notify the customer
    (portal bell), and customer comments notify the staff participants.
+4. Optionally let customers **close their own tickets**: pick the closing status
+   in the Catalog page's *Customers may close* column. The close button applies
+   the status through the normal write path (audit, triggers, SLA stop) and posts
+   a public "Closed by customer" comment; with a workflow, the current → close
+   transition must exist (approval-gated transitions never offer the button).
 
 ## Instance settings (branding)
 
