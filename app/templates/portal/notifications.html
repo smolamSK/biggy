@@ -1,0 +1,29 @@
+{% extends "portal/_base.html" %}
+{% block title %}Notifications · {{ branding.app_name }}{% endblock %}
+{% block inner %}
+<div class="toolbar">
+  <h1 style="margin:0">Notifications</h1>
+  <span style="flex:1"></span>
+  <form method="post" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn sm" type="submit">Mark all read</button>
+  </form>
+</div>
+<div class="panel">
+  {% if items %}
+  <table class="grid">
+    {% for n in items %}
+      <tr>
+        <td class="col-check">{% if n.status == 'unread' %}<span class="badge">new</span>{% endif %}</td>
+        <td>
+          {% if n.id in links %}<a href="{{ links[n.id] }}"><strong>{{ n.subject }}</strong></a>
+          {% else %}<strong>{{ n.subject }}</strong>{% endif %}
+          <br><span class="muted">{{ n.body }}</span>
+        </td>
+        <td class="muted num">{{ n.created_at.strftime('%Y-%m-%d %H:%M') if n.created_at else '' }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">Nothing yet.</p>{% endif %}
+</div>
+{% endblock %}

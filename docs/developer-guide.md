@@ -141,7 +141,8 @@ app/
 
   forms/  builder.py (dynamic forms from metadata)  admin_forms.py (fixed WTForms)
   api/    routes.py serialization.py tokens.py openapi.py
-  auth/ core/ designer/ user/ hooks/   (Flask blueprints; routes.py each)
+  auth/ core/ designer/ user/ portal/ hooks/   (Flask blueprints; routes.py each)
+  comments.py settings.py   record conversations (public/internal); instance branding
   templates/ static/
 tests/   unit + integration (biggy_test); conftest.py fixtures
 ```

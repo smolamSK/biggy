@@ -1,0 +1,39 @@
+{% extends "portal/_base.html" %}
+{% block inner %}
+<h1>Welcome</h1>
+
+{% for group, forms in groups.items() %}
+  <h2 style="margin:1rem 0 .4rem">{{ group }}</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.8rem">
+    {% for f in forms %}
+      <div class="panel" style="display:flex;flex-direction:column;gap:.4rem;margin:0">
+        <strong>{{ f.title }}</strong>
+        {% if f.description %}<span class="muted" style="font-size:var(--fs-sm)">{{ f.description }}</span>{% endif %}
+        <span style="flex:1"></span>
+        <a class="btn primary" style="align-self:flex-start"
+           href="{{ url_for('portal.new', form_id=f.id) }}">Request →</a>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="panel"><p class="muted">No request types are available yet.</p></div>
+{% endfor %}
+
+<h2 style="margin-top:1.4rem">My tickets</h2>
+<div class="panel">
+  {% if tickets %}
+  <table class="grid">
+    <tr><th>Ticket</th><th>Type</th><th>Status</th><th class="num">Created</th></tr>
+    {% for t in tickets %}
+      <tr>
+        <td class="display"><a href="{{ url_for('portal.ticket', table_id=t.table.id, pk=t.pk) }}">{{ t.label }}</a></td>
+        <td class="muted">{{ t.table.label }}</td>
+        <td>{% if t.status %}<span class="chip c-{{ t.status|chip_hue(t.colors) }}">{{ t.status }}</span>
+            {% else %}<span class="muted">—</span>{% endif %}</td>
+        <td class="muted num">{{ t.created_at.strftime('%Y-%m-%d %H:%M') if t.created_at else '' }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">You haven't submitted anything yet.</p>{% endif %}
+</div>
+{% endblock %}

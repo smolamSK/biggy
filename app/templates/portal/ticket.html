@@ -1,0 +1,61 @@
+{% extends "portal/_base.html" %}
+{% from "_macros.html" import typed_value with context %}
+{% block title %}{{ label }} · {{ branding.app_name }}{% endblock %}
+{% block inner %}
+<div class="crumbs"><a href="{{ url_for('portal.home') }}">← My tickets</a> / {{ label }}</div>
+<div class="toolbar">
+  <h1 style="margin:0">{{ label }}</h1>
+  {% if status %}<span class="chip c-{{ status|chip_hue(status_colors) }}">{{ status }}</span>{% endif %}
+  <span style="flex:1"></span>
+  {% if created_at %}<span class="muted" style="font-size:var(--fs-sm)">opened {{ created_at.strftime('%Y-%m-%d %H:%M') }}</span>{% endif %}
+</div>
+
+<div class="panel" style="max-width:680px">
+  <table class="grid">
+    {% for it in items %}
+      <tr>
+        <th style="width:35%; text-align:left">{{ it.label }}</th>
+        <td>
+          {% if it.kind == 'scalar' %}
+            {% set v = it.value %}
+            {% if v is sameas true %}yes{% elif v is sameas false %}no
+            {% else %}{{ typed_value(it.data_type, v, it.colors) }}{% endif %}
+          {% elif it.kind == 'm1' %}
+            {{ it.ref_label if it.ref_id else '—' }}
+          {% elif it.kind == 'm2n' %}
+            {% for rid, rlabel in it.refs %}{{ rlabel }}{% if not loop.last %}, {% endif %}
+            {% else %}<span class="muted">—</span>{% endfor %}
+          {% elif it.kind == 'file' %}
+            {% for f in it.files %}
+              <a href="{{ url_for('portal.attachment', att_id=f.id) }}" target="_blank">{{ f.name }}</a>{% if not loop.last %}, {% endif %}
+            {% else %}<span class="muted">—</span>{% endfor %}
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<h2>Conversation</h2>
+<div class="panel" style="max-width:680px">
+  {% for c in thread %}
+    <div class="comment">
+      <div class="comment-head">
+        <strong>{{ c.username }}</strong>
+        <span class="muted">{{ c.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+      </div>
+      <div class="comment-body">{{ c.body }}</div>
+    </div>
+  {% else %}
+    <p class="muted">No updates yet — the team will reply here.</p>
+  {% endfor %}
+  <form method="post" action="{{ url_for('portal.ticket_comment', table_id=table.id, pk=pk) }}"
+        style="margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--line)">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <textarea name="body" rows="3" placeholder="Add an update or question…" style="max-width:none"></textarea>
+    <div style="margin-top:.4rem">
+      <button class="btn primary sm" type="submit">Add comment</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

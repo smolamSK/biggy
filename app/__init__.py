@@ -55,12 +55,14 @@ def create_app(config_object=Config):
     from .core.routes import bp as core_bp
     from .designer.routes import bp as designer_bp
     from .hooks.routes import bp as hooks_bp
+    from .portal.routes import bp as portal_bp
     from .user.routes import bp as user_bp
 
     app.register_blueprint(core_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(designer_bp)
     app.register_blueprint(user_bp)
+    app.register_blueprint(portal_bp)
     app.register_blueprint(api_bp)
     csrf.exempt(api_bp)  # token-auth API: no browser session, no CSRF
     app.register_blueprint(hooks_bp)

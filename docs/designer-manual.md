@@ -117,6 +117,25 @@ links to a **form** or a **list view** of a table. Order them, nest them under
 groups, and pick an optional **icon** — it shows in the sidebar and on the home
 page's quick-access cards.
 
+## Customer portal
+
+The third mode, next to Designer and User: a narrow surface at `/portal` for
+**external customers**.
+
+1. Create accounts with the **portal** role (*Users* page or bulk import).
+   Portal users are locked out of Designer and User mode; signing in lands them
+   on the portal.
+2. Publish request/incident forms via the **catalog** (above). A form being in
+   the catalog *is* what grants portal access to it; only tables with **audit**
+   or **row ownership** work there (everything is scoped to the record creator —
+   the Catalog page warns when the stamps are missing).
+3. Customers submit requests, see **only their own tickets** (status chip, dates,
+   read-only field summary from the catalog form's items), and communicate
+   through the record **conversation**. They cannot edit fields — staff works
+   the ticket in User mode and replies with **Reply to customer**; **internal
+   notes** never appear in the portal. Public replies notify the customer
+   (portal bell), and customer comments notify the staff participants.
+
 ## Instance settings (branding)
 
 *Admin → Settings*: rename the application (top bar + sign-in page), pick an

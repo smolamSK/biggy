@@ -2,11 +2,14 @@
 
 [![CI](https://github.com/smolamSK/biggy/actions/workflows/ci.yml/badge.svg)](https://github.com/smolamSK/biggy/actions/workflows/ci.yml)
 
-A metadata-driven, low-code app for managing data in a relational database. It has two modes:
+A metadata-driven, low-code app for managing data in a relational database. It has three modes:
 
 - **Designer mode** — create tables, define fields and relations (many-to-one and many-to-many),
   and design the menus and data-entry forms used in User mode.
 - **User mode** — use the generated forms to add records, search, and edit / delete / clone data.
+- **Portal mode** — a narrow customer-facing surface (`/portal`): external `portal`-role
+  accounts submit requests/incidents from the service catalog, track their own tickets,
+  and talk to staff through record conversations (internal work notes stay hidden).
 
 Designer mode writes definitions into metadata tables (`app_meta_*`) **and** issues real DDL, so
 your user data lives in genuine, query-able MariaDB tables with real foreign keys. The database
@@ -170,7 +173,9 @@ The model and screens extend well past the core CRUD loop. Built in:
   inbound **webhooks**, and **pull** connectors (poll a peer or REST API).
 - **CMDB / ITSM**: a data-level **impact map** (a record's dependency/impact graph), an
   **SLA engine** (per-record clocks with pause/resume, breach detection + escalation),
-  and **approval workflows** (multi-step sign-off held on a workflow transition).
+  **approval workflows** (multi-step sign-off held on a workflow transition), a
+  **service catalog** with a **customer portal** (third mode: own tickets +
+  staff ⇄ customer **conversations** with internal work notes).
 - **Enterprise auth & ops**: **TOTP two-factor** (QR enrollment + backup codes), **OIDC
   single sign-on** (link-existing or JIT), **bulk user import**, integration **secrets
   encrypted at rest**, multi-worker-safe scheduling + a DB-backed rate limiter, and a

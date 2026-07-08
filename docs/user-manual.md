@@ -167,6 +167,14 @@ once it has content), it lists request cards —
 team works on. Track everything you've submitted under **My requests** (type, status
 chip, created date, link to the record).
 
+## Conversation (comments on a record)
+
+Every record page has a **Conversation** panel. Use **Reply to customer** for
+updates the requester should see in the customer portal, and **Internal note**
+for work notes that stay inside the team (marked amber in the thread). Posting
+notifies the other participants — the record's creator and everyone who
+commented before — via the 🔔 bell.
+
 ## Notifications
 
 The **🔔 bell** shows unread notifications (for example, an item assigned to you

@@ -91,7 +91,8 @@ class ListQuery:
 @bp.before_request
 @login_required
 def _guard():
-    pass
+    if current_user.is_portal:               # customers live in /portal only
+        return redirect(url_for("portal.home"))
 
 
 def _s():

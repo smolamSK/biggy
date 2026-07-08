@@ -1,0 +1,32 @@
+{% extends "portal/_base.html" %}
+{% from "_macros.html" import render_field with context %}
+{% block title %}{{ mf.title }} · {{ branding.app_name }}{% endblock %}
+{% block inner %}
+<div class="crumbs"><a href="{{ url_for('portal.home') }}">← Portal</a> / {{ mf.title }}</div>
+<h1>{{ mf.title }}</h1>
+{% if mf.description %}<p class="muted">{{ mf.description }}</p>{% endif %}
+<div class="panel" style="max-width:620px">
+  <form method="post" enctype="multipart/form-data" data-guard>
+    {{ form.hidden_tag() }}
+    {% for item in items %}
+      {% if item.kind == 'section' %}
+        <h3>{{ item.label }}</h3>
+      {% elif item.kind == 'file' %}
+        <div class="field">
+          <label>{{ item.label }}</label>
+          <input type="file" name="file_{{ item.meta.id }}" multiple
+                 {% if item.meta.data_type == 'image' %}accept="image/*"{% endif %}>
+          {% if item.help_text %}<div class="help">{{ item.help_text }}</div>{% endif %}
+        </div>
+      {% else %}
+        {{ render_field(form[item.name]) }}
+        {% if item.help_text %}<div class="help" style="margin-top:-.6rem">{{ item.help_text }}</div>{% endif %}
+      {% endif %}
+    {% endfor %}
+    <button class="btn primary" type="submit">Submit request</button>
+    <a class="btn" href="{{ url_for('portal.home') }}">Cancel</a>
+  </form>
+</div>
+<script src="{{ url_for('static', filename='dependent.js') }}" defer></script>
+<script src="{{ url_for('static', filename='pickers.js') }}" defer></script>
+{% endblock %}

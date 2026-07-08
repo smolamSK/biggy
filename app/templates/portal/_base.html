@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ branding.app_name }} portal{% endblock %}</title>
+  <script>
+    /* Apply the saved (or designer-default, or OS-preferred) theme before paint. */
+    (function () {
+      try {
+        var t = localStorage.getItem('biggy.theme');
+        if (!t) t = '{{ branding.default_theme }}'
+          || ((window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches)
+              ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  {% if branding.accent %}
+  <style>:root { --brand: {{ branding.accent }};
+    --brand-soft: color-mix(in srgb, {{ branding.accent }} 16%, var(--panel));
+    --accent: var(--brand-soft);
+    --hover: color-mix(in srgb, {{ branding.accent }} 9%, var(--panel)); }</style>
+  {% endif %}
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='theme.js') }}" defer></script>
+</head>
+<body>
+  {% from "_icons.html" import icon %}
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <span class="brand">{{ branding.app_name }}</span>
+    <span class="mode-tag">Portal</span>
+    <span class="spacer"></span>
+    <select id="theme-select" aria-label="Theme" title="Theme">
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+      <option value="sepia">Sepia</option>
+      <option value="ocean">Ocean</option>
+      <option value="contrast">High contrast</option>
+    </select>
+    <a href="{{ url_for('portal.notifications') }}" title="Notifications"
+       aria-label="Notifications">{{ icon('bell') }}{% if unread_notifications %} <span class="badge">{{ unread_notifications }}</span>{% endif %}</a>
+    <a href="{{ url_for('auth.account') }}" class="muted" title="Account">{{ current_user.username }}</a>
+    <a href="{{ url_for('auth.logout') }}">Sign out</a>
+  </header>
+
+  <main class="content" id="main" tabindex="-1" style="max-width:880px;margin:0 auto">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="flash {{ category }}"{% if category in ('danger', 'warning') %} role="alert"{% endif %}>{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+    {% block inner %}{% endblock %}
+  </main>
+</body>
+</html>

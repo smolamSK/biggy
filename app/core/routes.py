@@ -31,6 +31,8 @@ def index():
         return redirect(url_for("auth.login"))
     if current_user.is_designer:
         return redirect(url_for("designer.dashboard"))
+    if current_user.is_portal:
+        return redirect(url_for("portal.home"))
     return redirect(url_for("user.dashboard"))
 
 

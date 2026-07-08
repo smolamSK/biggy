@@ -1,9 +1,10 @@
 """Record conversations (staff ⇄ customer comments) and the customer portal."""
-from sqlalchemy import select
+from sqlalchemy import select, text
 
-from app.db import SessionLocal
+from app.db import SessionLocal, get_engine
 from app.metadata.models import AppUser, Comment, Notification
 from tests.helpers import (
+    _add_field,
     _make_form,
     _make_form_p,
     _make_table,
@@ -11,6 +12,17 @@ from tests.helpers import (
     _ok,
     _setup,
 )
+
+
+def _new_portal_user(app, client, username):
+    """Create a portal-role account via the Users page and return its client."""
+    _ok(client.post("/auth/users/new",
+                    data=dict(username=username, password="pw123456", role="portal",
+                              is_active="y"), follow_redirects=True))
+    c = app.test_client()
+    _ok(c.post("/auth/login", data=dict(username=username, password="pw123456"),
+               follow_redirects=True))
+    return c
 
 
 def test_conversation_on_record_view(app, client):
@@ -56,3 +68,84 @@ def test_conversation_on_record_view(app, client):
         n = s.scalar(select(Notification).where(Notification.event == "comment",
                                                 Notification.user_id == boss_id))
         assert n is not None and "Fiber team dispatched" in n.body
+
+
+def test_portal_mode(app, client):
+    _setup(client)
+    # one catalog form on an owner-stamped table; one on a table without stamps
+    tid = _make_table(client, app, "incident", "Incident", "title")
+    _add_field(client, tid, "status", "enum", enum_options="new\nsolved")
+    _ok(client.post(f"/designer/tables/{tid}/flags", data=dict(track_audit="y"),
+                    follow_redirects=True))
+    fid = _make_form(client, app, "incident_form", "Report an incident", tid)
+    _make_form_p(client, app, "incident_view", "Incident", tid, "view")
+    _ok(client.post(f"/designer/forms/{fid}/catalog",
+                    data={"in_catalog": "y", "catalog_group": "Network"},
+                    follow_redirects=True))
+    t2 = _make_table(client, app, "feedbk", "Feedbk", "name")
+    f2 = _make_form(client, app, "feedbk_form", "Feedbk", t2)
+    _ok(client.post(f"/designer/forms/{f2}/catalog", data={"in_catalog": "y"},
+                    follow_redirects=True))
+
+    carl = _new_portal_user(app, client, "carl")
+
+    # routing: portal users land on /portal; /u and /designer are blocked
+    assert "/portal" in carl.get("/", follow_redirects=False).headers["Location"]
+    r = carl.get("/u/", follow_redirects=False)
+    assert r.status_code in (301, 302) and "/portal" in r.headers["Location"]
+    assert carl.get("/designer/", follow_redirects=False).status_code in (302, 403)
+
+    # home offers only the owner-stamped catalog form
+    home = carl.get("/portal/").get_data(as_text=True)
+    assert "Report an incident" in home and "Network" in home
+    assert "Feedbk" not in home
+    assert carl.get(f"/portal/new/{f2}").status_code == 404
+
+    # submit a ticket → lands on its ticket page; created_by is the customer
+    r = carl.post(f"/portal/new/{fid}", data={"title": "Fiber cut", "status": "new"},
+                  follow_redirects=True)
+    _ok(r)
+    assert "Fiber cut" in r.get_data(as_text=True)
+    with app.app_context():
+        s = SessionLocal()
+        carl_id = s.scalar(select(AppUser).where(AppUser.username == "carl")).id
+        with get_engine().connect() as c:
+            row = c.execute(text("SELECT id, created_by FROM incident")).mappings().first()
+        assert row["created_by"] == carl_id
+        pk = row["id"]
+
+    home = carl.get("/portal/").get_data(as_text=True)
+    assert "Fiber cut" in home and 'class="chip' in home    # listed with status chip
+
+    # another customer cannot open it
+    dana = _new_portal_user(app, client, "dana")
+    assert dana.get(f"/portal/ticket/{tid}/{pk}").status_code == 404
+
+    # staff: internal note stays hidden, public reply shows + notifies the customer
+    _ok(client.post(f"/u/comments/{tid}/{pk}",
+                    data={"body": "Secret diagnostics", "visibility": "internal"},
+                    follow_redirects=True))
+    _ok(client.post(f"/u/comments/{tid}/{pk}",
+                    data={"body": "Crew dispatched", "visibility": "public"},
+                    follow_redirects=True))
+    ticket = carl.get(f"/portal/ticket/{tid}/{pk}").get_data(as_text=True)
+    assert "Crew dispatched" in ticket and "Secret diagnostics" not in ticket
+    home = carl.get("/portal/").get_data(as_text=True)
+    assert 'class="badge"' in home                          # unread bell count
+    notif = carl.get("/portal/notifications").get_data(as_text=True)
+    assert "Crew dispatched" in notif and f"/portal/ticket/{tid}/{pk}" in notif
+
+    # customer reply → staff participant notified, visible on the record view
+    _ok(carl.post(f"/portal/ticket/{tid}/{pk}/comment",
+                  data={"body": "Any update?"}, follow_redirects=True))
+    with app.app_context():
+        s = SessionLocal()
+        boss_id = s.scalar(select(AppUser).where(AppUser.username == "boss")).id
+        n = s.scalar(select(Notification).where(Notification.user_id == boss_id,
+                                                Notification.event == "comment"))
+        assert n is not None and "Any update?" in n.body
+    assert "Any update?" in client.get(f"/u/view/{tid}/{pk}").get_data(as_text=True)
+
+    # mark-all-read clears the portal badge
+    _ok(carl.post("/portal/notifications", follow_redirects=True))
+    assert 'class="badge"' not in carl.get("/portal/").get_data(as_text=True)
