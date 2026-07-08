@@ -653,6 +653,16 @@ a.qa-card:hover .icon { color: inherit; }
 .center-card h1 { font-size: var(--fs-lg); text-align: center; }
 .center-card .btn.primary { width: 100%; justify-content: center; margin-top: .25rem; }
 
+/* ---- Record conversation (comments) ---------------------------------------- */
+.comment { padding: .55rem 0; border-top: 1px solid var(--line); }
+.comment:first-child { border-top: none; padding-top: 0; }
+.comment-head { display: flex; align-items: center; gap: .5rem;
+  font-size: var(--fs-sm); margin-bottom: .2rem; }
+.comment-head .muted { margin-left: auto; font-size: var(--fs-xs); }
+.comment-body { white-space: pre-wrap; }
+.comment.internal { background: color-mix(in srgb, var(--chip-amber-bg) 55%, transparent);
+  border-radius: var(--radius); padding-left: .5rem; padding-right: .5rem; }
+
 /* ---- Command palette (static/palette.js, Ctrl+K) --------------------------- */
 #palette { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, .45); z-index: 1000; }
 #palette.open { display: flex; align-items: flex-start; justify-content: center; padding-top: 12vh; }

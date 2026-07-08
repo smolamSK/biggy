@@ -42,7 +42,8 @@ class Base(DeclarativeBase):
 # --------------------------------------------------------------------------- #
 ROLE_DESIGNER = "designer"
 ROLE_USER = "user"
-ROLES = (ROLE_DESIGNER, ROLE_USER)
+ROLE_PORTAL = "portal"     # external customer: /portal only (catalog + own tickets)
+ROLES = (ROLE_DESIGNER, ROLE_USER, ROLE_PORTAL)
 
 
 class AppUser(Base, UserMixin):
@@ -73,6 +74,10 @@ class AppUser(Base, UserMixin):
     @property
     def is_designer(self):
         return self.role == ROLE_DESIGNER
+
+    @property
+    def is_portal(self):
+        return self.role == ROLE_PORTAL
 
 
 # --------------------------------------------------------------------------- #
@@ -884,3 +889,21 @@ class AppSetting(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     key: Mapped[str] = mapped_column(String(40), unique=True, nullable=False)
     value: Mapped[str | None] = mapped_column(Text)
+
+
+class Comment(Base):
+    """One conversation entry on a data record (staff ⇄ customer).
+
+    ``internal=True`` marks a staff-only work note — never shown in the customer
+    portal. Runtime data like audit/notifications: not part of schema export.
+    """
+    __tablename__ = "app_comment"
+    __table_args__ = (Index("ix_comment_record", "table_phys", "row_pk"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    table_phys: Mapped[str] = mapped_column(String(64), nullable=False)
+    row_pk: Mapped[str] = mapped_column(String(255), nullable=False)
+    user_id: Mapped[int | None] = mapped_column(Integer)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    internal: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)

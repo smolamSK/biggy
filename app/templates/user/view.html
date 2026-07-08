@@ -142,4 +142,30 @@
 {% else %}
   {{ details }}
 {% endif %}
+
+<h2>Conversation</h2>
+<div class="panel" style="max-width:680px">
+  {% for c in thread %}
+    <div class="comment{{ ' internal' if c.internal }}">
+      <div class="comment-head">
+        <strong>{{ c.username }}</strong>
+        {% if c.internal %}<span class="chip c-amber">internal note</span>{% endif %}
+        <span class="muted">{{ c.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+      </div>
+      <div class="comment-body">{{ c.body }}</div>
+    </div>
+  {% else %}
+    <p class="muted">No comments yet.</p>
+  {% endfor %}
+  <form method="post" action="{{ url_for('user.comment_add', table_id=table.id, pk=pk) }}"
+        style="margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--line)">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <textarea name="body" rows="3" placeholder="Write an update…" style="max-width:none"></textarea>
+    <div class="toolbar" style="margin:.4rem 0 0">
+      <button class="btn primary sm" name="visibility" value="public" type="submit">Reply to customer</button>
+      <button class="btn sm" name="visibility" value="internal" type="submit"
+              title="Work note — never shown in the customer portal">Internal note</button>
+    </div>
+  </form>
+</div>
 {% endblock %}

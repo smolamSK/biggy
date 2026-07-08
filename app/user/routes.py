@@ -25,6 +25,7 @@ from werkzeug.datastructures import MultiDict
 
 from .. import (
     approvals,
+    comments,
     dashboards,
     data_service,
     feeds,
@@ -1395,7 +1396,37 @@ def record_view(table_id, pk):
                            edit_url=edit_url, deleted=bool(row.get("deleted_at")),
                            send_form_id=send_form_id, related=related, history=history,
                            sla_clocks=sla_clocks, approval_reqs=approval_reqs,
-                           can_approve=can_approve)
+                           can_approve=can_approve,
+                           thread=comments.list_for(session, table.phys_name, pk,
+                                                    include_internal=True))
+
+
+@bp.route("/comments/<int:table_id>/<pk>", methods=["POST"])
+def comment_add(table_id, pk):
+    """Post a conversation entry (public reply or internal work note)."""
+    session = _s()
+    table = session.get(MetaTable, table_id)
+    view_form = table_view_form(session, table_id)
+    if not table or not view_form:
+        abort(404)
+    if not can_read(form_access(session, current_user, view_form.id)):
+        abort(403)
+    user_id, is_designer = _ctx()
+    row = record_service.get_record(engine_for_table(table), table, pk, user_id=user_id,
+                                    is_designer=is_designer, allow_deleted=True)
+    if not row:
+        abort(404)
+    disp = display_field_name(session, table)
+    label = str(row.get(disp)) if row.get(disp) not in (None, "") else f"#{pk}"
+    try:
+        comments.add(session, table.phys_name, pk, current_user,
+                     request.form.get("body"),
+                     internal=request.form.get("visibility") == "internal",
+                     row=row, record_label=f"{table.label}: {label}")
+        flash("Comment added.", "success")
+    except ValueError as exc:
+        flash(str(exc), "warning")
+    return redirect(url_for("user.record_view", table_id=table_id, pk=pk))
 
 
 @bp.route("/topology/<int:table_id>/<pk>")
