@@ -364,8 +364,80 @@ def run_breach_sweep(session, now=None):
 
 
 # --------------------------------------------------------------------------- #
-# View panel
+# View panel / list column / home panel
 # --------------------------------------------------------------------------- #
+def _humanize(seconds):
+    """'32m left' / 'overdue 2h' — the list/panel SLA cell text."""
+    if seconds is None:
+        return None
+    m = abs(int(seconds)) // 60
+    txt = f"{m}m" if m < 120 else f"{m // 60}h"
+    return f"{txt} left" if seconds >= 0 else f"overdue {txt}"
+
+
+_TOKEN_RANK = {BREACHED: 0, DUE_SOON: 1, PAUSED: 2, ON_TRACK: 3, MET: 4}
+
+
+def clocks_for_rows(session, table_id, table_phys, pks):
+    """``{row_pk(str): worst clock summary}`` for a page of list rows.
+
+    One query per page; "worst" = breached first, then soonest due. Powers the
+    SLA column on list views.
+    """
+    policies = {p.id: p for p in _policies(session, table_id)}
+    if not policies or not pks:
+        return {}
+    now = _now()
+    far = datetime.max
+    out = {}
+    for clock in session.scalars(select(SlaClock).where(
+            SlaClock.table_phys == table_phys,
+            SlaClock.row_pk.in_([str(p) for p in pks]),
+            SlaClock.policy_id.in_(policies))):
+        policy = policies[clock.policy_id]
+        token = _state_token(clock, policy, now)
+        if token is None:
+            continue
+        remaining = int((clock.due_at - now).total_seconds()) if clock.due_at else None
+        entry = {"token": token, "due_at": clock.due_at,
+                 "text": _humanize(remaining) or token.replace("_", " "),
+                 "_key": (_TOKEN_RANK.get(token, 9), clock.due_at or far)}
+        cur = out.get(clock.row_pk)
+        if cur is None or entry["_key"] < cur["_key"]:
+            out[clock.row_pk] = entry
+    return out
+
+
+def breaching_next(session, user, limit=8):
+    """The soonest-due active/overdue clocks across tables the user can read."""
+    from . import helpers
+    now = _now()
+    tables = {t.id: t for t in session.scalars(select(MetaTable))}
+    policies = {p.id: p for p in session.scalars(
+        select(SlaPolicy).where(SlaPolicy.active.is_(True)))}
+    readable, out = {}, []
+    for clock in session.scalars(select(SlaClock).where(
+            SlaClock.state.in_(("running", "paused", "breached")),
+            SlaClock.due_at.isnot(None))
+            .order_by(SlaClock.due_at).limit(limit * 5)):
+        policy = policies.get(clock.policy_id)
+        table = tables.get(policy.table_id) if policy else None
+        if table is None:
+            continue
+        if table.id not in readable:
+            readable[table.id] = helpers.table_readable(session, user, table)
+        if not readable[table.id]:
+            continue
+        remaining = int((clock.due_at - now).total_seconds())
+        out.append({"table": table, "pk": clock.row_pk, "policy": policy.name,
+                    "due_at": clock.due_at,
+                    "token": _state_token(clock, policy, now),
+                    "text": _humanize(remaining)})
+        if len(out) >= limit:
+            break
+    return out
+
+
 def clocks_for_record(session, table_id, table_phys, pk):
     """Live SLA status per policy for the record view (empty when no clocks)."""
     now = _now()

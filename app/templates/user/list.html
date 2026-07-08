@@ -117,6 +117,7 @@
               {%- if sort == c.column %} aria-sort="{{ 'ascending' if order == 'asc' else 'descending' }}"{% endif %}><a href="{{ url_for('user.form_list', form_id=mf.id, sort=c.column, order=nxt, **args_sort) }}">
             {{ c.label }}{% if sort == c.column %} {{ icon('chevron-up', 12) if order == 'asc' else icon('chevron-down', 12) }}{% endif %}</a></th>
         {% endfor %}
+        {% if show_sla %}<th>SLA</th>{% endif %}
         <th>Actions</th>
       </tr>
       {% for row in rows %}
@@ -150,6 +151,16 @@
               {% else %}{{ v }}{% endif %}
             </td>
           {% endfor %}
+          {% if show_sla %}
+            <td>
+              {% set sc = sla_map.get(rid|string) %}
+              {% if sc %}
+                {% set hue = 'red' if sc.token == 'breached' else ('amber' if sc.token in ('due_soon', 'paused')
+                             else ('green' if sc.token in ('on_track', 'met') else 'gray')) %}
+                <span class="chip c-{{ hue }}"{% if sc.due_at %} title="due {{ sc.due_at.strftime('%Y-%m-%d %H:%M') }}"{% endif %}>{{ sc.text }}</span>
+              {% else %}<span class="muted">—</span>{% endif %}
+            </td>
+          {% endif %}
           <td class="actions">
             {% if can_view(view_table_id) %}
               <a class="btn sm" href="{{ url_for('user.record_view', table_id=view_table_id, pk=rid) }}">View</a>
@@ -168,7 +179,7 @@
           </td>
         </tr>
       {% else %}
-        <tr><td colspan="{{ columns|length + 2 }}">
+        <tr><td colspan="{{ columns|length + 2 + (1 if show_sla else 0) }}">
           {% if active %}
             {{ empty_state('filter', 'No matching records', 'Try removing a filter above.') }}
           {% elif can_edit %}

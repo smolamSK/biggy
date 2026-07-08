@@ -80,3 +80,34 @@ def _field_id(app, table_phys, field_phys):
         s = SessionLocal()
         t = s.scalar(select(MetaTable).where(MetaTable.phys_name == table_phys))
         return next(f.id for f in t.fields if f.phys_name == field_phys)
+
+
+def test_sla_in_lists_and_home(app, client):
+    from app.metadata.models import SlaPolicy
+    _setup(client)
+    tid = _make_table(client, app, "ncase2", "Case", "title")
+    _add_field(client, tid, "status", "enum", enum_options="open\nresolved")
+    fid = _make_form(client, app, "ncase2_form", "Cases", tid)
+    _make_form_p(client, app, "ncase2_view", "Case", tid, "view")
+    with app.app_context():
+        s = SessionLocal()
+        s.add(SlaPolicy(table_id=tid, name="Resolve", active=True, target_minutes=60,
+                        status_field_id=_field_id(app, "ncase2", "status"),
+                        start_on_create=True, stop_states="resolved"))
+        s.commit()
+
+    _ok(client.post(f"/u/forms/{fid}/new", data={"title": "C1", "status": "open"},
+                    follow_redirects=True))
+
+    # the list gains an SLA column with time-to-breach
+    lst = client.get(f"/u/forms/{fid}").get_data(as_text=True)
+    assert ">SLA<" in lst and "m left" in lst
+
+    # the home page shows the soonest-due clock
+    home = client.get("/u/").get_data(as_text=True)
+    assert "SLA — due next" in home and "C1" in home
+
+    # resolving stops the clock → gone from the panel
+    _ok(client.post(f"/u/forms/{fid}/1/edit",
+                    data={"title": "C1", "status": "resolved"}, follow_redirects=True))
+    assert "SLA — due next" not in client.get("/u/").get_data(as_text=True)

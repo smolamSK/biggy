@@ -191,6 +191,23 @@ def _my_work(session, user_id, is_designer, limit=12):
     return out[:limit]
 
 
+def _sla_next(session, limit=8):
+    """Soonest-due SLA clocks with resolved record labels (home panel)."""
+    out = []
+    for e in sla.breaching_next(session, current_user, limit=limit):
+        try:
+            row = data_service.get_row(engine_for_table(e["table"]),
+                                       e["table"].phys_name, e["pk"])
+        except Exception:  # noqa: BLE001 - a broken source must not break home
+            row = None
+        if not row or row.get("deleted_at"):
+            continue
+        label = row.get(display_field_name(session, e["table"]))
+        e["label"] = str(label) if label not in (None, "") else f"#{e['pk']}"
+        out.append(e)
+    return out
+
+
 @bp.route("/")
 def dashboard():
     session = _s()
@@ -220,6 +237,7 @@ def dashboard():
     return render_template("user/dashboard.html", has_forms=has_forms, tiles=tiles,
                            personal=personal, shared=shared,
                            my_work=_my_work(session, user_id, is_designer),
+                           sla_next=_sla_next(session),
                            recent=_recent_records(session, user_id))
 
 
@@ -637,6 +655,10 @@ def form_list(form_id):
 
     enum_colors = {c.column: json.loads(c.meta.enum_colors) for c in lq.columns
                    if c.kind == "field" and c.meta.data_type == "enum" and c.meta.enum_colors}
+    show_sla = sla.has_policies(session, mf.table_id)
+    sla_map = sla.clocks_for_rows(
+        session, mf.table_id, mf.table.phys_name,
+        [r[mf.table.pk_col] for r in rows]) if show_sla else {}
 
     all_args = request.args.to_dict(flat=False)
     pages = max(1, (total + lq.per_page - 1) // lq.per_page)
@@ -650,6 +672,7 @@ def form_list(form_id):
         per_page=lq.per_page, allowed_per_page=ALLOWED_PER_PAGE,
         filter_meta=lq.filter_meta, filter_order=lq.filter_order, conditions=lq.conditions,
         filter_chips=_filter_chips(mf, lq, all_args), enum_colors=enum_colors,
+        show_sla=show_sla, sla_map=sla_map,
         can_edit=can_write(access), has_trash=mf.table.soft_delete,
         label_maps=lq.label_maps, m1_targets=lq.m1_targets,
         display_col=display_field_name(session, mf.table), view_table_id=mf.table.id,

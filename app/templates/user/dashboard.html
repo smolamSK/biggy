@@ -33,6 +33,22 @@
 </div>
 {% endif %}
 
+{% if sla_next %}
+<h2>SLA — due next</h2>
+<div class="panel" style="max-width:680px">
+  <table class="grid">
+    {% for e in sla_next %}
+      <tr>
+        <td class="display">{{ record_link(e.table.id, e.pk, e.label) }}</td>
+        <td class="muted">{{ e.table.label }} · {{ e.policy }}</td>
+        <td>{% set hue = 'red' if e.token == 'breached' else ('amber' if e.token in ('due_soon', 'paused') else 'green') %}
+          <span class="chip c-{{ hue }}" title="due {{ e.due_at.strftime('%Y-%m-%d %H:%M') }}">{{ e.text }}</span></td>
+      </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
 {% if my_work %}
 <h2>My work</h2>
 <div class="panel" style="max-width:680px">
