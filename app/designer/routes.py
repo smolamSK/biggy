@@ -70,7 +70,7 @@ from ..forms.admin_forms import (
     TriggerRuleForm,
     WebhookForm,
 )
-from ..helpers import designer_required
+from ..helpers import CHIP_HUES, designer_required
 from ..identifiers import (
     RESERVED_COLUMNS,
     IdentifierError,
@@ -541,7 +541,10 @@ def field_edit(table_id, field_id):
             form.enum_options.data = "\n".join(json.loads(field.enum_options))
 
     def _render():
-        return render_template("designer/field_form.html", form=form, table=mt, field=field)
+        return render_template(
+            "designer/field_form.html", form=form, table=mt, field=field,
+            saved_options=json.loads(field.enum_options or "[]"),
+            saved_colors=json.loads(field.enum_colors or "{}"), hues=CHIP_HUES)
 
     if form.validate_on_submit():
         try:
@@ -559,6 +562,18 @@ def field_edit(table_id, field_id):
                 flash("Choice/tags fields need at least one option.", "danger")
                 return _render()
             enum_json = json.dumps(opts)
+            if field.data_type == "enum":
+                # colorval_/colorhue_ pairs from the colors editor; entries for
+                # renamed/removed options are dropped, "auto" means hash fallback
+                colors = {}
+                for j in range(200):                    # generous cap on options
+                    val = request.form.get(f"colorval_{j}")
+                    if val is None:
+                        break
+                    hue = request.form.get(f"colorhue_{j}")
+                    if val in opts and hue in CHIP_HUES:
+                        colors[val] = hue
+                field.enum_colors = json.dumps(colors) if colors else None
 
         if field.data_type == "formula":
             expr = (form.formula.data or "").strip()
@@ -1312,6 +1327,29 @@ def form_add_all(form_id):
         flash(f"Added {n} missing item(s).", "success")
     else:
         flash("Nothing to add — every field is already on the form.", "info")
+    return redirect(url_for("designer.form_edit", form_id=form_id))
+
+
+@bp.route("/forms/<int:form_id>/defaults", methods=["POST"])
+def form_defaults(form_id):
+    """Designer-chosen list defaults (sort/direction/page size)."""
+    session = _s()
+    mf = session.get(MetaForm, form_id)
+    if not mf:
+        flash("Form not found.", "danger")
+        return redirect(url_for("designer.forms"))
+    sort = request.form.get("default_sort") or None
+    valid = {f.phys_name for f in mf.table.fields} | {mf.table.pk_col}
+    mf.default_sort = sort if sort in valid else None
+    order = request.form.get("default_order")
+    mf.default_order = order if order in ("asc", "desc") else None
+    try:
+        pp = int(request.form.get("default_per_page") or 0)
+    except (TypeError, ValueError):
+        pp = 0
+    mf.default_per_page = pp or None
+    session.commit()
+    flash("List defaults saved.", "success")
     return redirect(url_for("designer.form_edit", form_id=form_id))
 
 

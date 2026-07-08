@@ -19,6 +19,25 @@
       <div style="flex:1">{{ render_field(form.scale) }}</div>
     </div>
     {% if field.data_type in ('enum', 'tags') %}{{ render_field(form.enum_options) }}{% endif %}
+    {% if field.data_type == 'enum' and saved_options %}
+      <div class="field">
+        <label>Status colors</label>
+        {% for opt in saved_options %}
+          <div class="pill-row" style="align-items:center;margin-bottom:.3rem">
+            <span class="chip c-{{ opt|chip_hue(saved_colors) }}" style="min-width:8rem">{{ opt }}</span>
+            <input type="hidden" name="colorval_{{ loop.index0 }}" value="{{ opt }}">
+            <select name="colorhue_{{ loop.index0 }}" style="max-width:9rem">
+              <option value="auto">auto</option>
+              {% for h in hues %}
+                <option value="{{ h }}" {{ 'selected' if saved_colors.get(opt) == h }}>{{ h }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        {% endfor %}
+        <div class="help">Chip color wherever this value is shown (lists, record pages).
+          “auto” derives a stable color from the text.</div>
+      </div>
+    {% endif %}
     {% if field.data_type == 'formula' %}
       {{ render_field(form.formula) }}
       {{ render_field(form.result_type) }}

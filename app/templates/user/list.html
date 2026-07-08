@@ -136,6 +136,7 @@
                 {% if c.meta.data_type == 'enum' %}
                   {% if wf_cell %}data-enum="{{ wf_cell_options.get(rid, {}).get(c.column, []) | tojson | forceescape }}" data-noblank="1"
                   {% else %}data-enum="{{ c.meta.enum_options or '[]' }}"{% endif %}
+                  {% if c.column in enum_colors %}data-colors="{{ enum_colors[c.column] | tojson | forceescape }}"{% endif %}
                 {% endif %}
                 title="Click to edit"{% endif %}>
               {% if c.column in m1_targets %}
@@ -145,7 +146,7 @@
               {% elif v is sameas true %}yes{% elif v is sameas false %}no
               {% elif c.column == display_col %}{{ record_link(view_table_id, rid, v) }}
               {% elif c.meta.data_type in ('email','url','phone','currency','percent','json','tags') %}{{ typed_value(c.meta.data_type, v) }}
-              {% elif c.meta.data_type == 'enum' %}<span class="chip c-{{ v|chip_hue }}">{{ v }}</span>
+              {% elif c.meta.data_type == 'enum' %}<span class="chip c-{{ v|chip_hue(enum_colors.get(c.column)) }}">{{ v }}</span>
               {% else %}{{ v }}{% endif %}
             </td>
           {% endfor %}

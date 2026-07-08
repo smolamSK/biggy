@@ -52,8 +52,9 @@
   {%- else -%}{{ label }}{%- endif -%}
 {% endmacro %}
 
-{# Render a scalar value for a typed field (clickable / formatted / chips). #}
-{% macro typed_value(dt, v) %}
+{# Render a scalar value for a typed field (clickable / formatted / chips).
+   ``colors`` is an optional {value: hue} map for enum chips (designer-chosen). #}
+{% macro typed_value(dt, v, colors=none) %}
   {%- if v is none or v == '' -%}<span class="muted">—</span>
   {%- elif dt == 'email' -%}<a href="mailto:{{ v }}">{{ v }}</a>
   {%- elif dt == 'url' -%}<a href="{{ v }}" target="_blank" rel="noopener">{{ v }}</a>
@@ -62,7 +63,7 @@
   {%- elif dt == 'percent' -%}{{ '{:g}'.format(v|float) }}%
   {%- elif dt == 'json' -%}<pre style="margin:0;white-space:pre-wrap;max-width:30rem">{{ v }}</pre>
   {%- elif dt == 'tags' -%}{% for t in v|fromjson %}<span class="badge">{{ t }}</span> {% endfor %}
-  {%- elif dt == 'enum' -%}<span class="chip c-{{ v|chip_hue }}">{{ v }}</span>
+  {%- elif dt == 'enum' -%}<span class="chip c-{{ v|chip_hue(colors) }}">{{ v }}</span>
   {%- elif dt == 'markdown' -%}<div class="md-content">{{ v|markdown_safe|safe }}</div>
   {%- else -%}{{ v }}{%- endif -%}
 {% endmacro %}

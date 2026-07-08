@@ -87,15 +87,20 @@ def create_app(config_object=Config):
         except ImportError:  # pragma: no cover - markdown is a listed dependency
             return "<p>" + text.replace("\n", "<br>") + "</p>"
 
-    # Deterministic value -> status-chip hue. Mirrors chipHue() in static/inline.js
-    # (char-code sum mod 7) so inline-edited cells re-render the same color.
-    _CHIP_HUES = ["green", "amber", "red", "blue", "violet", "teal", "gray"]
+    # Value -> status-chip hue: a designer-chosen color (the field's enum_colors
+    # map) wins; otherwise a deterministic hash. Mirrors chipHue() in
+    # static/inline.js (char-code sum mod 7) so inline-edited cells re-render
+    # the same color.
+    from .helpers import CHIP_HUES
 
     @app.template_filter("chip_hue")
-    def _chip_hue(value):
+    def _chip_hue(value, colors=None):
         if value is None or value == "":
             return "gray"
-        return _CHIP_HUES[sum(ord(c) for c in str(value)) % len(_CHIP_HUES)]
+        hue = (colors or {}).get(str(value))
+        if hue in CHIP_HUES:
+            return hue
+        return CHIP_HUES[sum(ord(c) for c in str(value)) % len(CHIP_HUES)]
 
     _register_lifecycle(app)
     _register_context(app)

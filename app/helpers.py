@@ -217,6 +217,10 @@ def menu_visible(session, user, item):
     return False
 
 
+# Status-chip hues (must match the .chip.c-* classes in static/app.css and
+# CHIP_HUES in static/inline.js).
+CHIP_HUES = ("green", "amber", "red", "blue", "violet", "teal", "gray")
+
 # Canonical names of the built-in SVG icons (templates/_icons.html). The menu
 # editor offers these; the icon() macro silently skips names it doesn't know,
 # so removing an icon can never break rendering.

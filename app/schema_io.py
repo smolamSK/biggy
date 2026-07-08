@@ -65,12 +65,13 @@ _FIELD_COLS = ["id", "table_id", "phys_name", "label", "data_type", "length", "p
                "scale", "nullable", "default_value", "is_unique", "position", "enum_options",
                "related_table_id", "on_delete",
                "min_length", "max_length", "min_value", "max_value", "pattern",
-               "formula", "result_type"]
+               "formula", "result_type", "enum_colors"]
 _RELATION_COLS = ["id", "name", "kind", "from_table_id", "to_table_id", "from_field_id",
                   "junction_phys_name", "on_delete", "to_display_field_ids",
                   "from_display_field_ids"]
 _FORM_COLS = ["id", "table_id", "name", "title", "description", "purpose",
-              "in_catalog", "catalog_group"]
+              "in_catalog", "catalog_group",
+              "default_sort", "default_order", "default_per_page"]
 _FORMFIELD_COLS = ["id", "form_id", "kind", "field_id", "relation_id", "label_override",
                    "widget", "required", "readonly", "help_text", "position",
                    "parent_field_id", "filter_field_id"]
@@ -197,6 +198,7 @@ def _make_field(f, tmap):
         min_length=f.get("min_length"), max_length=f.get("max_length"),
         min_value=f.get("min_value"), max_value=f.get("max_value"), pattern=f.get("pattern"),
         formula=f.get("formula"), result_type=f.get("result_type"),
+        enum_colors=f.get("enum_colors"),
     )
 
 
@@ -401,7 +403,10 @@ def import_schema(session, engine, data, replace=False):
                              title=fm["title"], description=fm.get("description"),
                              purpose=fm.get("purpose", "data"),
                              in_catalog=fm.get("in_catalog", False),
-                             catalog_group=fm.get("catalog_group"))
+                             catalog_group=fm.get("catalog_group"),
+                             default_sort=fm.get("default_sort"),
+                             default_order=fm.get("default_order"),
+                             default_per_page=fm.get("default_per_page"))
             session.add(mform)
             session.flush()
             formmap[fm["id"]] = mform.id

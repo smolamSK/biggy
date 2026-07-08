@@ -29,6 +29,15 @@ Four steps take you from an empty app to a usable form:
 
 Switch to **User mode** and your screen is live.
 
+Two shortcuts collapse most of that:
+
+- **Generate form** (on any table's page) creates the data form with every field
+  and relation already placed — optionally a read-only view form and a menu entry
+  too, so steps 3–4 become one click.
+- **＋ From CSV** (in the Tables menu) bootstraps from a spreadsheet export: column
+  names and types are inferred from the file, you review them, and the table is
+  created with all rows imported.
+
 ## Tables & fields
 
 Open a table to add, edit, reorder (▲▼), or drop fields. Each field has a **type**:
@@ -36,7 +45,8 @@ Open a table to add, edit, reorder (▲▼), or drop fields. Each field has a **
 - **Text (short / long)**, **Integer / Big integer**, **Decimal / Float**,
   **Boolean**, **Date / Date & time / Time**.
 - **Choice list (enum)** and **Tags (multi-select)** — supply the options, one per
-  line.
+  line. When editing an enum field you can also pick a **status color** per option
+  (the chips shown in lists and record pages); “auto” derives a stable color.
 - **Email**, **URL**, **Phone** — validated and rendered as clickable links.
 - **Currency**, **Percent** — numeric with formatted display.
 - **JSON** — stores/validates a JSON value.
@@ -58,6 +68,8 @@ Other table-level controls:
 - **Behaviour flags** — turn on **audit** (change history), **soft delete**
   (Trash + restore), and **row ownership** (users see only their own rows).
 - **Unique constraints** — add a **composite** (multi-column) unique rule.
+- **Duplicate table** — copy the structure (fields, options, uniques) under a new
+  name; data and relations are not copied.
 
 ## Relations
 
@@ -89,12 +101,24 @@ Add **items** to a form: **fields**, **many-to-many** pickers, and **section
 headings** to group the layout. Per item you can set a label override, help text,
 **required**, **read-only**, and — for relation items — a **dependent picker**
 (filter this drop-down by the value of another field). Reorder items with ▲▼.
+**Add all missing fields** places every remaining field/relation in one click, and
+**Duplicate** copies the whole form. **List defaults** (bottom of the form editor)
+set how the form's list opens — sort column, direction, page size; a visitor's own
+sorting and saved views still win.
 
 ## Menus
 
 *Interface → Menus*. Build the User-mode sidebar from **groups** (headings) and
 links to a **form** or a **list view** of a table. Order them, nest them under
-groups, and add an optional icon.
+groups, and pick an optional **icon** — it shows in the sidebar and on the home
+page's quick-access cards.
+
+## Instance settings (branding)
+
+*Admin → Settings*: rename the application (top bar + sign-in page), pick an
+**accent color** applied across all themes, and choose the **default theme**
+visitors get before they pick their own. Stored in the database; blank fields
+fall back to the server configuration.
 
 ## Existing databases & multiple sources
 

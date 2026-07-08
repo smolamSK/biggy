@@ -131,6 +131,8 @@ class MetaField(Base):
     position: Mapped[int] = mapped_column(Integer, default=0)
     # JSON-encoded list of choices for enum fields
     enum_options: Mapped[str | None] = mapped_column(Text)
+    # JSON map {option: chip hue} — designer-chosen status colors (blank = auto hash)
+    enum_colors: Mapped[str | None] = mapped_column(Text)
     # for data_type == 'relation' (many-to-one)
     related_table_id: Mapped[int | None] = mapped_column(Integer)
     on_delete: Mapped[str | None] = mapped_column(String(20))
@@ -183,6 +185,10 @@ class MetaForm(Base):
     # service catalog: show this form as a request card on /u/catalog
     in_catalog: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     catalog_group: Mapped[str | None] = mapped_column(String(80))
+    # designer-chosen list defaults (query args and saved views still win)
+    default_sort: Mapped[str | None] = mapped_column(String(64))     # physical column
+    default_order: Mapped[str | None] = mapped_column(String(4))     # asc | desc
+    default_per_page: Mapped[int | None] = mapped_column(Integer)
 
     table: Mapped["MetaTable"] = relationship(back_populates="forms")
     items: Mapped[list["MetaFormField"]] = relationship(

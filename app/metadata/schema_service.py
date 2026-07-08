@@ -146,6 +146,7 @@ _META_ADDITIONS = {
         {"name": "pattern", "type": String(255)},
         {"name": "formula", "type": Text()},
         {"name": "result_type", "type": String(20)},
+        {"name": "enum_colors", "type": Text()},
     ],
     "app_meta_table": [
         {"name": "track_audit", "type": Boolean(), "nullable": False, "default": "false"},
@@ -166,6 +167,9 @@ _META_ADDITIONS = {
         {"name": "purpose", "type": String(10), "nullable": False, "default": "'data'"},
         {"name": "in_catalog", "type": Boolean(), "nullable": False, "default": "false"},
         {"name": "catalog_group", "type": String(80)},
+        {"name": "default_sort", "type": String(64)},
+        {"name": "default_order", "type": String(4)},
+        {"name": "default_per_page", "type": Integer()},
     ],
     "app_report": [
         {"name": "pinned", "type": Boolean(), "nullable": False, "default": "false"},

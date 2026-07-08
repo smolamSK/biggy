@@ -88,7 +88,7 @@
           {% if it.kind == 'scalar' %}
             {% set v = it.value %}
             {% if v is sameas true %}yes{% elif v is sameas false %}no
-            {% else %}{{ typed_value(it.data_type, v) }}{% endif %}
+            {% else %}{{ typed_value(it.data_type, v, it.colors) }}{% endif %}
           {% elif it.kind == 'm1' %}
             {% if it.ref_id %}{{ record_link(it.target_id, it.ref_id, it.ref_label) }}
             {% else %}<span class="muted">—</span>{% endif %}

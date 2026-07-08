@@ -92,4 +92,40 @@
     <button class="btn sm primary" type="submit">Save</button>
   </form>
 </div>
+<div class="panel" style="max-width:520px">
+  <h2 style="margin:.2rem 0">List defaults</h2>
+  <p class="help">How this form's list opens; a visitor's own sorting, page size and
+    saved views still win.</p>
+  <form method="post" action="{{ url_for('designer.form_defaults', form_id=mf.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="pill-row">
+      <div class="field" style="flex:2">
+        <label>Sort by</label>
+        <select name="default_sort">
+          <option value="">— none —</option>
+          {% for f in mf.table.fields %}
+            <option value="{{ f.phys_name }}" {{ 'selected' if mf.default_sort == f.phys_name }}>{{ f.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field" style="flex:1">
+        <label>Direction</label>
+        <select name="default_order">
+          <option value="asc" {{ 'selected' if mf.default_order != 'desc' }}>Ascending</option>
+          <option value="desc" {{ 'selected' if mf.default_order == 'desc' }}>Descending</option>
+        </select>
+      </div>
+      <div class="field" style="flex:1">
+        <label>Per page</label>
+        <select name="default_per_page">
+          <option value="">default</option>
+          {% for n in (25, 50, 100) %}
+            <option value="{{ n }}" {{ 'selected' if mf.default_per_page == n }}>{{ n }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <button class="btn sm primary" type="submit">Save list defaults</button>
+  </form>
+</div>
 {% endblock %}

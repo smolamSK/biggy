@@ -96,6 +96,7 @@ array/object. Encode the inner JSON and put it in a string.
 | Field | Example value (note the outer quotes) |
 |---|---|
 | `fields[].enum_options` (enum/tags) | `"[\"new\", \"open\", \"done\"]"` |
+| `fields[].enum_colors` (enum, optional) | `"{\"open\": \"amber\", \"done\": \"green\"}"` |
 | `relations[].to_display_field_ids` | `"[10]"` |
 | `composite_uniques[].field_ids` | `"[10, 12]"` |
 | `feeds[].field_map`, `webhooks[].field_map`, `pull_sources[].field_map` | `"[{\"target\": \"name\", \"source\": \"full_name\"}]"` |
@@ -199,6 +200,9 @@ See [§4](#4-relations). `id`, `name`, `kind` (`m1`|`mn`), `from_table_id`,
 `id`, `table_id`, `name` (identifier), `title`, `description`, `purpose`
 (`"data"` = create/edit, `"view"` = read-only view). Optional service catalog:
 `in_catalog` (bool — show as a request card on `/u/catalog`) + `catalog_group`.
+Optional list defaults: `default_sort` (a physical column of the table),
+`default_order` (`"asc"`/`"desc"`), `default_per_page` (25/50/100) — how the
+form's list opens when the visitor hasn't chosen a sort or page size.
 
 ### `form_fields` — which fields appear on a form, in order
 `id`, `form_id`, `kind` (`"field"` = a table field via `field_id`; `"relation"` = a

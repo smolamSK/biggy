@@ -1,13 +1,23 @@
-"""Designer productivity tools: form generation, CSV wizard, duplication."""
+"""Designer productivity & customization tools: form generation, CSV wizard,
+duplication, branding, menu icons, enum colors, list defaults."""
 import io
+import json
 
 from sqlalchemy import select, text
 
+from app import schema_io
 from app.db import SessionLocal, get_engine
 from app.identifiers import sanitize_identifier
 from app.importer import infer_schema
-from app.metadata.models import MetaForm, MetaMenu, MetaTable
-from tests.helpers import _add_field, _make_form, _make_table, _ok, _setup
+from app.metadata.models import MetaField, MetaForm, MetaMenu, MetaTable
+from tests.helpers import (
+    _add_field,
+    _make_form,
+    _make_form_p,
+    _make_table,
+    _ok,
+    _setup,
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -198,3 +208,72 @@ def test_menu_icons(app, client):
         m.icon = "no-such-icon"
         s.commit()
     _ok(client.get("/u/"))
+
+
+def test_enum_chip_colors(app, client):
+    _setup(client)
+    tid = _make_table(client, app, "task", "Task", "title")
+    _add_field(client, tid, "status", "enum", enum_options="new\ndone")
+    fid = _make_form(client, app, "task_form", "Tasks", tid)
+    _make_form_p(client, app, "task_view", "Task", tid, "view")
+    _ok(client.post(f"/u/forms/{fid}/new", data={"title": "T1", "status": "new"},
+                    follow_redirects=True))
+    with app.app_context():
+        field_id = SessionLocal().scalar(
+            select(MetaField).where(MetaField.phys_name == "status")).id
+
+    # the field editor offers a color per saved option
+    page = client.get(f"/designer/tables/{tid}/fields/{field_id}/edit").get_data(as_text=True)
+    assert 'name="colorhue_0"' in page and 'name="colorhue_1"' in page
+
+    _ok(client.post(f"/designer/tables/{tid}/fields/{field_id}/edit",
+                    data={"phys_name": "status", "label": "Status", "data_type": "enum",
+                          "enum_options": "new\ndone", "nullable": "y",
+                          "colorval_0": "new", "colorhue_0": "red",
+                          "colorval_1": "done", "colorhue_1": "auto"},
+                    follow_redirects=True))
+    with app.app_context():
+        f = SessionLocal().get(MetaField, field_id)
+        assert json.loads(f.enum_colors) == {"new": "red"}   # auto not stored
+
+    lst = client.get(f"/u/forms/{fid}").get_data(as_text=True)
+    assert 'chip c-red">new</span>' in lst                   # chosen hue in the list
+    assert "data-colors=" in lst                             # inline edit re-render map
+    view = client.get(f"/u/view/{tid}/1").get_data(as_text=True)
+    assert 'chip c-red">new</span>' in view                  # and on the record page
+
+    with app.app_context():                                  # survives a round-trip
+        s = SessionLocal()
+        data = schema_io.export_schema(s)
+        status = next(fd for fd in data["fields"] if fd["phys_name"] == "status")
+        assert json.loads(status["enum_colors"]) == {"new": "red"}
+        schema_io.import_schema(s, get_engine(), data, replace=True)
+        f = s.scalar(select(MetaField).where(MetaField.phys_name == "status"))
+        assert json.loads(f.enum_colors) == {"new": "red"}
+
+
+def test_default_list_view(app, client):
+    _setup(client)
+    tid = _make_table(client, app, "city", "City", "name")
+    fid = _make_form(client, app, "city_form", "Cities", tid)
+    for n in ("Berlin", "Amsterdam", "Cologne"):
+        _ok(client.post(f"/u/forms/{fid}/new", data={"name": n}, follow_redirects=True))
+
+    _ok(client.post(f"/designer/forms/{fid}/defaults",
+                    data={"default_sort": "name", "default_order": "desc",
+                          "default_per_page": "50"}, follow_redirects=True))
+    lst = client.get(f"/u/forms/{fid}").get_data(as_text=True)
+    assert 'aria-sort="descending"' in lst                   # default applied
+    assert lst.index("Cologne") < lst.index("Berlin") < lst.index("Amsterdam")
+
+    # explicit query args always win
+    lst = client.get(f"/u/forms/{fid}", query_string={"sort": "name", "order": "asc"}) \
+        .get_data(as_text=True)
+    assert lst.index("Amsterdam") < lst.index("Berlin") < lst.index("Cologne")
+
+    # a stale default (renamed/removed column) is ignored, not an error
+    with app.app_context():
+        s = SessionLocal()
+        s.get(MetaForm, fid).default_sort = "gone_column"
+        s.commit()
+    _ok(client.get(f"/u/forms/{fid}"))

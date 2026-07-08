@@ -516,13 +516,17 @@ def _list_query(mf, session, engine):
     q = request.args.get("q", "").strip()
     page = int(request.args.get("page", 1) or 1)
     try:
-        per_page = int(request.args.get("per_page", PER_PAGE))
+        per_page = int(request.args.get("per_page") or mf.default_per_page or PER_PAGE)
     except (TypeError, ValueError):
         per_page = PER_PAGE
     if per_page not in ALLOWED_PER_PAGE:
         per_page = PER_PAGE
-    sort = request.args.get("sort")
-    order = request.args.get("order", "asc")
+    # designer-chosen list defaults apply when the request doesn't say otherwise
+    # (a stale default_sort — renamed column — is ignored)
+    default_sort = mf.default_sort if mf.default_sort in {
+        f.phys_name for f in mf.table.fields} | {mf.table.pk_col} else None
+    sort = request.args.get("sort") or default_sort
+    order = request.args.get("order") or mf.default_order or "asc"
 
     filters, conditions = [], []
     if q:
@@ -598,6 +602,9 @@ def form_list(form_id):
             wf_cell_options.setdefault(row[mf.table.pk_col], {})[col] = \
                 workflow.allowed_choices(wf, row.get(col), current_user)
 
+    enum_colors = {c.column: json.loads(c.meta.enum_colors) for c in lq.columns
+                   if c.kind == "field" and c.meta.data_type == "enum" and c.meta.enum_colors}
+
     all_args = request.args.to_dict(flat=False)
     pages = max(1, (total + lq.per_page - 1) // lq.per_page)
     saved_views = session.scalars(
@@ -609,7 +616,7 @@ def form_list(form_id):
         page=lq.page, pages=pages, total=total, sort=lq.sort, order=lq.order,
         per_page=lq.per_page, allowed_per_page=ALLOWED_PER_PAGE,
         filter_meta=lq.filter_meta, filter_order=lq.filter_order, conditions=lq.conditions,
-        filter_chips=_filter_chips(mf, lq, all_args),
+        filter_chips=_filter_chips(mf, lq, all_args), enum_colors=enum_colors,
         can_edit=can_write(access), has_trash=mf.table.soft_delete,
         label_maps=lq.label_maps, m1_targets=lq.m1_targets,
         display_col=display_field_name(session, mf.table), view_table_id=mf.table.id,
@@ -1445,7 +1452,9 @@ def _view_items(session, engine, view_form, built, row):
                         "files": [{"id": a.id, "name": a.original_name} for a in atts]})
         elif it.kind == "field":
             out.append({"label": it.label, "kind": "scalar", "value": row.get(it.column),
-                        "data_type": it.meta.data_type})
+                        "data_type": it.meta.data_type,
+                        "colors": json.loads(it.meta.enum_colors)
+                        if it.meta.data_type == "enum" and it.meta.enum_colors else None})
         elif it.kind == "relation_m1":
             target, disp = m1_target_and_columns(session, it.meta)
             rid = row.get(it.column)
