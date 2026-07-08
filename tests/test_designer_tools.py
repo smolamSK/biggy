@@ -143,3 +143,58 @@ def test_duplicate_table_and_form(app, client):
     with app.app_context():
         f2 = SessionLocal().scalar(select(MetaForm).where(MetaForm.name == "device_form_copy"))
         assert f2 is not None and len(f2.items) == 2 and f2.table_id == tid
+
+
+def test_icon_names_have_paths():
+    """Every ICON_NAMES entry must exist in the _icons.html path registry."""
+    import pathlib
+
+    from app.helpers import ICON_NAMES
+    src = (pathlib.Path(__file__).parent.parent
+           / "app" / "templates" / "_icons.html").read_text()
+    for name in ICON_NAMES:
+        assert f"'{name}':" in src, f"icon '{name}' has no path in _icons.html"
+
+
+def test_branding_settings(app, client):
+    _setup(client)
+    assert "Biggy" in client.get("/u/").get_data(as_text=True)
+
+    _ok(client.post("/designer/settings",
+                    data={"app_name": "AssetHub", "accent": "#0e7490",
+                          "default_theme": "ocean"}, follow_redirects=True))
+    base = client.get("/u/").get_data(as_text=True)
+    assert "AssetHub" in base
+    assert "--brand: #0e7490" in base                    # accent style emitted
+    assert "t = 'ocean'" in base                         # default theme pre-paint
+    assert "AssetHub" in app.test_client().get("/auth/login").get_data(as_text=True)
+
+    # invalid accent is rejected; "use default" clears everything
+    client.post("/designer/settings", data={"accent": "gibberish"},
+                follow_redirects=True)
+    assert "gibberish" not in client.get("/u/").get_data(as_text=True)
+    _ok(client.post("/designer/settings",
+                    data={"app_name": "", "accent": "#0e7490", "accent_default": "y",
+                          "default_theme": ""}, follow_redirects=True))
+    base = client.get("/u/").get_data(as_text=True)
+    assert "Biggy" in base and "--brand: #" not in base  # back to Config fallback
+
+
+def test_menu_icons(app, client):
+    _setup(client)
+    tid = _make_table(client, app, "book", "Book", "title")
+    fid = _make_form(client, app, "book_form", "Books", tid)
+    _ok(client.post("/designer/menus/new",
+                    data={"label": "Books", "kind": "form", "parent_id": 0,
+                          "target_form_id": fid, "target_table_id": 0,
+                          "position": 0, "icon": "calendar"}, follow_redirects=True))
+    page = client.get("/u/").get_data(as_text=True)
+    assert "M8 2v4" in page                              # calendar path in the sidebar
+
+    # an unknown icon name must never break rendering
+    with app.app_context():
+        s = SessionLocal()
+        m = s.scalar(select(MetaMenu).where(MetaMenu.label == "Books"))
+        m.icon = "no-such-icon"
+        s.commit()
+    _ok(client.get("/u/"))

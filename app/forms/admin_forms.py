@@ -15,6 +15,7 @@ from wtforms import (
 )
 from wtforms.validators import DataRequired, EqualTo, Length, Optional
 
+from ..helpers import ICON_NAMES
 from ..metadata.field_types import SCALAR_TYPES
 from ..metadata.models import ROLES
 from ..metadata.schema_service import ON_DELETE_CHOICES
@@ -163,7 +164,8 @@ class MenuForm(FlaskForm):
     target_table_id = SelectField("Target table (list)", coerce=int, validators=[Optional()])
     target_dashboard_id = SelectField("Target dashboard", coerce=int, validators=[Optional()])
     position = IntegerField("Position", default=0, validators=[Optional()])
-    icon = StringField("Icon (optional)", validators=[Optional()])
+    icon = SelectField("Icon (optional)", validate_choice=False, validators=[Optional()],
+                       choices=[("", "— none —")] + [(n, n) for n in ICON_NAMES])
 
 
 class DashboardForm(FlaskForm):

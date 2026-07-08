@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block mode %}<span class="mode-tag">User</span>{% endblock %}
 {% block sidebar %}
 {% set group_count = nav_menu | selectattr('kind', 'equalto', 'group') | list | length %}
@@ -24,13 +25,13 @@
   {% for item in nav_menu %}
     {% if item.kind == 'group' %}
       <details class="menu-group" data-menu-id="{{ item.id }}" open>
-        <summary class="group-label">{{ item.label }}</summary>
+        <summary class="group-label">{% if item.icon %}{{ icon(item.icon, 13) }} {% endif %}{{ item.label }}</summary>
         {% for child in item.children if menu_can_see(child) %}
-          <a class="child" href="{{ menu_url(child) }}">{{ child.label }}</a>
+          <a class="child" href="{{ menu_url(child) }}">{% if child.icon %}{{ icon(child.icon, 14) }} {% endif %}{{ child.label }}</a>
         {% endfor %}
       </details>
     {% else %}
-      <a href="{{ menu_url(item) }}">{{ item.label }}</a>
+      <a href="{{ menu_url(item) }}">{% if item.icon %}{{ icon(item.icon, 14) }} {% endif %}{{ item.label }}</a>
     {% endif %}
   {% else %}
     {% from "_macros.html" import empty_state with context %}

@@ -28,7 +28,7 @@
 <h2>Quick access</h2>
 <div class="cards">
   {% for it in leaves[:12] %}
-    <a class="card qa-card" href="{{ menu_url(it) }}">{{ icon('list') }} {{ it.label }}</a>
+    <a class="card qa-card" href="{{ menu_url(it) }}">{{ icon(it.icon, fallback='list') }} {{ it.label }}</a>
   {% endfor %}
 </div>
 {% endif %}

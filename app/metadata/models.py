@@ -865,3 +865,16 @@ class RateHit(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     key: Mapped[str] = mapped_column(String(64), nullable=False)
     at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+class AppSetting(Base):
+    """One instance-wide setting (branding etc.), editable in Designer mode.
+
+    Key-value so new settings need no migration; blank/missing values fall back
+    to the ``Config`` defaults (see :mod:`app.settings`).
+    """
+    __tablename__ = "app_setting"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    key: Mapped[str] = mapped_column(String(40), unique=True, nullable=False)
+    value: Mapped[str | None] = mapped_column(Text)

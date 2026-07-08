@@ -1,0 +1,39 @@
+{% extends "designer/_base.html" %}
+{% block title %}Settings · {{ branding.app_name }}{% endblock %}
+{% block inner %}
+<h1>Settings</h1>
+<div class="panel" style="max-width:560px">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label>Application name</label>
+      <input type="text" name="app_name" value="{{ stored.get('app_name', '') }}"
+             placeholder="{{ default_name }}" maxlength="40">
+      <div class="help">Shown in the top bar and on the sign-in page.
+        Leave blank for “{{ default_name }}”.</div>
+    </div>
+    <div class="field">
+      <label>Accent color</label>
+      <div class="pill-row" style="align-items:center">
+        <input type="color" name="accent" value="{{ stored.get('accent', '#4f46e5') }}"
+               style="width:3.2rem;height:2rem;padding:.15rem">
+        <label class="checkline" style="margin:0">
+          <input type="checkbox" name="accent_default" {{ 'checked' if not stored.get('accent') }}>
+          use each theme's default</label>
+      </div>
+      <div class="help">Buttons, links and highlights — applied across all themes.</div>
+    </div>
+    <div class="field">
+      <label>Default theme</label>
+      <select name="default_theme">
+        <option value="">Visitor's OS preference (default)</option>
+        {% for t in themes %}
+          <option value="{{ t }}" {{ 'selected' if stored.get('default_theme') == t }}>{{ t|capitalize }}</option>
+        {% endfor %}
+      </select>
+      <div class="help">Used until a visitor picks a theme themselves (top-bar selector).</div>
+    </div>
+    <button class="btn primary" type="submit">Save</button>
+  </form>
+</div>
+{% endblock %}

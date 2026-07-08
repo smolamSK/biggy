@@ -217,6 +217,16 @@ def menu_visible(session, user, item):
     return False
 
 
+# Canonical names of the built-in SVG icons (templates/_icons.html). The menu
+# editor offers these; the icon() macro silently skips names it doesn't know,
+# so removing an icon can never break rendering.
+ICON_NAMES = (
+    "bell", "calendar", "chart", "check", "check-circle", "columns", "copy",
+    "download", "eye", "filter", "help", "home", "inbox", "kanban", "list",
+    "menu", "pencil", "pin", "plus", "search", "trash", "user", "zap",
+)
+
+
 def menu_tree():
     """Return the ordered top-level menu items (with children) for User mode."""
     from .db import SessionLocal

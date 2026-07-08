@@ -191,10 +191,13 @@ def _register_context(app):
             except Exception:  # noqa: BLE001
                 return False
 
+        from . import settings as app_settings
+
         return {"nav_menu": nav, "current_user": current_user,
                 "menu_url": menu_url, "designer_tables": designer_tables,
                 "menu_can_see": can_see, "can_view": can_view,
-                "unread_notifications": unread, "pending_approvals": pending_appr}
+                "unread_notifications": unread, "pending_approvals": pending_appr,
+                "branding": app_settings.branding()}
 
 
 def _register_cli(app):

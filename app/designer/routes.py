@@ -6,6 +6,7 @@ Each schema change updates the ``app_meta_*`` metadata *and* issues real DDL via
 import csv
 import io
 import json
+import re
 from urllib.parse import urlencode
 
 from flask import (
@@ -44,6 +45,7 @@ from .. import (
     sql_console,
     workflow,
 )
+from .. import settings as instance_settings
 from ..db import SessionLocal, engine_for, engine_for_table, get_engine, test_source
 from ..forms.admin_forms import (
     ConnectionForm,
@@ -176,6 +178,32 @@ def dashboard():
         forms=session.scalars(select(MetaForm)).all(),
         menus=session.scalars(select(MetaMenu)).all(),
     )
+
+
+# --------------------------------------------------------------------------- #
+# Instance settings (branding)
+# --------------------------------------------------------------------------- #
+@bp.route("/settings", methods=["GET", "POST"])
+def settings_page():
+    session = _s()
+    if request.method == "POST":
+        accent = "" if request.form.get("accent_default") \
+            else (request.form.get("accent") or "").strip()
+        if accent and not re.fullmatch(r"#[0-9a-fA-F]{6}", accent):
+            flash("Accent must be a hex color like #4f46e5.", "danger")
+            return redirect(url_for("designer.settings_page"))
+        theme = request.form.get("default_theme") or ""
+        instance_settings.save(session, {
+            "app_name": (request.form.get("app_name") or "").strip()[:40],
+            "accent": accent,
+            "default_theme": theme if theme in instance_settings.THEMES else "",
+        })
+        flash("Settings saved.", "success")
+        return redirect(url_for("designer.settings_page"))
+    return render_template(
+        "designer/settings.html", stored=instance_settings.get_all(session),
+        themes=instance_settings.THEMES,
+        default_name=current_app.config.get("APP_NAME", "Biggy"))
 
 
 # --------------------------------------------------------------------------- #

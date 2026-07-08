@@ -17,6 +17,10 @@ class Config:
 
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-insecure-change-me")
 
+    # Instance branding fallback — the Designer-mode Settings page (app_setting
+    # table) overrides this at runtime.
+    APP_NAME = os.environ.get("APP_NAME", "Biggy")
+
     # --- Database connection (configurable; default = local MariaDB) ---
     # A full DATABASE_URL takes precedence if provided.
     DATABASE_URL = os.environ.get("DATABASE_URL")
