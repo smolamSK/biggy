@@ -55,6 +55,93 @@ def _check_rules(field, value):
             raise ValueError(f"must be <= {getattr(field, 'max_value')}")
 
 
+def _sniff_type(values):
+    """Guess a field type spec from a column's non-blank sample values."""
+    def all_match(pred):
+        return all(pred(v) for v in values)
+
+    if all_match(lambda v: re.fullmatch(r"-?\d+", v)):
+        return {"data_type": "integer"}
+    if all_match(lambda v: re.fullmatch(r"-?\d+(\.\d+)?", v)):
+        return {"data_type": "decimal", "precision": 12, "scale": 2}
+    if all_match(lambda v: v.lower() in _TRUE | _FALSE):
+        return {"data_type": "boolean"}
+    if all_match(lambda v: _parse_date_only(v)):
+        return {"data_type": "date"}
+    if all_match(lambda v: _parse_datetime_ok(v)):
+        return {"data_type": "datetime"}
+    longest = max(len(v) for v in values)
+    if longest > 255:
+        return {"data_type": "text"}
+    return {"data_type": "string", "length": max(80, min(255, longest * 2))}
+
+
+def _parse_date_only(raw):
+    try:
+        date.fromisoformat(raw)
+        return True
+    except ValueError:
+        return False
+
+
+def _parse_datetime_ok(raw):
+    for fmt in _DT_FORMATS:
+        try:
+            datetime.strptime(raw, fmt)
+            return True
+        except ValueError:
+            continue
+    return False
+
+
+def infer_schema(file_text, sample_rows=200):
+    """Infer per-column field specs from a CSV: the Table-from-CSV wizard.
+
+    Returns ``(columns, samples, n_rows)`` where each column is
+    ``{header, name, label, data_type, length?, precision?, scale?}``
+    (``name`` already sanitized to a safe identifier, de-duplicated) and
+    ``samples`` is up to 5 preview rows (lists of cells in header order).
+    Columns are always created nullable — the designer can tighten later,
+    and imports never fail on a blank cell past the sniffing sample.
+    """
+    from .identifiers import sanitize_identifier
+
+    reader = csv.reader(io.StringIO(file_text))
+    try:
+        headers = next(reader)
+    except StopIteration:
+        raise ValueError("The file is empty.") from None
+    headers = [h.strip() for h in headers]
+    if not any(headers):
+        raise ValueError("The first row must contain column headers.")
+
+    cols = [[] for _ in headers]          # non-blank sample values per column
+    samples, n_rows = [], 0
+    for row in reader:
+        n_rows += 1
+        if len(samples) < 5:
+            samples.append([(row[i] if i < len(row) else "") for i in range(len(headers))])
+        if n_rows > sample_rows:
+            continue                      # keep counting rows, stop sampling
+        for i in range(len(headers)):
+            v = (row[i] if i < len(row) else "").strip()
+            if v:
+                cols[i].append(v)
+
+    seen, columns = set(), []
+    for i, header in enumerate(headers):
+        name = sanitize_identifier(header or f"col_{i + 1}", kind="Column")
+        base, n = name, 2
+        while name in seen:
+            name = f"{base}_{n}"[:60]
+            n += 1
+        seen.add(name)
+        spec = _sniff_type(cols[i]) if cols[i] else {"data_type": "string", "length": 120}
+        columns.append({"header": header, "name": name,
+                        "label": (header or name).strip()[:120] or name, **spec})
+    return columns, samples, n_rows
+
+
 def importable_fields(meta_table, allowed=None):
     """Columns that can be imported (scalar + relation FK), in display order.
 

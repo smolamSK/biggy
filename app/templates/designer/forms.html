@@ -18,7 +18,13 @@
         <td>{% if f.table_id in tmap %}{{ obj_link('designer.table_view', 'table_id', f.table_id, tmap[f.table_id].label) }}{% endif %}</td>
         <td>{% if f.purpose == 'view' %}<span class="badge">view</span>{% else %}data{% endif %}</td>
         <td>{{ f.items|length }}</td>
-        <td>{{ delete_form(url_for('designer.form_delete', form_id=f.id), confirm='Delete this form?') }}</td>
+        <td class="actions">
+          <form method="post" action="{{ url_for('designer.form_duplicate', form_id=f.id) }}" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn sm" type="submit">Duplicate</button>
+          </form>
+          {{ delete_form(url_for('designer.form_delete', form_id=f.id), confirm='Delete this form?') }}
+        </td>
       </tr>
     {% endfor %}
   </table>

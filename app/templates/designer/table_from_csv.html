@@ -1,0 +1,81 @@
+{% extends "designer/_base.html" %}
+{% block title %}Table from CSV · Biggy{% endblock %}
+{% block inner %}
+<h1>New table from CSV</h1>
+
+{% if step == 'upload' %}
+<div class="panel" style="max-width:560px">
+  <p class="help">Upload a spreadsheet export (CSV, first row = column headers, 2&nbsp;MB max).
+    Column names and types are guessed from the data — you review everything before
+    anything is created.</p>
+  <form method="post" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label>CSV file</label>
+      <input type="file" name="file" accept=".csv,text/csv" required>
+    </div>
+    <div class="field">
+      <label>Table label</label>
+      <input type="text" name="label" placeholder="e.g. Inventory" maxlength="120">
+    </div>
+    <button class="btn primary" type="submit">Continue</button>
+    <a class="btn" href="{{ url_for('designer.dashboard') }}">Cancel</a>
+  </form>
+</div>
+
+{% else %}{# step == 'review' #}
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="step" value="create">
+  <textarea name="csv_text" hidden readonly>{{ csv_text }}</textarea>
+
+  <div class="panel" style="max-width:560px">
+    <div class="pill-row">
+      <div class="field" style="flex:1"><label>Table name (identifier)</label>
+        <input type="text" name="phys_name" value="{{ phys_name }}" required></div>
+      <div class="field" style="flex:1"><label>Label</label>
+        <input type="text" name="label" value="{{ label }}" maxlength="120"></div>
+    </div>
+    <p class="help">{{ n_rows }} data row(s) found. Rows that fail validation are skipped.</p>
+  </div>
+
+  <h2>Columns</h2>
+  <div class="panel">
+    <table class="grid">
+      <tr><th>Import</th><th>CSV header</th><th>Column name</th><th>Label</th><th>Type</th></tr>
+      {% for c in columns %}
+        {% set i = loop.index0 %}
+        <tr>
+          <td class="col-check"><input type="checkbox" name="include_{{ i }}" checked></td>
+          <td><code>{{ c.header or '—' }}</code></td>
+          <td><input type="text" name="name_{{ i }}" value="{{ c.name }}" style="max-width:14rem"></td>
+          <td><input type="text" name="label_{{ i }}" value="{{ c.label }}" style="max-width:14rem"></td>
+          <td>
+            <select name="type_{{ i }}" style="max-width:10rem">
+              {% for t in type_choices %}
+                <option value="{{ t }}" {{ 'selected' if t == c.data_type }}>{{ t }}</option>
+              {% endfor %}
+            </select>
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  {% if samples %}
+  <h2>Preview</h2>
+  <div class="panel">
+    <table class="grid">
+      <tr>{% for c in columns %}<th>{{ c.header or c.name }}</th>{% endfor %}</tr>
+      {% for row in samples %}
+        <tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+
+  <button class="btn primary" type="submit">Create table &amp; import {{ n_rows }} row(s)</button>
+  <a class="btn" href="{{ url_for('designer.table_from_csv') }}">Start over</a>
+</form>
+{% endif %}
+{% endblock %}

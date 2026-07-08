@@ -13,6 +13,14 @@
       <option value="view" {{ 'selected' if mf.purpose == 'view' }}>View (read-only)</option>
     </select>
   </form>
+  <form method="post" action="{{ url_for('designer.form_add_all', form_id=mf.id) }}" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn" type="submit" title="Add every table field and relation not yet on the form">Add all missing fields</button>
+  </form>
+  <form method="post" action="{{ url_for('designer.form_duplicate', form_id=mf.id) }}" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn" type="submit">Duplicate</button>
+  </form>
   <a class="btn" href="{{ url_for('user.form_list', form_id=mf.id) }}">Open in User mode</a>
 </div>
 

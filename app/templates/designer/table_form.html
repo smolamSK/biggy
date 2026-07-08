@@ -22,5 +22,8 @@
     <button class="btn primary" type="submit">Create table</button>
     <a class="btn" href="{{ url_for('designer.dashboard') }}">Cancel</a>
   </form>
+  <p class="help" style="margin-top:.8rem">Have a spreadsheet already?
+    <a href="{{ url_for('designer.table_from_csv') }}">Create the table from a CSV</a> —
+    columns and types are inferred and the rows imported.</p>
 </div>
 {% endblock %}

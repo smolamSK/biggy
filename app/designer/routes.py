@@ -3,6 +3,8 @@
 Each schema change updates the ``app_meta_*`` metadata *and* issues real DDL via
 :mod:`app.metadata.schema_service`, so user data lives in genuine MariaDB tables.
 """
+import csv
+import io
 import json
 from urllib.parse import urlencode
 
@@ -33,6 +35,7 @@ from .. import (
     file_store,
     formula,
     helpers,
+    importer,
     pull,
     reconcile,
     reporting,
@@ -70,6 +73,7 @@ from ..identifiers import (
     RESERVED_COLUMNS,
     IdentifierError,
     junction_name,
+    sanitize_identifier,
     validate_identifier,
 )
 from ..metadata import schema_service
@@ -611,6 +615,207 @@ def table_delete(table_id):
     return redirect(url_for("designer.dashboard"))
 
 
+@bp.route("/tables/<int:table_id>/duplicate", methods=["POST"])
+def table_duplicate(table_id):
+    """Copy a table's structure — scalar fields, uniques, flags. No relations, no data."""
+    session = _s()
+    src = session.get(MetaTable, table_id)
+    if not src:
+        flash("Table not found.", "danger")
+        return redirect(url_for("designer.dashboard"))
+    if _external_readonly(src):
+        return redirect(url_for("designer.table_view", table_id=table_id))
+    try:
+        phys = validate_identifier(request.form.get("phys_name"), kind="Table")
+    except IdentifierError as exc:
+        flash(str(exc), "danger")
+        return redirect(url_for("designer.table_view", table_id=table_id))
+    engine = engine_for_table(src)
+    if session.scalar(select(MetaTable).where(MetaTable.phys_name == phys)) \
+            or schema_service.table_exists(engine, phys):
+        flash(f"A table named '{phys}' already exists.", "danger")
+        return redirect(url_for("designer.table_view", table_id=table_id))
+
+    mt = MetaTable(phys_name=phys, label=(request.form.get("label") or "").strip()
+                   or f"{src.label} (copy)",
+                   description=src.description, source_id=src.source_id, pk_col=src.pk_col,
+                   track_audit=src.track_audit, soft_delete=src.soft_delete,
+                   row_owned=src.row_owned)
+    session.add(mt)
+    session.flush()
+
+    id_map, columns, pk_field, skipped = {}, [], None, 0
+    for f in sorted(src.fields, key=lambda x: (x.position, x.id)):
+        if f.data_type == RELATION_TYPE:
+            skipped += 1
+            continue
+        nf = MetaField(
+            table_id=mt.id, phys_name=f.phys_name, label=f.label, data_type=f.data_type,
+            length=f.length, precision=f.precision, scale=f.scale, nullable=f.nullable,
+            default_value=f.default_value, is_unique=f.is_unique, position=f.position,
+            enum_options=f.enum_options, min_length=f.min_length, max_length=f.max_length,
+            min_value=f.min_value, max_value=f.max_value, pattern=f.pattern,
+            formula=f.formula, result_type=f.result_type)
+        session.add(nf)
+        session.flush()
+        id_map[f.id] = nf.id
+        if src.pk_col != "id" and f.phys_name == src.pk_col:
+            pk_field = nf
+        else:
+            columns.append(nf)
+        if src.display_field_id == f.id:
+            mt.display_field_id = nf.id
+    try:
+        schema_service.create_physical_table(engine, phys, columns, pk=pk_field)
+    except Exception as exc:  # noqa: BLE001 - surface DDL errors to the designer
+        session.rollback()
+        flash(f"Could not create table: {exc}", "danger")
+        return redirect(url_for("designer.table_view", table_id=table_id))
+    # composite uniques whose columns all made it into the copy
+    for u in session.scalars(select(CompositeUnique).where(CompositeUnique.table_id == src.id)):
+        old_ids = json.loads(u.field_ids or "[]")
+        if not old_ids or not all(i in id_map for i in old_ids):
+            continue
+        by_id = {f.id: f for f in src.fields}
+        cols = [by_id[i].phys_name for i in old_ids]
+        name = ("uq_" + phys + "_" + "_".join(cols))[:64]
+        try:
+            schema_service.add_composite_unique(engine, phys, name, cols)
+        except Exception as exc:  # noqa: BLE001
+            flash(f"Constraint '{name}' was not copied: {exc}", "warning")
+            continue
+        session.add(CompositeUnique(table_id=mt.id, name=name,
+                                    field_ids=json.dumps([id_map[i] for i in old_ids])))
+    session.commit()
+    msg = f"Table duplicated as '{phys}' (structure only — no data"
+    msg += ", relations not copied)." if skipped else ")."
+    flash(msg, "success")
+    return redirect(url_for("designer.table_view", table_id=mt.id))
+
+
+# --------------------------------------------------------------------------- #
+# Table from CSV — bootstrap a table (+ data) from a spreadsheet export
+# --------------------------------------------------------------------------- #
+CSV_TYPE_CHOICES = ("string", "text", "integer", "bigint", "decimal", "float",
+                    "boolean", "date", "datetime", "email", "url", "phone")
+_CSV_MAX_BYTES = 2 * 1024 * 1024
+
+
+def _csv_upload_text():
+    """The posted CSV, from the file field or the hidden carry-over textarea."""
+    f = request.files.get("file")
+    if f and f.filename:
+        data = f.read(_CSV_MAX_BYTES + 1)
+        if len(data) > _CSV_MAX_BYTES:
+            raise ValueError("File too large (2 MB max).")
+        return data.decode("utf-8-sig", errors="replace")
+    text_ = request.form.get("csv_text") or ""
+    if len(text_.encode()) > _CSV_MAX_BYTES + 4:
+        raise ValueError("File too large (2 MB max).")
+    return text_
+
+
+@bp.route("/tables/from-csv", methods=["GET", "POST"])
+def table_from_csv():
+    """Two-step wizard: upload → review inferred columns → create table + import."""
+    session = _s()
+    step = request.form.get("step")
+    if request.method != "POST":
+        return render_template("designer/table_from_csv.html", step="upload")
+
+    try:
+        file_text = _csv_upload_text()
+        if not file_text.strip():
+            raise ValueError("Choose a CSV file to upload.")
+        columns, samples, n_rows = importer.infer_schema(file_text)
+    except ValueError as exc:
+        flash(str(exc), "danger")
+        return render_template("designer/table_from_csv.html", step="upload")
+
+    label = (request.form.get("label") or "").strip()
+    if step != "create":
+        phys_guess = sanitize_identifier(label or "table1", kind="Table", fallback="table1")
+        return render_template(
+            "designer/table_from_csv.html", step="review", columns=columns,
+            samples=samples, n_rows=n_rows, csv_text=file_text,
+            label=label or "Imported data", phys_name=phys_guess,
+            type_choices=CSV_TYPE_CHOICES)
+
+    # ---- create: designer-reviewed names/labels/types come back as parallel lists
+    def review_ctx(err):
+        flash(err, "danger")
+        return render_template(
+            "designer/table_from_csv.html", step="review", columns=columns,
+            samples=samples, n_rows=n_rows, csv_text=file_text,
+            label=label or "Imported data",
+            phys_name=request.form.get("phys_name", ""), type_choices=CSV_TYPE_CHOICES)
+
+    try:
+        phys = validate_identifier(request.form.get("phys_name"), kind="Table")
+    except IdentifierError as exc:
+        return review_ctx(str(exc))
+    engine = get_engine()
+    if session.scalar(select(MetaTable).where(MetaTable.phys_name == phys)) \
+            or schema_service.table_exists(engine, phys):
+        return review_ctx(f"A table named '{phys}' already exists.")
+
+    seen, fields, header_to_col = set(), [], {}
+    for i, col in enumerate(columns):
+        if not request.form.get(f"include_{i}"):
+            continue
+        try:
+            cname = validate_identifier(request.form.get(f"name_{i}"), kind="Column")
+        except IdentifierError as exc:
+            return review_ctx(f"Column {i + 1}: {exc}")
+        if cname in RESERVED_COLUMNS or cname in seen:
+            return review_ctx(f"Column '{cname}' is reserved or duplicated.")
+        seen.add(cname)
+        dtype = request.form.get(f"type_{i}") or col["data_type"]
+        if dtype not in CSV_TYPE_CHOICES:
+            dtype = "string"
+        fields.append(MetaField(
+            phys_name=cname, label=(request.form.get(f"label_{i}") or "").strip() or cname,
+            data_type=dtype, length=col.get("length") if dtype == "string" else None,
+            precision=12 if dtype == "decimal" else None,
+            scale=2 if dtype == "decimal" else None,
+            nullable=True, position=len(fields)))
+        header_to_col[col["header"]] = cname
+    if not fields:
+        return review_ctx("Keep at least one column.")
+
+    mt = MetaTable(phys_name=phys, label=label or "Imported data")
+    session.add(mt)
+    session.flush()
+    for f in fields:
+        f.table_id = mt.id
+        session.add(f)
+    session.flush()
+    if mt.display_field_id is None:
+        first_text = next((f for f in fields if f.data_type in ("string", "text")), None)
+        if first_text:
+            mt.display_field_id = first_text.id
+    try:
+        schema_service.create_physical_table(engine, phys, fields)
+    except Exception as exc:  # noqa: BLE001 - surface DDL errors to the designer
+        session.rollback()
+        return review_ctx(f"Could not create table: {exc}")
+    session.commit()
+
+    # import the rows: rewrite the header line to the chosen column names, then
+    # hand off to the shared importer (headers it doesn't know are ignored)
+    body = io.StringIO(file_text)
+    original_headers = next(csv.reader(body))
+    out = io.StringIO()
+    csv.writer(out).writerow(
+        [header_to_col.get(h.strip(), f"skipped_{i}") for i, h in enumerate(original_headers)])
+    result = importer.import_rows(session, engine, mt, out.getvalue() + body.read(),
+                                  skip_invalid=True)
+    flash(f"Table '{phys}' created; {result['imported']} of {n_rows} rows imported"
+          + (f" ({len(result['errors'])} skipped)." if result["errors"] else "."),
+          "success" if result["imported"] or not n_rows else "warning")
+    return redirect(url_for("designer.table_view", table_id=mt.id))
+
+
 # --------------------------------------------------------------------------- #
 # Relations
 # --------------------------------------------------------------------------- #
@@ -1000,6 +1205,110 @@ def form_purpose(form_id):
         session.commit()
         flash("Form purpose updated.", "success")
     return redirect(url_for("designer.form_edit", form_id=form_id))
+
+
+# --------------------------------------------------------------------------- #
+# Form scaffolding: generate from table / add-all / duplicate
+# --------------------------------------------------------------------------- #
+def _generate_form_items(session, mf):
+    """Add an item for every table field and m:n relation not yet on the form.
+
+    Fields keep their table order; returns the number of items added.
+    """
+    used_fields = {i.field_id for i in mf.items if i.kind == "field"}
+    used_rels = {i.relation_id for i in mf.items if i.kind == "relation"}
+    pos, added = len(mf.items), 0
+    for f in mf.table.fields:
+        if f.id in used_fields:
+            continue
+        session.add(MetaFormField(form_id=mf.id, kind="field", field_id=f.id, position=pos))
+        pos, added = pos + 1, added + 1
+    for r in _mn_relations_for(session, mf.table_id):
+        if r.id in used_rels:
+            continue
+        session.add(MetaFormField(form_id=mf.id, kind="relation", relation_id=r.id, position=pos))
+        pos, added = pos + 1, added + 1
+    return added
+
+
+def _unique_form_name(session, base):
+    name, n = base, 2
+    while session.scalar(select(MetaForm).where(MetaForm.name == name)):
+        name, n = f"{base}_{n}", n + 1
+    return name
+
+
+@bp.route("/tables/<int:table_id>/generate-form", methods=["POST"])
+def generate_form(table_id):
+    """One-click scaffolding: a data form with every field and m:n relation,
+    optionally a read-only view form and a User-mode menu entry too."""
+    session = _s()
+    mt = session.get(MetaTable, table_id)
+    if not mt:
+        flash("Table not found.", "danger")
+        return redirect(url_for("designer.dashboard"))
+    mf = MetaForm(name=_unique_form_name(session, f"{mt.phys_name}_form"),
+                  title=mt.label, table_id=mt.id)
+    session.add(mf)
+    session.flush()
+    n = _generate_form_items(session, mf)
+    made = [f"a form with {n} item(s)"]
+    if request.form.get("with_view"):
+        vf = MetaForm(name=_unique_form_name(session, f"{mt.phys_name}_view"),
+                      title=mt.label, table_id=mt.id, purpose="view")
+        session.add(vf)
+        session.flush()
+        _generate_form_items(session, vf)
+        made.append("a view form")
+    if request.form.get("with_menu"):
+        pos = session.scalar(select(func.max(MetaMenu.position))
+                             .where(MetaMenu.parent_id.is_(None))) or 0
+        session.add(MetaMenu(label=mt.label, kind="form", target_form_id=mf.id,
+                             position=pos + 1))
+        made.append("a menu entry")
+    session.commit()
+    flash("Generated " + ", ".join(made) + ".", "success")
+    return redirect(url_for("designer.form_edit", form_id=mf.id))
+
+
+@bp.route("/forms/<int:form_id>/add-all", methods=["POST"])
+def form_add_all(form_id):
+    session = _s()
+    mf = session.get(MetaForm, form_id)
+    if not mf:
+        flash("Form not found.", "danger")
+        return redirect(url_for("designer.forms"))
+    n = _generate_form_items(session, mf)
+    session.commit()
+    if n:
+        flash(f"Added {n} missing item(s).", "success")
+    else:
+        flash("Nothing to add — every field is already on the form.", "info")
+    return redirect(url_for("designer.form_edit", form_id=form_id))
+
+
+@bp.route("/forms/<int:form_id>/duplicate", methods=["POST"])
+def form_duplicate(form_id):
+    session = _s()
+    src = session.get(MetaForm, form_id)
+    if not src:
+        flash("Form not found.", "danger")
+        return redirect(url_for("designer.forms"))
+    mf = MetaForm(name=_unique_form_name(session, f"{src.name}_copy"),
+                  title=f"{src.title} (copy)", table_id=src.table_id,
+                  description=src.description, purpose=src.purpose,
+                  in_catalog=src.in_catalog, catalog_group=src.catalog_group)
+    session.add(mf)
+    session.flush()
+    for it in sorted(src.items, key=lambda i: (i.position, i.id)):
+        session.add(MetaFormField(
+            form_id=mf.id, kind=it.kind, field_id=it.field_id, relation_id=it.relation_id,
+            parent_field_id=it.parent_field_id, filter_field_id=it.filter_field_id,
+            label_override=it.label_override, widget=it.widget, required=it.required,
+            readonly=it.readonly, help_text=it.help_text, position=it.position))
+    session.commit()
+    flash(f"Form duplicated as '{mf.title}'.", "success")
+    return redirect(url_for("designer.form_edit", form_id=mf.id))
 
 
 # --------------------------------------------------------------------------- #

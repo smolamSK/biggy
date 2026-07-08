@@ -35,6 +35,33 @@
   <p class="help">Enabling these adds managed columns to the table; existing rows keep NULL audit values.</p>
 </div>
 
+<h2>Scaffolding</h2>
+<div class="panel" style="max-width:620px">
+  <form method="post" action="{{ url_for('designer.generate_form', table_id=table.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="pill-row" style="align-items:center">
+      <button class="btn primary" type="submit">Generate form</button>
+      <label class="checkline"><input type="checkbox" name="with_view" checked> + view form</label>
+      <label class="checkline"><input type="checkbox" name="with_menu" checked> + menu entry</label>
+    </div>
+    <p class="help">Creates a data-entry form with every field and many-to-many relation
+      already placed — one click instead of one per field.</p>
+  </form>
+  {% if table.managed %}
+  <form method="post" action="{{ url_for('designer.table_duplicate', table_id=table.id) }}"
+        style="margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--line)">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="pill-row" style="align-items:center">
+      <button class="btn" type="submit">Duplicate table</button>
+      <input type="text" name="phys_name" placeholder="new_table_name" required
+             style="max-width:14rem" pattern="[a-z][a-z0-9_]*">
+    </div>
+    <p class="help">Copies the structure (fields, options, unique constraints) —
+      no data, relations not copied.</p>
+  </form>
+  {% endif %}
+</div>
+
 <h2>Fields</h2>
 <div class="panel">
   <table class="grid">

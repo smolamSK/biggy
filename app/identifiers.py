@@ -53,6 +53,24 @@ def validate_identifier(name, *, kind="identifier", allow_reserved=False):
     return norm
 
 
+def sanitize_identifier(raw, *, kind="identifier", fallback="col"):
+    """Derive a valid identifier from arbitrary text (e.g. a CSV header).
+
+    Lower-cases, maps runs of non-alphanumerics to ``_``, prefixes a letter when
+    needed, trims to :data:`MAX_LEN`, dodges reserved names/prefixes, then runs
+    :func:`validate_identifier` so the result is guaranteed safe.
+    """
+    norm = re.sub(r"[^a-z0-9]+", "_", normalize(raw)).strip("_")
+    if not norm:
+        norm = fallback
+    if not norm[0].isalpha():
+        norm = f"c_{norm}"
+    norm = norm[:MAX_LEN]
+    if norm in RESERVED_COLUMNS or norm.startswith(RESERVED_PREFIXES):
+        norm = f"x_{norm}"[:MAX_LEN]
+    return validate_identifier(norm, kind=kind)
+
+
 def junction_name(table_a, table_b):
     """Deterministic junction-table name for a many-to-many relation."""
     a, b = sorted([table_a, table_b])
