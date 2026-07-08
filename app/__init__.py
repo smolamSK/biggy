@@ -95,6 +95,27 @@ def create_app(config_object=Config):
     # the same color.
     from .helpers import CHIP_HUES
 
+    # app_user id -> username, cached per request (used by 'user' fields)
+    @app.template_filter("user_name")
+    def _user_name(value):
+        if value in (None, ""):
+            return "—"
+        from flask import g
+
+        from .db import SessionLocal
+        from .metadata.models import AppUser
+        cache = getattr(g, "_user_names", None)
+        if cache is None:
+            try:
+                cache = {u.id: u.username for u in SessionLocal().query(AppUser)}
+            except Exception:  # noqa: BLE001 - never break rendering
+                cache = {}
+            g._user_names = cache
+        try:
+            return cache.get(int(value), f"#{value}")
+        except (TypeError, ValueError):
+            return str(value)
+
     @app.template_filter("chip_hue")
     def _chip_hue(value, colors=None):
         if value is None or value == "":

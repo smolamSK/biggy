@@ -27,6 +27,7 @@ _TYPE_MAP = {
     "url": {"type": "string", "format": "uri"}, "phone": {"type": "string"},
     "json": {"type": "object"},
     "tags": {"type": "array", "items": {"type": "string"}},
+    "user": {"type": "integer", "description": "App user id (assignee)"},
     "autonumber": {"type": "string"},
 }
 _GENERATED = {"formula", "autonumber"}

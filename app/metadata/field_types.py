@@ -22,6 +22,7 @@ SCALAR_TYPES = {
     "time": {"label": "Time"},
     "enum": {"label": "Choice list (enum)", "needs_options": True},
     "tags": {"label": "Tags (multi-select)", "needs_options": True},
+    "user": {"label": "User (assignee — app account)"},
     "email": {"label": "Email", "needs_length": True, "default_length": 255},
     "url": {"label": "URL / link", "needs_length": True, "default_length": 255},
     "phone": {"label": "Phone", "needs_length": True, "default_length": 40},

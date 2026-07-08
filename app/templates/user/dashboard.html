@@ -33,6 +33,22 @@
 </div>
 {% endif %}
 
+{% if my_work %}
+<h2>My work</h2>
+<div class="panel" style="max-width:680px">
+  <table class="grid">
+    {% for w in my_work %}
+      <tr>
+        <td class="display">{{ record_link(w.table.id, w.pk, w.label) }}</td>
+        <td class="muted">{{ w.table.label }}</td>
+        <td>{% if w.status %}<span class="chip c-{{ w.status|chip_hue(w.colors) }}">{{ w.status }}</span>
+            {% else %}<span class="muted">—</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
 {% if recent %}
 <h2>Recently updated by you</h2>
 <div class="panel" style="max-width:680px">

@@ -51,6 +51,8 @@ def sa_type_for_field(field):
         return Text()
     if dt == "integer":
         return Integer()
+    if dt == "user":                 # references an app_user id (assignee etc.)
+        return Integer()
     if dt == "bigint":
         return BigInteger()
     if dt == "decimal":

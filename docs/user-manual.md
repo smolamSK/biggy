@@ -167,6 +167,12 @@ once it has content), it lists request cards —
 team works on. Track everything you've submitted under **My requests** (type, status
 chip, created date, link to the record).
 
+## Assignments — My work
+
+Tables with a **User** (assignee) field get an **Assign to me** button on the
+record page, a **Me** choice in the list filter for that column, and a **My
+work** panel on your home page listing everything currently assigned to you.
+
 ## Conversation (comments on a record)
 
 Every record page has a **Conversation** panel. Use **Reply to customer** for

@@ -73,7 +73,7 @@ def _apply_generated(session, meta_table, values, user_id):
         if f.data_type == "autonumber":
             values[f.phys_name] = _next_autonumber(session, f)
         elif (f.default_value or "").strip().lower() in _DEFAULT_TOKENS:
-            v = _eval_default_token(session, f.default_value, user_id)
+            v = _eval_default_token(session, f, user_id)
             if v is not None:
                 values[f.phys_name] = v
 
@@ -91,14 +91,16 @@ def _next_autonumber(session, field):
     return f"{field.default_value or ''}{n:04d}"
 
 
-def _eval_default_token(session, default_value, user_id):
+def _eval_default_token(session, field, user_id):
     from .metadata.models import AppUser
-    tok = (default_value or "").strip().lower()
+    tok = (field.default_value or "").strip().lower()
     if tok == "now":
         return _now()
     if tok == "today":
         return date.today()
     if tok in ("current_user", "me"):
+        if field.data_type == "user":     # user fields store the account id
+            return user_id
         u = session.get(AppUser, user_id) if user_id else None
         return u.username if u else None
     return None

@@ -33,7 +33,7 @@ from wtforms.validators import (
 
 from .. import data_service
 from ..metadata.field_types import FILE_TYPES, RELATION_TYPE
-from ..metadata.models import MetaField, MetaRelation, MetaTable
+from ..metadata.models import AppUser, MetaField, MetaRelation, MetaTable
 
 
 def _valid_json(form, field):
@@ -239,6 +239,23 @@ def build_form(meta_form, session, engine, user=None):
                                       help_text=it.help_text or "", readonly=locked,
                                       column=mf.phys_name, meta=mf))
                 attrs[mf.phys_name] = field
+            elif mf.data_type == "user":
+                # references an app account (assignee); needs the session for choices
+                choices = [(str(u.id), u.username) for u in session.scalars(
+                    select(AppUser).where(AppUser.is_active_flag.is_(True))
+                    .order_by(AppUser.username))]
+                if not required:
+                    choices = [(_NONE, "— none —")] + choices
+                rk = {"data-picker": "1"}
+                if locked:
+                    rk["disabled"] = True
+                attrs[mf.phys_name] = SelectField(
+                    label, choices=choices, coerce=_fk_coerce,
+                    validators=[InputRequired()] if required else [Optional()],
+                    render_kw=rk)
+                items.append(FormItem(name=mf.phys_name, label=label, kind="field",
+                                      help_text=it.help_text or "", readonly=locked,
+                                      column=mf.phys_name, meta=mf))
             else:
                 attrs[mf.phys_name] = _scalar_field(mf, label, required,
                                                     render_kw={"readonly": True} if locked else None)

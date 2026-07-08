@@ -14,6 +14,8 @@ import re
 from datetime import date, datetime, time
 from decimal import Decimal, InvalidOperation
 
+from sqlalchemy import select
+
 from . import data_service
 from .forms.builder import display_field_name
 from .metadata.field_types import FILE_TYPES, RELATION_TYPE
@@ -159,6 +161,23 @@ def template_csv(meta_table):
     return buf.getvalue()
 
 
+class _UserResolver:
+    """Resolve a cell to an app_user id, by id or exact username."""
+
+    def __init__(self, session):
+        from .metadata.models import AppUser
+        users = session.scalars(select(AppUser)).all()
+        self.ids = {u.id for u in users}
+        self.by_name = {u.username: u.id for u in users}
+
+    def resolve(self, raw):
+        if raw.lstrip("-").isdigit() and int(raw) in self.ids:
+            return int(raw)
+        if raw in self.by_name:
+            return self.by_name[raw]
+        raise ValueError(f"no user matching '{raw}'")
+
+
 class _RelationResolver:
     """Resolve a cell to a FK id by existing id or unique display value."""
 
@@ -200,6 +219,10 @@ def coerce_value(field, raw, resolver=None):
             v = int(raw)
             _check_rules(field, v)
             return v
+        if dt == "user":
+            if resolver is not None:
+                return resolver.resolve(raw)      # id or unique username
+            return int(raw)
         if dt == "decimal":
             v = Decimal(raw)
             _check_rules(field, v)
@@ -292,6 +315,9 @@ def import_rows(session, engine, meta_table, file_text, skip_invalid,
         f.phys_name: _RelationResolver(session, engine, f)
         for f in fields if f.data_type == RELATION_TYPE
     }
+    if any(f.data_type == "user" for f in fields):
+        ur = _UserResolver(session)
+        resolvers.update({f.phys_name: ur for f in fields if f.data_type == "user"})
 
     inserts, updates, errors, total = [], [], [], 0
     for line_no, row in enumerate(reader, start=2):  # header occupies line 1

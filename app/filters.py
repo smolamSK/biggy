@@ -4,7 +4,7 @@ The operator registry is the single source of truth: it is consumed by
 :func:`build_clause` (to build SQLAlchemy WHERE clauses) and serialised to the
 browser so the add-condition builder can render type-appropriate controls.
 """
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, select
 
 from .metadata.field_types import RELATION_TYPE
 
@@ -66,6 +66,7 @@ OPS_BY_KIND = {
     "enum": _ENUM,
     "boolean": _BOOL,
     "relation": _RELATION,
+    "user": _RELATION,     # is / is not / empty — with user choices (incl. "me")
 }
 
 _KIND_BY_TYPE = {
@@ -77,6 +78,7 @@ _KIND_BY_TYPE = {
     "date": "date", "datetime": "date", "time": "date",
     "enum": "enum",
     "boolean": "boolean",
+    "user": "user",
 }
 
 
@@ -122,6 +124,10 @@ def build_meta(session, engine, columns):
             choices = [[i, lbl] for i, lbl in opts]
         elif it.meta.data_type == "enum":
             choices = [[o, o] for o in json.loads(it.meta.enum_options or "[]")]
+        elif it.meta.data_type == "user":
+            from .metadata.models import AppUser
+            choices = [["me", "Me"]] + [[u.id, u.username] for u in session.scalars(
+                select(AppUser).order_by(AppUser.username))]
         filter_meta[it.column] = {
             "label": it.label, "kind": kind, "data_type": it.meta.data_type,
             "ops": OPS_BY_KIND[kind], "choices": choices,

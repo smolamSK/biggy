@@ -163,6 +163,34 @@ def _recent_records(session, user_id, limit=8):
     return out
 
 
+def _my_work(session, user_id, is_designer, limit=12):
+    """Open items assigned to the caller: rows whose (first) user field == me."""
+    out = []
+    for t in session.scalars(select(MetaTable)):
+        uf = next((f for f in t.fields if f.data_type == "user"), None)
+        if uf is None or not helpers.table_readable(session, current_user, t):
+            continue
+        try:
+            rows, _total = record_service.list_records(
+                engine_for_table(t), t, user_id=user_id, is_designer=is_designer,
+                filters=[{"col": uf.phys_name, "op": "eq", "value": user_id}],
+                sort="updated_at" if t.track_audit else None, order="desc",
+                per_page=limit)
+        except Exception:  # noqa: BLE001 - a broken source must not break home
+            continue
+        disp = display_field_name(session, t)
+        status_f = next((f for f in t.fields if f.data_type == "enum"), None)
+        colors = json.loads(status_f.enum_colors) \
+            if status_f is not None and status_f.enum_colors else None
+        for r in rows:
+            out.append({"table": t, "pk": r[t.pk_col],
+                        "label": str(r.get(disp)) if r.get(disp) not in (None, "")
+                        else f"#{r[t.pk_col]}",
+                        "status": r.get(status_f.phys_name) if status_f else None,
+                        "colors": colors})
+    return out[:limit]
+
+
 @bp.route("/")
 def dashboard():
     session = _s()
@@ -191,6 +219,7 @@ def dashboard():
         if dashboards.visible(session, current_user, d)]
     return render_template("user/dashboard.html", has_forms=has_forms, tiles=tiles,
                            personal=personal, shared=shared,
+                           my_work=_my_work(session, user_id, is_designer),
                            recent=_recent_records(session, user_id))
 
 
@@ -542,8 +571,10 @@ def _list_query(mf, session, engine):
             continue
         # idx = position in the raw fcol/fop/fval lists (for chip remove-URLs)
         conditions.append({"col": col, "op": op, "val": val, "idx": i})
+        # "me" token on user fields resolves per viewer — saved views stay portable
+        fval = current_user_id() if meta["kind"] == "user" and val == "me" else val
         if op in filt.NO_VALUE_OPS or val != "":
-            filters.append({"col": col, "op": op, "value": val,
+            filters.append({"col": col, "op": op, "value": fval,
                             "is_text": meta["kind"] == "text"})
 
     return ListQuery(built, columns, filter_meta, filter_order, label_maps,
@@ -1392,7 +1423,11 @@ def record_view(table_id, pk):
                    for r in approval_reqs}
     lf = _first_readable_form(session, table_id)
     list_url = url_for("user.form_list", form_id=lf.id) if lf else None
+    assign_field = next((f for f in table.fields if f.data_type == "user"), None)
+    can_assign = bool(assign_field is not None and edit_url
+                      and row.get(assign_field.phys_name) != user_id)
     return render_template("user/view.html", table=table, pk=pk, label=label, items=items,
+                           can_assign=can_assign,
                            list_url=list_url,
                            edit_url=edit_url, deleted=bool(row.get("deleted_at")),
                            send_form_id=send_form_id, related=related, history=history,
@@ -1400,6 +1435,31 @@ def record_view(table_id, pk):
                            can_approve=can_approve,
                            thread=comments.list_for(session, table.phys_name, pk,
                                                     include_internal=True))
+
+
+@bp.route("/assign/<int:table_id>/<pk>", methods=["POST"])
+def assign_to_me(table_id, pk):
+    """One-click: set the table's (first) user field to the caller."""
+    session = _s()
+    table = session.get(MetaTable, table_id)
+    if not table:
+        abort(404)
+    uf = next((f for f in table.fields if f.data_type == "user"), None)
+    if uf is None:
+        abort(404)
+    writable = any(can_write(form_access(session, current_user, f.id))
+                   for f in session.scalars(select(MetaForm).where(
+                       MetaForm.table_id == table_id, MetaForm.purpose != "view")))
+    if not writable:
+        abort(403)
+    user_id, is_designer = _ctx()
+    engine = engine_for_table(table)
+    if not record_service.get_record(engine, table, pk, user_id=user_id,
+                                     is_designer=is_designer):
+        abort(404)
+    record_service.update(session, engine, table, pk, {uf.phys_name: user_id}, user_id)
+    flash("Assigned to you.", "success")
+    return redirect(_safe_next(url_for("user.record_view", table_id=table_id, pk=pk)))
 
 
 @bp.route("/comments/<int:table_id>/<pk>", methods=["POST"])

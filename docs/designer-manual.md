@@ -47,6 +47,11 @@ Open a table to add, edit, reorder (▲▼), or drop fields. Each field has a **
 - **Choice list (enum)** and **Tags (multi-select)** — supply the options, one per
   line. When editing an enum field you can also pick a **status color** per option
   (the chips shown in lists and record pages); “auto” derives a stable color.
+- **User** — references an app account (an *assignee*): rendered as a username
+  picker, shown as the username, filterable by **Me** (so an "assigned to me"
+  saved view works for everyone), with an **Assign to me** button on record pages
+  and a **My work** panel on the User-mode home. Default value `me` assigns the
+  creator automatically.
 - **Email**, **URL**, **Phone** — validated and rendered as clickable links.
 - **Currency**, **Percent** — numeric with formatted display.
 - **JSON** — stores/validates a JSON value.
