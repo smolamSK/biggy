@@ -127,9 +127,13 @@ page's quick-access cards.
 The third mode, next to Designer and User: a narrow surface at `/portal` for
 **external customers**.
 
-1. Create accounts with the **portal** role (*Users* page or bulk import).
-   Portal users are locked out of Designer and User mode; signing in lands them
-   on the portal.
+1. Create accounts with the **portal** role (*Users* page or bulk import —
+   `username,portal[,password[,organization]]`). Portal users are locked out of
+   Designer and User mode; signing in lands them on the portal.
+   Set the same **Organization** on colleagues' accounts and they see each
+   other's tickets (list, ticket page, comments, closing); accounts without an
+   organization stay strictly personal. Staff accounts never widen a portal
+   scope, whatever their organization says.
 2. Publish request/incident forms via the **catalog** (above). A form being in
    the catalog *is* what grants portal access to it; only tables with **audit**
    or **row ownership** work there (everything is scoped to the record creator —

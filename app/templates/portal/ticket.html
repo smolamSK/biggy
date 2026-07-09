@@ -8,7 +8,7 @@
   <h1 style="margin:0">{{ label }}</h1>
   {% if status %}<span class="chip c-{{ status|chip_hue(status_colors) }}">{{ status }}</span>{% endif %}
   <span style="flex:1"></span>
-  {% if created_at %}<span class="muted" style="font-size:var(--fs-sm)">opened {{ created_at.strftime('%Y-%m-%d %H:%M') }}</span>{% endif %}
+  {% if created_at %}<span class="muted" style="font-size:var(--fs-sm)">opened {{ created_at.strftime('%Y-%m-%d %H:%M') }}{% if opened_by %} by {{ opened_by|user_name }}{% endif %}</span>{% endif %}
 </div>
 
 {% if can_close %}

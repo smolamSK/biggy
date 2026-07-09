@@ -286,7 +286,7 @@ def users():
 @login_required
 @designer_required
 def users_bulk():
-    """Create many users at once from pasted ``username,role[,password]`` lines."""
+    """Create many users at once from ``username,role[,password[,organization]]`` lines."""
     session = SessionLocal()
     ensure_roles(session)
     valid_roles = {r.name for r in session.scalars(select(Role))}
@@ -299,13 +299,15 @@ def users_bulk():
         username = parts[0]
         role = parts[1] if len(parts) > 1 and parts[1] else ROLE_USER
         password = parts[2] if len(parts) > 2 else ""
+        organization = parts[3] if len(parts) > 3 else ""
         if not username or role not in valid_roles:
             errors += 1
             continue
         if session.scalar(select(AppUser).where(AppUser.username == username)):
             skipped += 1
             continue
-        user = AppUser(username=username, role=role, is_active_flag=True)
+        user = AppUser(username=username, role=role, is_active_flag=True,
+                       organization=organization or None)
         if password:
             user.set_password(password)
         else:                       # no password → SSO-only / awaiting an admin reset
@@ -332,13 +334,15 @@ def user_new():
             flash("Password is required for a new user.", "danger")
         else:
             user = AppUser(username=form.username.data, role=form.role.data,
-                          is_active_flag=form.is_active.data)
+                          is_active_flag=form.is_active.data,
+                          organization=(form.organization.data or "").strip() or None)
             user.set_password(form.password.data)
             session.add(user)
             session.commit()
             flash("User created.", "success")
             return redirect(url_for("auth.users"))
-    return render_template("auth/user_form.html", form=form, title="New user")
+    return render_template("auth/user_form.html", form=form, title="New user",
+                           orgs=_org_names(session))
 
 
 @bp.route("/users/<int:user_id>/edit", methods=["GET", "POST"])
@@ -357,13 +361,20 @@ def user_edit(user_id):
         user.username = form.username.data
         user.role = form.role.data
         user.is_active_flag = form.is_active.data
+        user.organization = (form.organization.data or "").strip() or None
         if form.password.data:
             user.set_password(form.password.data)
         session.commit()
         flash("User updated.", "success")
         return redirect(url_for("auth.users"))
     return render_template("auth/user_form.html", form=form, title=f"Edit {user.username}",
-                           user=user)
+                           user=user, orgs=_org_names(session))
+
+
+def _org_names(session):
+    """Distinct organization labels — the datalist on the user form."""
+    return sorted({u.organization for u in session.scalars(select(AppUser))
+                   if u.organization})
 
 
 @bp.route("/users/<int:user_id>/delete", methods=["POST"])

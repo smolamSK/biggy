@@ -46,6 +46,9 @@ class UserForm(FlaskForm):
     password = PasswordField("Password", validators=[Optional(), Length(min=6)])
     role = SelectField("Role", choices=[(r, r) for r in ROLES], validate_choice=False)
     is_active = BooleanField("Active", default=True)
+    organization = StringField("Organization (portal)",
+                               validators=[Optional(), Length(max=120)],
+                               render_kw={"list": "org-list"})
 
 
 class MfaCodeForm(FlaskForm):

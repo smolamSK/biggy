@@ -205,3 +205,58 @@ def test_portal_close_ticket(app, client):
         with get_engine().connect() as c:
             assert c.execute(text("SELECT status FROM ncase WHERE id=:i"),
                              {"i": pk2}).scalar() == "new"   # unchanged
+
+
+def test_portal_org_visibility(app, client):
+    _setup(client)
+    tid = _make_table(client, app, "oreq", "Org req", "title")
+    _ok(client.post(f"/designer/tables/{tid}/flags", data=dict(track_audit="y"),
+                    follow_redirects=True))
+    fid = _make_form(client, app, "oreq_form", "Org request", tid)
+    _make_form_p(client, app, "oreq_view", "Org req", tid, "view")
+    _ok(client.post(f"/designer/forms/{fid}/catalog", data={"in_catalog": "y"},
+                    follow_redirects=True))
+
+    def make_user(username, role, org):
+        _ok(client.post("/auth/users/new",
+                        data=dict(username=username, password="pw123456", role=role,
+                                  is_active="y", organization=org),
+                        follow_redirects=True))
+        c = app.test_client()
+        _ok(c.post("/auth/login", data=dict(username=username, password="pw123456"),
+                   follow_redirects=True))
+        return c
+
+    ann = make_user("ann", "portal", "Acme")
+    ben = make_user("ben", "portal", "Acme")
+    gil = make_user("gil", "portal", "Globex")
+
+    _ok(ann.post(f"/portal/new/{fid}", data={"title": "VPN down"},
+                 follow_redirects=True))
+    with app.app_context():
+        with get_engine().connect() as c:
+            pk = c.execute(text("SELECT id FROM oreq")).scalar()
+
+    # the Acme colleague sees, opens, and comments on the ticket
+    home = ben.get("/portal/").get_data(as_text=True)
+    assert "Acme tickets" in home and "VPN down" in home and ">ann<" in home
+    ticket = ben.get(f"/portal/ticket/{tid}/{pk}").get_data(as_text=True)
+    assert "VPN down" in ticket and "by ann" in ticket
+    _ok(ben.post(f"/portal/ticket/{tid}/{pk}/comment",
+                 data={"body": "affects our whole office"}, follow_redirects=True))
+    with app.app_context():
+        s = SessionLocal()
+        ann_id = s.scalar(select(AppUser).where(AppUser.username == "ann")).id
+        n = s.scalar(select(Notification).where(Notification.user_id == ann_id,
+                                                Notification.event == "comment"))
+        assert n is not None                      # the creator heard about it
+
+    # another organization is walled off completely
+    assert gil.get(f"/portal/ticket/{tid}/{pk}").status_code == 404
+    assert "VPN down" not in gil.get("/portal/").get_data(as_text=True)
+
+    # a *staff* account sharing the org label never widens the portal scope
+    stan = make_user("stan", "user", "Acme")
+    _ok(stan.post(f"/u/forms/{fid}/new", data={"title": "internal-only item"},
+                  follow_redirects=True))
+    assert "internal-only item" not in ben.get("/portal/").get_data(as_text=True)

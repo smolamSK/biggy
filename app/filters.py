@@ -150,6 +150,9 @@ def build_clause(column, op, value, *, is_text=False):
         return column == value
     if op == "ne":
         return column != value
+    if op == "in":
+        # internal-only (not in OPS_BY_KIND): e.g. the portal's org-wide scope
+        return column.in_(list(value or []))
     if op == "gt":
         return column > value
     if op == "gte":

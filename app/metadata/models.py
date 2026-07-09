@@ -54,6 +54,8 @@ class AppUser(Base, UserMixin):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False, default=ROLE_USER)
     is_active_flag: Mapped[bool] = mapped_column("is_active", Boolean, default=True)
+    # company/tenant label: portal users of the same organization share tickets
+    organization: Mapped[str | None] = mapped_column(String(120))
     # TOTP two-factor (see app/totp.py). Secret encrypted at rest; backup codes hashed.
     totp_secret: Mapped[str | None] = mapped_column(EncryptedText)
     mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

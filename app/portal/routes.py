@@ -29,7 +29,15 @@ from ..db import SessionLocal, engine_for_table
 from ..forms.builder import build_form, display_field_name
 from ..helpers import current_user_id
 from ..importer import coerce_value
-from ..metadata.models import Attachment, MetaField, MetaForm, MetaTable, Notification
+from ..metadata.models import (
+    ROLE_PORTAL,
+    AppUser,
+    Attachment,
+    MetaField,
+    MetaForm,
+    MetaTable,
+    Notification,
+)
 from ..user.routes import (
     _apply_workflow_choices,
     _collect,
@@ -66,13 +74,31 @@ def _get_catalog_form(session, form_id):
     return mf
 
 
+def _member_ids(session):
+    """Account ids whose tickets the caller may see.
+
+    Just the caller when they have no organization; otherwise every *portal*
+    account of the same organization (staff accounts never widen the scope).
+    """
+    me = current_user_id()
+    org = (getattr(current_user, "organization", None) or "").strip()
+    if not org:
+        return {me}
+    ids = set(session.scalars(select(AppUser.id).where(
+        AppUser.organization == org, AppUser.role == ROLE_PORTAL)).all())
+    ids.add(me)
+    return ids
+
+
 def _own_row(session, table, pk):
-    """The record, if it belongs to the caller (designers may preview any)."""
+    """The record, if the caller's account/organization owns it
+    (designers may preview any)."""
     row = record_service.get_record(engine_for_table(table), table, pk,
                                     user_id=current_user_id(), is_designer=True)
     if not row:
         abort(404)
-    if not current_user.is_designer and row.get("created_by") != current_user_id():
+    if not current_user.is_designer \
+            and row.get("created_by") not in _member_ids(session):
         abort(404)
     return row
 
@@ -113,6 +139,9 @@ def _close_allowed(session, mf, table, row):
 
 def _my_tickets(session, forms):
     uid = current_user_id()
+    members = _member_ids(session)
+    names = {u.id: u.username for u in session.scalars(
+        select(AppUser).where(AppUser.id.in_(members)))} if len(members) > 1 else {}
     items, seen = [], set()
     for f in forms:
         t = f.table
@@ -124,7 +153,7 @@ def _my_tickets(session, forms):
             if status_f is not None and status_f.enum_colors else None
         rows, _total = record_service.list_records(
             engine_for_table(t), t, user_id=uid, is_designer=True,
-            filters=[{"col": "created_by", "op": "eq", "value": uid}],
+            filters=[{"col": "created_by", "op": "in", "value": sorted(members)}],
             sort="created_at", order="desc", per_page=50)
         disp = display_field_name(session, t)
         for r in rows:
@@ -132,7 +161,8 @@ def _my_tickets(session, forms):
                           "label": str(r.get(disp)) if r.get(disp) not in (None, "")
                           else f"#{r[t.pk_col]}",
                           "status": r.get(status_f.phys_name) if status_f else None,
-                          "colors": colors, "created_at": r.get("created_at")})
+                          "colors": colors, "created_at": r.get("created_at"),
+                          "by": names.get(r.get("created_by"))})
     items.sort(key=lambda x: (x["created_at"] is None, x["created_at"]), reverse=True)
     return items
 
@@ -145,7 +175,8 @@ def home():
     for f in forms:
         groups.setdefault(f.catalog_group or "General", []).append(f)
     return render_template("portal/home.html", groups=dict(sorted(groups.items())),
-                           tickets=_my_tickets(session, forms))
+                           tickets=_my_tickets(session, forms),
+                           org=(getattr(current_user, "organization", None) or "").strip())
 
 
 @bp.route("/new/<int:form_id>", methods=["GET", "POST"])
@@ -202,7 +233,7 @@ def ticket(table_id, pk):
         status=row.get(status_f.phys_name) if status_f else None,
         status_colors=json.loads(status_f.enum_colors)
         if status_f is not None and status_f.enum_colors else None,
-        created_at=row.get("created_at"),
+        created_at=row.get("created_at"), opened_by=row.get("created_by"),
         can_close=_close_allowed(session, mf, table, row))
 
 

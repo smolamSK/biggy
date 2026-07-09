@@ -10,6 +10,12 @@
     {{ render_field(form.password) }}
     <div class="help">Leave password blank to keep it unchanged.</div>
     {{ render_field(form.role) }}
+    {{ render_field(form.organization) }}
+    <datalist id="org-list">
+      {% for o in orgs or [] %}<option value="{{ o }}">{% endfor %}
+    </datalist>
+    <div class="help">Portal accounts with the same organization see each other's
+      tickets; blank = strictly personal visibility.</div>
     {{ render_field(form.is_active) }}
     <button class="btn primary" type="submit">Save</button>
     <a class="btn" href="{{ url_for('auth.users') }}">Cancel</a>

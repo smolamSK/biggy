@@ -19,21 +19,23 @@
   <div class="panel"><p class="muted">No request types are available yet.</p></div>
 {% endfor %}
 
-<h2 style="margin-top:1.4rem">My tickets</h2>
+<h2 style="margin-top:1.4rem">{{ (org + ' tickets') if org else 'My tickets' }}</h2>
 <div class="panel">
   {% if tickets %}
   <table class="grid">
-    <tr><th>Ticket</th><th>Type</th><th>Status</th><th class="num">Created</th></tr>
+    <tr><th>Ticket</th><th>Type</th>{% if org %}<th>By</th>{% endif %}<th>Status</th><th class="num">Created</th></tr>
     {% for t in tickets %}
       <tr>
         <td class="display"><a href="{{ url_for('portal.ticket', table_id=t.table.id, pk=t.pk) }}">{{ t.label }}</a></td>
         <td class="muted">{{ t.table.label }}</td>
+        {% if org %}<td class="muted">{{ t.by or '' }}</td>{% endif %}
         <td>{% if t.status %}<span class="chip c-{{ t.status|chip_hue(t.colors) }}">{{ t.status }}</span>
             {% else %}<span class="muted">—</span>{% endif %}</td>
         <td class="muted num">{{ t.created_at.strftime('%Y-%m-%d %H:%M') if t.created_at else '' }}</td>
       </tr>
     {% endfor %}
   </table>
-  {% else %}<p class="muted">You haven't submitted anything yet.</p>{% endif %}
+  {% else %}<p class="muted">{{ 'Nobody at ' + org + ' has submitted anything yet.' if org
+                               else "You haven't submitted anything yet." }}</p>{% endif %}
 </div>
 {% endblock %}
