@@ -1,0 +1,80 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import record_link with context %}
+{% block title %}Maintenance · {{ branding.app_name }}{% endblock %}
+{% block inner %}
+<h1>Maintenance windows</h1>
+<p class="help" style="max-width:640px">While a window is <strong>active</strong> for a table
+  (or all tables), SLA breaches and escalations are <strong>held</strong> and trigger/watch
+  notifications suppressed — trigger data actions (set&nbsp;field, create&nbsp;record) still
+  run, and conversations are never muted. Link a window to the change record that motivates
+  it and it shows on that record's page.</p>
+
+<div class="panel">
+  {% if rows %}
+  <table class="grid">
+    <tr><th>Window</th><th>Scope</th><th>From</th><th>To</th><th>Status</th><th>Change record</th><th></th></tr>
+    {% for r in rows %}
+      <tr>
+        <td class="display">{{ r.w.name }}</td>
+        <td class="muted">{{ r.table.label if r.table else 'all tables' }}</td>
+        <td class="muted num">{{ r.w.starts_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td class="muted num">{{ r.w.ends_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>{% set hue = 'amber' if r.status == 'active' else ('blue' if r.status == 'upcoming' else 'gray') %}
+          <span class="chip c-{{ hue }}">{{ r.status }}</span></td>
+        <td>{% if r.record_table and r.w.record_pk %}
+            {{ record_link(r.record_table.id, r.w.record_pk, r.record_table.label ~ ' #' ~ r.w.record_pk) }}
+          {% else %}<span class="muted">—</span>{% endif %}</td>
+        <td class="actions">
+          <form method="post" action="{{ url_for('designer.maintenance_delete', wid=r.w.id) }}"
+                class="inline" onsubmit="return confirm('Remove this window?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn danger sm" type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">No maintenance windows scheduled.</p>{% endif %}
+</div>
+
+<h2>Schedule a window</h2>
+<div class="panel" style="max-width:620px">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label>Name</label>
+      <input type="text" name="name" required maxlength="120"
+             placeholder="e.g. Core router upgrade">
+    </div>
+    <div class="pill-row">
+      <div class="field" style="flex:1"><label>Starts</label>
+        <input type="datetime-local" name="starts_at" required></div>
+      <div class="field" style="flex:1"><label>Ends</label>
+        <input type="datetime-local" name="ends_at" required></div>
+    </div>
+    <div class="field">
+      <label>Scope</label>
+      <select name="table_id">
+        <option value="">All tables</option>
+        {% for t in tables %}<option value="{{ t.id }}">{{ t.label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="pill-row">
+      <div class="field" style="flex:2">
+        <label>Linked change record — table (optional)</label>
+        <select name="record_table_id">
+          <option value="">— none —</option>
+          {% for t in tables %}
+            <option value="{{ t.id }}" {{ 'selected' if prefill.record_table_id == t.id|string }}>{{ t.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field" style="flex:1">
+        <label>Record id</label>
+        <input type="text" name="record_pk" value="{{ prefill.record_pk }}" maxlength="255">
+      </div>
+    </div>
+    <button class="btn primary" type="submit">Schedule</button>
+  </form>
+</div>
+{% endblock %}

@@ -128,6 +128,17 @@ links to a **form** or a **list view** of a table. Order them, nest them under
 groups, and pick an optional **icon** — it shows in the sidebar and on the home
 page's quick-access cards.
 
+## Maintenance windows
+
+*Admin → Maintenance*: schedule planned-work periods, scoped to one table or all.
+While a window is **active**, SLA breaches and escalations are **held** (they fire
+after the window ends if still overdue) and trigger/watch notifications are
+suppressed — trigger *data* actions (set field, create record) still run, and
+record conversations are never muted. Lists and record pages show a banner while
+a window is active. Optionally **link a window to the change record** that
+motivates it (or use *Plan maintenance* on the record itself) — the window then
+appears on that record's page.
+
 ## Customer portal
 
 The third mode, next to Designer and User: a narrow surface at `/portal` for

@@ -33,6 +33,7 @@ from .. import (
     helpers,
     importer,
     list_export,
+    maintenance,
     record_service,
     reporting,
     sla,
@@ -660,6 +661,7 @@ def form_list(form_id):
     sla_map = sla.clocks_for_rows(
         session, mf.table_id, mf.table.phys_name,
         [r[mf.table.pk_col] for r in rows]) if show_sla else {}
+    maint = maintenance.is_active(session, mf.table)
 
     all_args = request.args.to_dict(flat=False)
     pages = max(1, (total + lq.per_page - 1) // lq.per_page)
@@ -673,7 +675,7 @@ def form_list(form_id):
         per_page=lq.per_page, allowed_per_page=ALLOWED_PER_PAGE,
         filter_meta=lq.filter_meta, filter_order=lq.filter_order, conditions=lq.conditions,
         filter_chips=_filter_chips(mf, lq, all_args), enum_colors=enum_colors,
-        show_sla=show_sla, sla_map=sla_map,
+        show_sla=show_sla, sla_map=sla_map, maint=maint,
         can_edit=can_write(access), has_trash=mf.table.soft_delete,
         label_maps=lq.label_maps, m1_targets=lq.m1_targets,
         display_col=display_field_name(session, mf.table), view_table_id=mf.table.id,
@@ -1450,8 +1452,12 @@ def record_view(table_id, pk):
     assign_field = next((f for f in table.fields if f.data_type == "user"), None)
     can_assign = bool(assign_field is not None and edit_url
                       and row.get(assign_field.phys_name) != user_id)
+    maint_windows = [{"w": w, "status": maintenance.status(w)}
+                     for w in maintenance.for_record(session, table_id, pk)]
     return render_template("user/view.html", table=table, pk=pk, label=label, items=items,
                            can_assign=can_assign,
+                           maint=maintenance.is_active(session, table),
+                           maint_windows=maint_windows,
                            watching=watch.is_watching(session, user_id,
                                                       table.phys_name, pk),
                            list_url=list_url,

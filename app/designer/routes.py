@@ -7,6 +7,7 @@ import csv
 import io
 import json
 import re
+from datetime import datetime
 from urllib.parse import urlencode
 
 from flask import (
@@ -306,6 +307,78 @@ def company_delete(cid):
         session.commit()
         flash("Company deleted.", "info")
     return redirect(url_for("designer.companies_home"))
+
+
+# --------------------------------------------------------------------------- #
+# Maintenance windows — hold SLA/alerts during planned work
+# --------------------------------------------------------------------------- #
+@bp.route("/maintenance", methods=["GET", "POST"])
+def maintenance_home():
+    from .. import maintenance
+    from ..metadata.models import MaintenanceWindow
+    session = _s()
+    if request.method == "POST":
+        name = (request.form.get("name") or "").strip()[:120]
+        try:
+            starts = datetime.fromisoformat(request.form.get("starts_at") or "")
+            ends = datetime.fromisoformat(request.form.get("ends_at") or "")
+        except ValueError:
+            flash("Enter valid start and end times.", "danger")
+            return redirect(url_for("designer.maintenance_home"))
+        if not name or ends <= starts:
+            flash("A name and an end after the start are required.", "danger")
+            return redirect(url_for("designer.maintenance_home"))
+        raw = request.form.get("table_id") or ""
+        table_id = int(raw) if raw.isdigit() and int(raw) else None
+        rec_t = request.form.get("record_table_id") or ""
+        rec_pk = (request.form.get("record_pk") or "").strip()
+        record_table_id = int(rec_t) if rec_t.isdigit() and int(rec_t) else None
+        if record_table_id and rec_pk:
+            mt = session.get(MetaTable, record_table_id)
+            try:
+                found = mt is not None and data_service_row_exists(mt, rec_pk)
+            except Exception:  # noqa: BLE001
+                found = False
+            if not found:
+                flash("The linked record could not be found.", "danger")
+                return redirect(url_for("designer.maintenance_home"))
+        else:
+            record_table_id, rec_pk = None, None
+        session.add(MaintenanceWindow(
+            name=name, starts_at=starts, ends_at=ends, table_id=table_id,
+            record_table_id=record_table_id, record_pk=rec_pk))
+        session.commit()
+        flash("Maintenance window scheduled.", "success")
+        return redirect(url_for("designer.maintenance_home"))
+
+    windows = session.scalars(select(MaintenanceWindow)
+                              .order_by(MaintenanceWindow.starts_at.desc())).all()
+    tmap = {t.id: t for t in _tables(session)}
+    rows = [{"w": w, "status": maintenance.status(w),
+             "table": tmap.get(w.table_id),
+             "record_table": tmap.get(w.record_table_id)} for w in windows]
+    # optional prefill (the "Plan maintenance" link on a record view)
+    prefill = {"record_table_id": request.args.get("rt", ""),
+               "record_pk": request.args.get("rp", "")}
+    return render_template("designer/maintenance.html", rows=rows,
+                           tables=_tables(session), prefill=prefill)
+
+
+def data_service_row_exists(mt, pk):
+    from .. import data_service
+    return data_service.get_row(engine_for_table(mt), mt.phys_name, pk) is not None
+
+
+@bp.route("/maintenance/<int:wid>/delete", methods=["POST"])
+def maintenance_delete(wid):
+    from ..metadata.models import MaintenanceWindow
+    session = _s()
+    w = session.get(MaintenanceWindow, wid)
+    if w:
+        session.delete(w)
+        session.commit()
+        flash("Maintenance window removed.", "info")
+    return redirect(url_for("designer.maintenance_home"))
 
 
 # --------------------------------------------------------------------------- #

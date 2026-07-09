@@ -29,8 +29,31 @@
     </form>
   {% endif %}
   <a class="btn" href="{{ url_for('user.record_topology', table_id=table.id, pk=pk) }}">Impact map</a>
+  {% if current_user.is_designer %}
+    <a class="btn" href="{{ url_for('designer.maintenance_home', rt=table.id, rp=pk) }}"
+       title="Schedule a maintenance window linked to this record">Plan maintenance</a>
+  {% endif %}
   {% if edit_url %}<a class="btn primary" href="{{ edit_url }}">Edit</a>{% endif %}
 </div>
+
+{% if maint %}
+<div class="flash warning">Maintenance window “{{ maint.name }}” is active until
+  {{ maint.ends_at.strftime('%Y-%m-%d %H:%M') }} — SLA breaches and alerts are held.</div>
+{% endif %}
+
+{% if maint_windows %}
+<div class="panel" style="display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;max-width:680px">
+  <strong>Maintenance</strong>
+  {% for m in maint_windows %}
+    {% set hue = 'amber' if m.status == 'active' else ('blue' if m.status == 'upcoming' else 'gray') %}
+    <span style="display:inline-flex;align-items:center;gap:.35rem">
+      <span class="chip c-{{ hue }}">{{ m.status }}</span>
+      <span class="muted">{{ m.w.name }} · {{ m.w.starts_at.strftime('%m-%d %H:%M') }} →
+        {{ m.w.ends_at.strftime('%m-%d %H:%M') }}</span>
+    </span>
+  {% endfor %}
+</div>
+{% endif %}
 
 {% if sla_clocks %}
 <div class="panel" style="display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;max-width:680px">

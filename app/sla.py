@@ -307,11 +307,14 @@ def run_breach_sweep(session, now=None):
     """Mark overdue running clocks breached + escalate (once). Returns breach count."""
     now = now or _now()
     breaches = 0
+    from . import maintenance
     for clock in session.scalars(select(SlaClock).where(SlaClock.state == "running")).all():
         policy = session.get(SlaPolicy, clock.policy_id)
         mt = session.scalar(select(MetaTable).where(MetaTable.phys_name == clock.table_phys))
         if not policy or not mt:
             continue
+        if maintenance.is_active(session, mt, at=now):
+            continue                    # planned work: breaches are held
         fields = {f.id: f for f in mt.fields}
         try:
             engine = engine_for_table(mt)
@@ -340,6 +343,8 @@ def run_breach_sweep(session, now=None):
         mt = session.scalar(select(MetaTable).where(MetaTable.phys_name == clock.table_phys))
         if not policy or not mt or not clock.breached_at:
             continue
+        if maintenance.is_active(session, mt, at=now):
+            continue                    # planned work: escalations are held too
         levels = _escalation_levels(policy)
         idx = clock.escalation_level or 0
         if idx >= len(levels):

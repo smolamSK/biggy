@@ -69,6 +69,11 @@
 <script type="application/json" id="filter-conditions">{{ conditions|tojson }}</script>
 <script src="{{ url_for('static', filename='filters.js') }}" defer></script>
 
+{% if maint %}
+<div class="flash warning">Maintenance window “{{ maint.name }}” is active until
+  {{ maint.ends_at.strftime('%Y-%m-%d %H:%M') }} — SLA breaches and alerts are held.</div>
+{% endif %}
+
 {% if filter_chips %}
 <div class="fchips">
   <span class="muted">{{ icon('filter', 13) }} Filtered:</span>

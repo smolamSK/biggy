@@ -161,6 +161,10 @@ def _notif(session, rule, mt, pk, event, channel, **kw):
 
 
 def _run(session, engine, mt, rule, event, pk, old_row, new_row, user_id, fields):
+    # active maintenance window: data actions still run, alert channels are held
+    from . import maintenance
+    muted = maintenance.is_active(session, mt) is not None
+
     if rule.set_field_id and event != "delete":
         f = fields.get(rule.set_field_id)
         if f:
@@ -176,7 +180,10 @@ def _run(session, engine, mt, rule, event, pk, old_row, new_row, user_id, fields
 
     if rule.in_app:
         uid = _recipient(rule, new_row, user_id)
-        if uid:
+        if uid and muted:
+            _notif(session, rule, mt, pk, event, "in_app", user_id=uid,
+                   status="skipped", detail="maintenance window")
+        elif uid:
             _notif(session, rule, mt, pk, event, "in_app", user_id=uid, status="unread",
                    body=_render(rule.message or "Update on record {id}", new_row))
 
@@ -184,13 +191,15 @@ def _run(session, engine, mt, rule, event, pk, old_row, new_row, user_id, fields
         to = _render(rule.email_to, new_row)
         subject = _render(rule.email_subject or rule.message or "", new_row)
         body = _render(rule.email_body or rule.message or "", new_row)
-        status, detail = _deliver_email(to, subject, body)
+        status, detail = ("skipped", "maintenance window") if muted \
+            else _deliver_email(to, subject, body)
         _notif(session, rule, mt, pk, event, "email", target=to, subject=subject,
                body=body, status=status, detail=detail)
 
     if rule.webhook_url:
         payload = _webhook_payload(rule, event, mt, new_row, old_row)
-        status, detail = _deliver_webhook(rule.webhook_url, payload)
+        status, detail = ("skipped", "maintenance window") if muted \
+            else _deliver_webhook(rule.webhook_url, payload)
         _notif(session, rule, mt, pk, event, "webhook", target=rule.webhook_url,
                body=json.dumps(payload, default=str), status=status, detail=detail)
 

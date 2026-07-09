@@ -43,6 +43,9 @@ def watchers(session, table_phys, pk):
 
 def notify_update(session, meta_table, pk, values, user_id):
     """In-app notification to the record's watchers (except the actor)."""
+    from . import maintenance
+    if maintenance.is_active(session, meta_table):
+        return                          # planned work: watch noise is held
     ids = watchers(session, meta_table.phys_name, pk) - {user_id}
     if not ids:
         return

@@ -910,6 +910,22 @@ class Company(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
 
+class MaintenanceWindow(Base):
+    """A planned-work period. While active, SLA breaches/escalations are held
+    and trigger/watch notifications suppressed for the scoped table (or all
+    tables). Optionally linked to the change record that motivates it."""
+    __tablename__ = "app_maint_window"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    starts_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    ends_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    table_id: Mapped[int | None] = mapped_column(Integer)         # NULL = all tables
+    record_table_id: Mapped[int | None] = mapped_column(Integer)  # linked change record
+    record_pk: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
 class Watch(Base):
     """A user subscribed to one data record: notified on updates and comments."""
     __tablename__ = "app_watch"

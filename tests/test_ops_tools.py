@@ -112,3 +112,91 @@ def test_bulk_edit(app, client):
         with get_engine().connect() as c:
             rows = dict(c.execute(text("SELECT id, status FROM btask")).all())
     assert rows[1] == "done" and rows[3] == "new"   # 1 blocked; 3 unchanged-skip
+
+
+def test_maintenance_windows(app, client):
+    from datetime import datetime, timedelta, timezone
+
+    from app import sla
+    from app.metadata.models import Notification, SlaClock, SlaPolicy
+    from tests.helpers import _make_trigger
+    from tests.test_noc_tools import _field_id
+    _setup(client)
+
+    # a change record to link the window to
+    chg_tid = _make_table(client, app, "chg", "Change", "title")
+    chg_fid = _make_form(client, app, "chg_form", "Changes", chg_tid)
+    _make_form_p(client, app, "chg_view", "Change", chg_tid, "view")
+    _ok(client.post(f"/u/forms/{chg_fid}/new", data={"title": "Upgrade core"},
+                    follow_redirects=True))
+
+    # a service table with SLA + in-app trigger + a watcher
+    tid = _make_table(client, app, "svc", "Service", "name")
+    _add_field(client, tid, "status", "enum", enum_options="up\ndown")
+    _ok(client.post(f"/designer/tables/{tid}/flags", data=dict(track_audit="y"),
+                    follow_redirects=True))
+    fid = _make_form(client, app, "svc_form", "Services", tid)
+    _make_form_p(client, app, "svc_view", "Service", tid, "view")
+    _make_trigger(app, "svc", event="update", in_app=True, notify_target="actor")
+    with app.app_context():
+        s = SessionLocal()
+        s.add(SlaPolicy(table_id=tid, name="Fix", active=True, target_minutes=60,
+                        status_field_id=_field_id(app, "svc", "status"),
+                        start_on_create=True, stop_states="up"))
+        s.commit()
+    _ok(client.post(f"/u/forms/{fid}/new", data={"name": "dns", "status": "down"},
+                    follow_redirects=True))
+    amy = _new_amy(app, client)
+    _ok(amy.post(f"/u/watch/{tid}/1", follow_redirects=True))
+
+    # schedule an active window scoped to svc, linked to the change record
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    fmt = "%Y-%m-%dT%H:%M"
+    _ok(client.post("/designer/maintenance", data={
+        "name": "Core upgrade", "starts_at": (now - timedelta(hours=1)).strftime(fmt),
+        "ends_at": (now + timedelta(hours=1)).strftime(fmt),
+        "table_id": str(tid), "record_table_id": str(chg_tid), "record_pk": "1",
+    }, follow_redirects=True))
+    page = client.get("/designer/maintenance").get_data(as_text=True)
+    assert "Core upgrade" in page and ">active<" in page
+
+    # banner on the scoped list + the window shown on the linked change record
+    assert "alerts are held" in client.get(f"/u/forms/{fid}").get_data(as_text=True)
+    chg_view = client.get(f"/u/view/{chg_tid}/1").get_data(as_text=True)
+    assert "Core upgrade" in chg_view and "Maintenance" in chg_view
+
+    # watch + trigger notifications are held during the window
+    _ok(client.post(f"/u/forms/{fid}/1/edit", data={"name": "dns", "status": "down"},
+                    follow_redirects=True))
+    with app.app_context():
+        s = SessionLocal()
+        assert s.scalar(select(Notification).where(
+            Notification.event == "watch")) is None
+        held = s.scalar(select(Notification).where(Notification.channel == "in_app",
+                                                   Notification.status == "skipped"))
+        assert held is not None and "maintenance" in (held.detail or "")
+
+    # SLA breach is held while the window is active, fires after it's removed
+    with app.app_context():
+        s = SessionLocal()
+        clk = s.scalar(select(SlaClock))
+        clk.due_at = now - timedelta(minutes=5)
+        s.commit()
+        sla.run_breach_sweep(s)
+        assert s.scalar(select(SlaClock)).state == "running"     # held
+        wid_page = client.get("/designer/maintenance").get_data(as_text=True)
+    import re as _re
+    wid = _re.search(r"/designer/maintenance/(\d+)/delete", wid_page).group(1)
+    _ok(client.post(f"/designer/maintenance/{wid}/delete", follow_redirects=True))
+    with app.app_context():
+        s = SessionLocal()
+        sla.run_breach_sweep(s)
+        assert s.scalar(select(SlaClock)).state == "breached"    # fires afterwards
+
+    # a bad linked record is rejected
+    client.post("/designer/maintenance", data={
+        "name": "Bad", "starts_at": now.strftime(fmt),
+        "ends_at": (now + timedelta(hours=1)).strftime(fmt),
+        "record_table_id": str(chg_tid), "record_pk": "999",
+    }, follow_redirects=True)
+    assert "Bad" not in client.get("/designer/maintenance").get_data(as_text=True)
