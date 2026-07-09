@@ -35,7 +35,7 @@
   });
 
   // Block bulk submit when nothing is selected.
-  ["bulk-delete", "bulk-export"].forEach(function (id) {
+  ["bulk-delete", "bulk-export", "bulk-edit"].forEach(function (id) {
     var btn = document.getElementById(id);
     if (!btn) return;
     btn.addEventListener("click", function (e) {

@@ -83,6 +83,9 @@
 
 <div class="panel">
   <div class="toolbar" style="margin-bottom:.5rem">
+    <button class="btn sm" form="bulk-form" id="bulk-edit"
+            formaction="{{ url_for('user.bulk_edit_form', form_id=mf.id) }}"
+            {% if not can_edit %}style="display:none"{% endif %}>Edit selected</button>
     <button class="btn danger sm" form="bulk-form" id="bulk-delete"
             formaction="{{ url_for('user.bulk_delete', form_id=mf.id) }}"
             {% if not can_edit %}style="display:none"{% endif %}>Delete selected</button>

@@ -1,0 +1,38 @@
+{% extends "user/_base.html" %}
+{% block title %}Bulk edit · {{ mf.title }}{% endblock %}
+{% block inner %}
+<div class="crumbs"><a href="{{ next or url_for('user.form_list', form_id=mf.id) }}">← {{ mf.title }}</a> / Bulk edit</div>
+<h1>Bulk edit — {{ mf.title }}</h1>
+<div class="panel" style="max-width:560px">
+  <p class="muted">{{ ids|length }} record(s) selected. The change is applied record by
+    record — audit history, triggers, workflows and SLA clocks react like normal edits.
+    Rows where the change isn't allowed (workflow rules, approval-gated transitions,
+    unchanged values) are skipped.</p>
+  <form method="post" action="{{ url_for('user.bulk_edit_apply', form_id=mf.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+    {% for pk in ids %}<input type="hidden" name="ids" value="{{ pk }}">{% endfor %}
+    <div class="field">
+      <label>Field</label>
+      <select name="column">
+        {% for f in fields %}<option value="{{ f.phys_name }}">{{ f.label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label>New value</label>
+      <input type="text" name="value"
+             placeholder="yes/no for booleans · 2026-07-09 for dates · a name or id for pickers">
+      <div class="help">Values are validated the same way as CSV imports; choice lists
+        expect one of their options, user/company/relation fields accept an id or the
+        exact name.</div>
+    </div>
+    <div class="field checkline">
+      <input type="checkbox" name="clear">
+      <label style="margin:0">Clear the field instead (set it empty)</label>
+    </div>
+    <button class="btn primary" type="submit"
+            onclick="return confirm('Apply to {{ ids|length }} record(s)?');">Apply to {{ ids|length }} record(s)</button>
+    <a class="btn" href="{{ next or url_for('user.form_list', form_id=mf.id) }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

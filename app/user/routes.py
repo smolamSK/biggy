@@ -1463,6 +1463,97 @@ def record_view(table_id, pk):
                                                     include_internal=True))
 
 
+# --------------------------------------------------------------------------- #
+# Bulk edit
+# --------------------------------------------------------------------------- #
+_BULK_SKIP_TYPES = {"json", "tags", "autonumber", "formula", "file", "image"}
+
+
+def _bulk_editable_fields(session, mf):
+    """Fields a bulk edit may set: writable scalars, pickers and m:1 columns."""
+    from ..helpers import _field_perm_map
+    fperm = {} if current_user.is_designer else _field_perm_map(session, current_user)
+    return [f for f in mf.table.fields
+            if f.data_type not in _BULK_SKIP_TYPES
+            and f.phys_name != mf.table.pk_col
+            and fperm.get(f.id, "write") == "write"]
+
+
+@bp.route("/forms/<int:form_id>/bulk-edit", methods=["POST"])
+def bulk_edit_form(form_id):
+    mf, _access = _require(form_id, "write")
+    ids = request.form.getlist("ids")
+    if not ids:
+        flash("Select at least one row first.", "warning")
+        return redirect(_safe_next(url_for("user.form_list", form_id=form_id)))
+    return render_template("user/bulk_edit.html", mf=mf, ids=ids,
+                           fields=_bulk_editable_fields(_s(), mf),
+                           next=_safe_next(None))
+
+
+@bp.route("/forms/<int:form_id>/bulk-edit/apply", methods=["POST"])
+def bulk_edit_apply(form_id):
+    mf, _access = _require(form_id, "write")
+    session = _s()
+    engine = engine_for_table(mf.table)
+    back = redirect(_safe_next(url_for("user.form_list", form_id=form_id)))
+
+    ids = request.form.getlist("ids")
+    col = request.form.get("column")
+    field = next((f for f in _bulk_editable_fields(session, mf)
+                  if f.phys_name == col), None)
+    if field is None or not ids:
+        flash("Pick a field to change.", "warning")
+        return back
+
+    if request.form.get("clear"):
+        if not field.nullable:
+            flash("That field is required — it can't be cleared.", "danger")
+            return back
+        value = None
+    else:
+        resolver = None
+        if field.data_type == RELATION_TYPE:
+            resolver = importer._RelationResolver(session, engine, field)
+        elif field.data_type == "user":
+            resolver = importer._UserResolver(session)
+        elif field.data_type == "company":
+            resolver = importer._CompanyResolver(session)
+        try:
+            value = importer.coerce_value(field, request.form.get("value"), resolver)
+        except ValueError as exc:
+            flash(str(exc), "danger")
+            return back
+        if value is None and not field.nullable:
+            flash("Enter a value.", "warning")
+            return back
+
+    user_id, is_designer = _ctx()
+    done = skipped = 0
+    for pk in ids:
+        row = record_service.get_record(engine, mf.table, pk,
+                                        user_id=user_id, is_designer=is_designer)
+        if not row or row.get(field.phys_name) == value:
+            skipped += 1
+            continue
+        values = {field.phys_name: value}
+        # approval-gated transitions are popped out — a bulk edit must not
+        # silently file approval requests, so those rows are skipped instead
+        if approvals.plan_diversions(session, mf.table, row, values) or not values:
+            skipped += 1
+            continue
+        try:
+            workflow.check(session, mf.table, row, values, current_user)
+        except workflow.WorkflowError:
+            skipped += 1
+            continue
+        record_service.update(session, engine, mf.table, pk, values, user_id)
+        done += 1
+    flash(f"Updated {done} record(s)" + (f" — {skipped} skipped." if skipped else "."),
+          "success" if done else "warning")
+    return back
+
+
 _ACT_HUES = {"create": "green", "update": "blue", "delete": "red",
              "restore": "teal", "comment": "violet"}
 
