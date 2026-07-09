@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "tables": {
+    "service": [
+      {
+        "id": 1,
+        "name": "Internet access",
+        "criticality": "gold"
+      },
+      {
+        "id": 2,
+        "name": "E-mail",
+        "criticality": "silver"
+      }
+    ],
+    "ci": [
+      {
+        "id": 1,
+        "name": "core-rtr-01",
+        "ci_type": "router",
+        "ci_status": "operational",
+        "service_id": 1
+      },
+      {
+        "id": 2,
+        "name": "edge-sw-04",
+        "ci_type": "switch",
+        "ci_status": "degraded",
+        "service_id": 1
+      },
+      {
+        "id": 3,
+        "name": "mail-srv-02",
+        "ci_type": "server",
+        "ci_status": "operational",
+        "service_id": 2
+      },
+      {
+        "id": 4,
+        "name": "fiber-link-berlin",
+        "ci_type": "link",
+        "ci_status": "degraded",
+        "service_id": 1
+      }
+    ],
+    "problem": [
+      {
+        "id": 1,
+        "number": "PRB-0001",
+        "title": "Recurring fiber flaps on Berlin ring",
+        "status": "investigating",
+        "priority": "P2 - high",
+        "description": "Three fiber cuts in two weeks on the same segment."
+      }
+    ],
+    "known_error": [
+      {
+        "id": 1,
+        "number": "KER-0001",
+        "title": "Berlin ring instability",
+        "status": "active",
+        "problem_id": 1,
+        "workaround": "Re-route via the Hamburg ring: `set route-map berlin-bypass`."
+      }
+    ],
+    "change": [
+      {
+        "id": 1,
+        "number": "CHG-0001",
+        "title": "Replace Berlin fiber segment",
+        "change_type": "normal",
+        "risk": "medium",
+        "status": "assessing",
+        "problem_id": 1,
+        "ci_id": 4,
+        "implementation_plan": "1. Reroute traffic\n2. Splice new segment\n3. Test",
+        "backout_plan": "Keep the old segment patched until soak test passes."
+      },
+      {
+        "id": 2,
+        "number": "CHG-0002",
+        "title": "Monthly switch firmware update",
+        "change_type": "standard",
+        "risk": "low",
+        "status": "draft",
+        "problem_id": null,
+        "ci_id": null,
+        "implementation_plan": null,
+        "backout_plan": null
+      }
+    ],
+    "incident": [
+      {
+        "id": 1,
+        "number": "INC-0001",
+        "title": "Berlin office offline",
+        "status": "in progress",
+        "priority": "P1 - critical",
+        "category": "network",
+        "ci_id": 4,
+        "problem_id": 1,
+        "description": "Total loss of connectivity since 09:12."
+      },
+      {
+        "id": 2,
+        "number": "INC-0002",
+        "title": "Mail delivery delayed",
+        "status": "resolved",
+        "priority": "P3 - moderate",
+        "category": "software",
+        "ci_id": 3,
+        "problem_id": null,
+        "description": null
+      },
+      {
+        "id": 3,
+        "number": "INC-0003",
+        "title": "Packet loss towards DC",
+        "status": "new",
+        "priority": "P2 - high",
+        "category": "network",
+        "ci_id": 2,
+        "problem_id": null,
+        "description": null
+      }
+    ],
+    "request": [
+      {
+        "id": 1,
+        "number": "REQ-0001",
+        "title": "VPN access for new engineer",
+        "status": "in progress",
+        "urgency": "medium"
+      },
+      {
+        "id": 2,
+        "number": "REQ-0002",
+        "title": "Replacement laptop",
+        "status": "new",
+        "urgency": "low"
+      }
+    ]
+  }
+}

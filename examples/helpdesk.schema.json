@@ -47,6 +47,7 @@
       "is_unique": false,
       "position": 0,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -64,6 +65,7 @@
       "is_unique": false,
       "position": 1,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -81,6 +83,7 @@
       "is_unique": false,
       "position": 0,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -98,6 +101,7 @@
       "is_unique": false,
       "position": 0,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -115,6 +119,7 @@
       "is_unique": false,
       "position": 1,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -132,6 +137,7 @@
       "is_unique": false,
       "position": 2,
       "enum_options": "[\"open\", \"in_progress\", \"resolved\", \"closed\"]",
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -149,6 +155,7 @@
       "is_unique": false,
       "position": 3,
       "enum_options": "[\"low\", \"medium\", \"high\", \"urgent\"]",
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -166,6 +173,7 @@
       "is_unique": false,
       "position": 4,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -183,6 +191,7 @@
       "is_unique": false,
       "position": 5,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -254,7 +263,10 @@
       "name": "hd_ticket",
       "title": "Tickets",
       "description": null,
-      "purpose": "data"
+      "purpose": "data",
+      "in_catalog": false,
+      "catalog_group": null,
+      "portal_close_state": null
     },
     {
       "id": 2,
@@ -262,7 +274,10 @@
       "name": "hd_agent",
       "title": "Agents",
       "description": null,
-      "purpose": "data"
+      "purpose": "data",
+      "in_catalog": false,
+      "catalog_group": null,
+      "portal_close_state": null
     },
     {
       "id": 3,
@@ -270,7 +285,10 @@
       "name": "hd_category",
       "title": "Categories",
       "description": null,
-      "purpose": "data"
+      "purpose": "data",
+      "in_catalog": false,
+      "catalog_group": null,
+      "portal_close_state": null
     }
   ],
   "form_fields": [
@@ -460,5 +478,8 @@
       "icon": null
     }
   ],
-  "workflows": []
+  "workflows": [],
+  "roles": [],
+  "sla_policies": [],
+  "approval_steps": []
 }

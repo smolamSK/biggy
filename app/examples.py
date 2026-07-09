@@ -37,7 +37,7 @@ class ModelBuilder:
 
     def field(self, table_id, phys, dtype, label=None, length=None, nullable=True,
               is_unique=False, enum=None, default=None, display=False, precision=None,
-              scale=None):
+              scale=None, enum_colors=None):
         fid = self._id("f")
         pos = sum(1 for f in self.fields if f["table_id"] == table_id)
         self.fields.append({
@@ -46,13 +46,17 @@ class ModelBuilder:
             "length": length, "precision": precision, "scale": scale, "nullable": nullable,
             "default_value": default, "is_unique": is_unique, "position": pos,
             "enum_options": json.dumps(enum) if enum else None,
+            "enum_colors": json.dumps(enum_colors) if enum_colors else None,
             "related_table_id": None, "on_delete": None,
         })
         if display:
             next(t for t in self.tables if t["id"] == table_id)["display_field_id"] = fid
         return fid
 
-    def m1(self, from_table, to_table, col, name, nullable=True, on_delete="SET NULL"):
+    def m1(self, from_table, to_table, col, name, nullable=True, on_delete="SET NULL",
+           on_forms=()):
+        """A many-to-one link; ``on_forms`` appends it to already-built forms
+        (fields added after ``form()`` aren't placed automatically)."""
         fid = self._id("f")
         pos = sum(1 for f in self.fields if f["table_id"] == from_table)
         self.fields.append({
@@ -67,6 +71,8 @@ class ModelBuilder:
             "to_table_id": to_table, "from_field_id": fid, "junction_phys_name": None,
             "on_delete": on_delete, "to_display_field_ids": None, "from_display_field_ids": None,
         })
+        for form_id in on_forms:
+            self._item(form_id, field_id=fid)
         return rid
 
     def mn(self, a_table, b_table, name):
@@ -78,10 +84,13 @@ class ModelBuilder:
         })
         return rid
 
-    def form(self, name, title, table_id, mn=(), description=None, purpose="data"):
+    def form(self, name, title, table_id, mn=(), description=None, purpose="data",
+             in_catalog=False, catalog_group=None, portal_close_state=None):
         form_id = self._id("form")
         self.forms.append({"id": form_id, "table_id": table_id, "name": name,
-                          "title": title, "description": description, "purpose": purpose})
+                          "title": title, "description": description, "purpose": purpose,
+                          "in_catalog": in_catalog, "catalog_group": catalog_group,
+                          "portal_close_state": portal_close_state})
         for f in self.fields:
             if f["table_id"] == table_id:
                 self._item(form_id, field_id=f["id"], required=not f["nullable"])
@@ -704,7 +713,282 @@ def build_kb():
     return b.schema(), b.data()
 
 
+# --------------------------------------------------------------------------- #
+# ITIL process fragments — shared by the enable-able modules (app.itsm_modules)
+# and the full "itsm" example below. Each adds its tables/forms/workflow/SLA to
+# the given builder; pass ``group`` (a menu-group id) to also wire menu entries
+# (the module loader wires menus in the live database instead).
+# --------------------------------------------------------------------------- #
+_PRIORITIES = ["P1 - critical", "P2 - high", "P3 - moderate", "P4 - low"]
+_PRIORITY_COLORS = {"P1 - critical": "red", "P2 - high": "amber",
+                    "P3 - moderate": "blue", "P4 - low": "gray"}
+
+
+def add_incidents(b, group=None):
+    """Incident management: priorities, lifecycle workflow, resolution SLA,
+    a portal catalog card (customers may close their own)."""
+    t = b.table("incident", "Incident",
+                "Unplanned interruption or degradation of a service.",
+                track_audit=True, soft_delete=True)
+    b.field(t, "number", "autonumber", "Number", default="INC-")
+    b.field(t, "title", "string", "Title", length=200, nullable=False, display=True)
+    b.field(t, "description", "markdown", "What happened?")
+    st = b.field(t, "status", "enum", "Status", default="new",
+                 enum=["new", "in progress", "on hold", "resolved", "closed"],
+                 enum_colors={"new": "blue", "in progress": "amber", "on hold": "gray",
+                              "resolved": "green", "closed": "gray"})
+    b.field(t, "priority", "enum", "Priority", enum=_PRIORITIES,
+            enum_colors=_PRIORITY_COLORS)
+    b.field(t, "category", "enum", "Category",
+            enum=["network", "hardware", "software", "access", "other"])
+    b.field(t, "assignee", "user", "Assigned to")
+    fid = b.form("incident_form", "Report an incident", t,
+                 description="Something is broken or degraded — tell the team.",
+                 in_catalog=True, catalog_group="Support", portal_close_state="closed")
+    vid = b.view_form("incident_view", "Incident", t)
+    wf = b.workflow(t, st, [
+        {"from": "new", "to": "in progress", "roles": []},
+        {"from": "in progress", "to": "on hold", "roles": []},
+        {"from": "on hold", "to": "in progress", "roles": []},
+        {"from": "in progress", "to": "resolved", "roles": []},
+        {"from": "resolved", "to": "in progress", "roles": []},
+        {"from": "new", "to": "closed", "roles": []},
+        {"from": "in progress", "to": "closed", "roles": []},
+        {"from": "resolved", "to": "closed", "roles": []},
+    ], "new")
+    b.sla_policy(t, "Resolution", 240, status_field_id=st, start_on_create=True,
+                 pause_states="on hold", stop_states="resolved,closed",
+                 warn_minutes=60, breach_in_app=True, breach_notify_target="owner",
+                 breach_message="Resolution SLA breached on {title}")
+    if group is not None:
+        b.menu_form("Incidents", fid, group)
+    return {"table": t, "status": st, "form": fid, "view": vid, "workflow": wf}
+
+
+def add_requests(b, group=None):
+    """Request fulfilment: a catalog card with urgency and a fulfilment SLA."""
+    t = b.table("request", "Request", "Something a user needs (access, hardware, …).",
+                track_audit=True, soft_delete=True)
+    b.field(t, "number", "autonumber", "Number", default="REQ-")
+    b.field(t, "title", "string", "Title", length=200, nullable=False, display=True)
+    b.field(t, "details", "markdown", "Details")
+    st = b.field(t, "status", "enum", "Status", default="new",
+                 enum=["new", "in progress", "fulfilled", "closed"],
+                 enum_colors={"new": "blue", "in progress": "amber",
+                              "fulfilled": "green", "closed": "gray"})
+    b.field(t, "urgency", "enum", "Urgency", enum=["low", "medium", "high"],
+            enum_colors={"low": "gray", "medium": "amber", "high": "red"})
+    b.field(t, "assignee", "user", "Assigned to")
+    fid = b.form("request_form", "Request something", t,
+                 description="Access, hardware, a change to your services.",
+                 in_catalog=True, catalog_group="Requests", portal_close_state="closed")
+    vid = b.view_form("request_view", "Request", t)
+    wf = b.workflow(t, st, [
+        {"from": "new", "to": "in progress", "roles": []},
+        {"from": "in progress", "to": "fulfilled", "roles": []},
+        {"from": "new", "to": "closed", "roles": []},
+        {"from": "in progress", "to": "closed", "roles": []},
+        {"from": "fulfilled", "to": "closed", "roles": []},
+    ], "new")
+    b.sla_policy(t, "Fulfilment", 1440, status_field_id=st, start_on_create=True,
+                 stop_states="fulfilled,closed", warn_minutes=240)
+    if group is not None:
+        b.menu_form("Requests", fid, group)
+    return {"table": t, "status": st, "form": fid, "view": vid, "workflow": wf}
+
+
+def add_problems(b, group=None):
+    """Problem management: root-cause records plus a known-error database."""
+    t = b.table("problem", "Problem", "The underlying cause behind recurring incidents.",
+                track_audit=True, soft_delete=True)
+    b.field(t, "number", "autonumber", "Number", default="PRB-")
+    b.field(t, "title", "string", "Title", length=200, nullable=False, display=True)
+    b.field(t, "description", "markdown", "Description")
+    st = b.field(t, "status", "enum", "Status", default="new",
+                 enum=["new", "investigating", "identified", "resolved", "closed"],
+                 enum_colors={"new": "blue", "investigating": "amber",
+                              "identified": "violet", "resolved": "green",
+                              "closed": "gray"})
+    b.field(t, "priority", "enum", "Priority", enum=_PRIORITIES,
+            enum_colors=_PRIORITY_COLORS)
+    b.field(t, "root_cause", "markdown", "Root cause")
+    b.field(t, "assignee", "user", "Assigned to")
+    fid = b.form("problem_form", "Problems", t)
+    vid = b.view_form("problem_view", "Problem", t)
+    wf = b.workflow(t, st, [
+        {"from": "new", "to": "investigating", "roles": []},
+        {"from": "investigating", "to": "identified", "roles": []},
+        {"from": "identified", "to": "resolved", "roles": []},
+        {"from": "resolved", "to": "closed", "roles": []},
+        {"from": "new", "to": "closed", "roles": []},
+    ], "new")
+
+    ke = b.table("known_error", "Known error",
+                 "A diagnosed fault with a documented workaround.", track_audit=True)
+    b.field(ke, "number", "autonumber", "Number", default="KER-")
+    b.field(ke, "title", "string", "Title", length=200, nullable=False, display=True)
+    b.field(ke, "workaround", "markdown", "Workaround")
+    b.field(ke, "status", "enum", "Status", default="active",
+            enum=["active", "retired"],
+            enum_colors={"active": "amber", "retired": "gray"})
+    ke_form = b.form("known_error_form", "Known errors", ke)
+    ke_view = b.view_form("known_error_view", "Known error", ke)
+    b.m1(ke, t, "problem_id", "Problem", on_forms=(ke_form, ke_view))
+    if group is not None:
+        b.menu_form("Problems", fid, group)
+        b.menu_form("Known errors", ke_form, group)
+    return {"table": t, "status": st, "form": fid, "view": vid, "workflow": wf,
+            "ke_table": ke, "ke_form": ke_form, "ke_view": ke_view}
+
+
+def add_changes(b, group=None):
+    """Change management: typed/risked changes with plans, a lifecycle workflow
+    and an approval step (change_manager) on assessing → approved."""
+    t = b.table("change", "Change", "A planned modification to a service or CI.",
+                track_audit=True, soft_delete=True)
+    b.field(t, "number", "autonumber", "Number", default="CHG-")
+    b.field(t, "title", "string", "Title", length=200, nullable=False, display=True)
+    b.field(t, "change_type", "enum", "Type", enum=["standard", "normal", "emergency"],
+            enum_colors={"standard": "gray", "normal": "blue", "emergency": "red"})
+    b.field(t, "risk", "enum", "Risk", enum=["low", "medium", "high"],
+            enum_colors={"low": "green", "medium": "amber", "high": "red"})
+    st = b.field(t, "status", "enum", "Status", default="draft",
+                 enum=["draft", "assessing", "approved", "implementing", "review",
+                       "closed"],
+                 enum_colors={"draft": "gray", "assessing": "amber",
+                              "approved": "green", "implementing": "blue",
+                              "review": "violet", "closed": "gray"})
+    b.field(t, "planned_start", "datetime", "Planned start")
+    b.field(t, "planned_end", "datetime", "Planned end")
+    b.field(t, "implementation_plan", "markdown", "Implementation plan")
+    b.field(t, "backout_plan", "markdown", "Backout plan")
+    b.field(t, "assignee", "user", "Assigned to")
+    fid = b.form("change_form", "Changes", t)
+    vid = b.view_form("change_view", "Change", t)
+    wf = b.workflow(t, st, [
+        {"from": "draft", "to": "assessing", "roles": []},
+        {"from": "assessing", "to": "approved", "roles": []},
+        {"from": "assessing", "to": "draft", "roles": []},
+        {"from": "approved", "to": "implementing", "roles": []},
+        {"from": "implementing", "to": "review", "roles": []},
+        {"from": "review", "to": "closed", "roles": []},
+    ], "draft")
+    b.role("change_manager", "Change manager")
+    b.approval_step(wf, "assessing", "approved", name="CAB sign-off",
+                    approver_role="change_manager")
+    if group is not None:
+        b.menu_form("Changes", fid, group)
+    return {"table": t, "status": st, "form": fid, "view": vid, "workflow": wf}
+
+
+def build_itsm():
+    """The full ITSM/CMDB scenario: all four process modules wired to a small
+    CMDB (services + configuration items) with cross-links and sample data."""
+    b = ModelBuilder()
+    g = b.menu_group("ITSM")
+    inc = add_incidents(b, group=g)
+    req = add_requests(b, group=g)
+    prb = add_problems(b, group=g)
+    chg = add_changes(b, group=g)
+
+    gc = b.menu_group("CMDB")
+    svc = b.table("service", "Service", "A business service customers rely on.",
+                  track_audit=True)
+    b.field(svc, "name", "string", "Name", length=120, nullable=False, display=True)
+    b.field(svc, "criticality", "enum", "Criticality", enum=["gold", "silver", "bronze"],
+            enum_colors={"gold": "amber", "silver": "gray", "bronze": "teal"})
+    svc_form = b.form("service_form", "Services", svc)
+    b.view_form("service_view", "Service", svc)
+
+    ci = b.table("ci", "Configuration item", "A managed infrastructure component.",
+                 track_audit=True)
+    b.field(ci, "name", "string", "Name", length=120, nullable=False, display=True)
+    b.field(ci, "ci_type", "enum", "Type",
+            enum=["router", "switch", "server", "link", "application"])
+    b.field(ci, "ci_status", "enum", "Status", default="operational",
+            enum=["operational", "degraded", "retired"],
+            enum_colors={"operational": "green", "degraded": "amber", "retired": "gray"})
+    ci_form = b.form("ci_form", "Configuration items", ci)
+    ci_view = b.view_form("ci_view", "Configuration item", ci)
+    b.m1(ci, svc, "service_id", "Service", on_forms=(ci_form, ci_view))
+    b.menu_form("Services", svc_form, gc)
+    b.menu_form("CIs", ci_form, gc)
+
+    # the ITIL cross-links (the module loader wires these dynamically instead)
+    b.m1(inc["table"], prb["table"], "problem_id", "Problem",
+         on_forms=(inc["form"], inc["view"]))
+    b.m1(inc["table"], chg["table"], "caused_by_change_id", "Caused by change",
+         on_forms=(inc["form"], inc["view"]))
+    b.m1(inc["table"], ci, "ci_id", "Configuration item",
+         on_forms=(inc["form"], inc["view"]))
+    b.m1(chg["table"], prb["table"], "problem_id", "Fixes problem",
+         on_forms=(chg["form"], chg["view"]))
+    b.m1(chg["table"], ci, "ci_id", "Configuration item",
+         on_forms=(chg["form"], chg["view"]))
+
+    b.rows(svc, [
+        {"id": 1, "name": "Internet access", "criticality": "gold"},
+        {"id": 2, "name": "E-mail", "criticality": "silver"},
+    ])
+    b.rows(ci, [
+        {"id": 1, "name": "core-rtr-01", "ci_type": "router", "ci_status": "operational",
+         "service_id": 1},
+        {"id": 2, "name": "edge-sw-04", "ci_type": "switch", "ci_status": "degraded",
+         "service_id": 1},
+        {"id": 3, "name": "mail-srv-02", "ci_type": "server", "ci_status": "operational",
+         "service_id": 2},
+        {"id": 4, "name": "fiber-link-berlin", "ci_type": "link",
+         "ci_status": "degraded", "service_id": 1},
+    ])
+    b.rows(prb["table"], [
+        {"id": 1, "number": "PRB-0001", "title": "Recurring fiber flaps on Berlin ring",
+         "status": "investigating", "priority": "P2 - high",
+         "description": "Three fiber cuts in two weeks on the same segment."},
+    ])
+    b.rows(prb["ke_table"], [
+        {"id": 1, "number": "KER-0001", "title": "Berlin ring instability",
+         "status": "active", "problem_id": 1,
+         "workaround": "Re-route via the Hamburg ring: `set route-map berlin-bypass`."},
+    ])
+    b.rows(chg["table"], [
+        {"id": 1, "number": "CHG-0001", "title": "Replace Berlin fiber segment",
+         "change_type": "normal", "risk": "medium", "status": "assessing",
+         "problem_id": 1, "ci_id": 4,
+         "implementation_plan": "1. Reroute traffic\n2. Splice new segment\n3. Test",
+         "backout_plan": "Keep the old segment patched until soak test passes."},
+        {"id": 2, "number": "CHG-0002", "title": "Monthly switch firmware update",
+         "change_type": "standard", "risk": "low", "status": "draft",
+         "problem_id": None, "ci_id": None,
+         "implementation_plan": None, "backout_plan": None},
+    ])
+    b.rows(inc["table"], [
+        {"id": 1, "number": "INC-0001", "title": "Berlin office offline",
+         "status": "in progress", "priority": "P1 - critical", "category": "network",
+         "ci_id": 4, "problem_id": 1,
+         "description": "Total loss of connectivity since 09:12."},
+        {"id": 2, "number": "INC-0002", "title": "Mail delivery delayed",
+         "status": "resolved", "priority": "P3 - moderate", "category": "software",
+         "ci_id": 3, "problem_id": None, "description": None},
+        {"id": 3, "number": "INC-0003", "title": "Packet loss towards DC",
+         "status": "new", "priority": "P2 - high", "category": "network",
+         "ci_id": 2, "problem_id": None, "description": None},
+    ])
+    b.rows(req["table"], [
+        {"id": 1, "number": "REQ-0001", "title": "VPN access for new engineer",
+         "status": "in progress", "urgency": "medium"},
+        {"id": 2, "number": "REQ-0002", "title": "Replacement laptop",
+         "status": "new", "urgency": "low"},
+    ])
+    return b.schema(), b.data()
+
+
 EXAMPLES = {
+    "itsm": {"title": "ITSM / service desk (full)", "build": build_itsm,
+             "description": "Incidents, requests, problems + known errors and changes "
+                            "(with CAB approval), wired to a small CMDB of services and "
+                            "CIs — workflows, SLAs, priorities and portal catalog cards "
+                            "included. The same processes are available piecemeal as "
+                            "enable-able modules."},
     "cmdb": {"title": "CMDB", "build": build_cmdb,
              "description": "Configuration items, environments, teams and applications "
                             "(with a runs-on many-to-many)."},

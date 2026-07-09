@@ -175,7 +175,9 @@ The model and screens extend well past the core CRUD loop. Built in:
   **SLA engine** (per-record clocks with pause/resume, breach detection + escalation),
   **approval workflows** (multi-step sign-off held on a workflow transition), a
   **service catalog** with a **customer portal** (third mode: own tickets +
-  staff ⇄ customer **conversations** with internal work notes).
+  staff ⇄ customer **conversations** with internal work notes), and enable-able
+  **ITIL process modules** (incidents, requests, problems + known errors, change
+  management with CAB approval) that wire themselves together — at setup or later.
 - **Enterprise auth & ops**: **TOTP two-factor** (QR enrollment + backup codes), **OIDC
   single sign-on** (link-existing or JIT), **bulk user import**, integration **secrets
   encrypted at rest**, multi-worker-safe scheduling + a DB-backed rate limiter, and a

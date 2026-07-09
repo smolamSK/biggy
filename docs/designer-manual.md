@@ -29,6 +29,16 @@ Four steps take you from an empty app to a usable form:
 
 Switch to **User mode** and your screen is live.
 
+Building an ITSM/service-desk app? Skip even those steps: enable the ready-made
+**ITIL process modules** — Incident management, Request fulfilment, Problem
+management + known errors, Change management (with CAB approval) — as checkboxes
+during setup or any time later under *Admin → Examples*. Modules are added
+**next to** your existing model (nothing is replaced) and wire themselves
+together: enable Problems after Incidents and incidents gain a *Problem* link;
+have a `ci` table and incidents/changes link to it automatically. The complete
+wired scenario, with a small CMDB and sample data, is the **ITSM / service
+desk** example.
+
 Two shortcuts collapse most of that:
 
 - **Generate form** (on any table's page) creates the data form with every field

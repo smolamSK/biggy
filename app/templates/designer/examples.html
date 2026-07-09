@@ -1,7 +1,32 @@
 {% extends "designer/_base.html" %}
 {% block title %}Examples · Biggy{% endblock %}
 {% block inner %}
-<h1>Example models</h1>
+<h1>ITSM process modules</h1>
+<p class="muted" style="max-width:640px">Switch on ready-made ITIL processes <strong>next to
+  your existing model</strong> — nothing is replaced. Modules can be enabled here at any time
+  (or during setup) and are wired together automatically: enable Problems after Incidents and
+  incidents gain a <em>Problem</em> link; add a <code>ci</code> table and incidents/changes
+  link to it.</p>
+<div class="cards">
+  {% for key, mod in modules.items() %}
+    <div class="card">
+      <h3 style="margin:.2rem 0">{{ mod.title }}
+        {% if module_status[key] %}<span class="chip c-green">enabled</span>{% endif %}</h3>
+      <p class="muted" style="min-height:3.2em">{{ mod.description }}</p>
+      {% if not module_status[key] %}
+        <form method="post" action="{{ url_for('designer.module_enable', key=key) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn primary" type="submit">Enable</button>
+        </form>
+      {% else %}
+        <span class="muted" style="font-size:var(--fs-sm)">Tables:
+          {% for t in mod.tables %}<code>{{ t }}</code> {% endfor %}</span>
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>
+
+<h1 style="margin-top:1.6rem">Example models</h1>
 <p class="muted">Load a ready-made model with sample data to explore Biggy. Loading an example
   <strong>replaces the current model and all its data</strong>.</p>
 

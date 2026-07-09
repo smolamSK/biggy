@@ -57,6 +57,7 @@
       "is_unique": false,
       "position": 0,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -74,6 +75,7 @@
       "is_unique": false,
       "position": 0,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -91,6 +93,7 @@
       "is_unique": false,
       "position": 0,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -108,6 +111,7 @@
       "is_unique": false,
       "position": 1,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -125,6 +129,7 @@
       "is_unique": false,
       "position": 2,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -142,6 +147,7 @@
       "is_unique": false,
       "position": 3,
       "enum_options": "[\"server\", \"vm\", \"database\", \"network\", \"service\"]",
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -159,6 +165,7 @@
       "is_unique": false,
       "position": 4,
       "enum_options": "[\"active\", \"maintenance\", \"retired\"]",
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -210,6 +217,7 @@
       "is_unique": false,
       "position": 0,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -227,6 +235,7 @@
       "is_unique": false,
       "position": 1,
       "enum_options": "[\"low\", \"medium\", \"high\", \"critical\"]",
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -305,7 +314,10 @@
       "name": "cmdb_ci",
       "title": "Configuration items",
       "description": null,
-      "purpose": "data"
+      "purpose": "data",
+      "in_catalog": false,
+      "catalog_group": null,
+      "portal_close_state": null
     },
     {
       "id": 2,
@@ -313,7 +325,10 @@
       "name": "cmdb_app",
       "title": "Applications",
       "description": null,
-      "purpose": "data"
+      "purpose": "data",
+      "in_catalog": false,
+      "catalog_group": null,
+      "portal_close_state": null
     },
     {
       "id": 3,
@@ -321,7 +336,10 @@
       "name": "cmdb_team",
       "title": "Teams",
       "description": null,
-      "purpose": "data"
+      "purpose": "data",
+      "in_catalog": false,
+      "catalog_group": null,
+      "portal_close_state": null
     },
     {
       "id": 4,
@@ -329,7 +347,10 @@
       "name": "cmdb_env",
       "title": "Environments",
       "description": null,
-      "purpose": "data"
+      "purpose": "data",
+      "in_catalog": false,
+      "catalog_group": null,
+      "portal_close_state": null
     }
   ],
   "form_fields": [
@@ -555,5 +576,8 @@
       "icon": null
     }
   ],
-  "workflows": []
+  "workflows": [],
+  "roles": [],
+  "sla_policies": [],
+  "approval_steps": []
 }

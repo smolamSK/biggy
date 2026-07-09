@@ -47,6 +47,7 @@
       "is_unique": false,
       "position": 0,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -64,6 +65,7 @@
       "is_unique": false,
       "position": 1,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -81,6 +83,7 @@
       "is_unique": false,
       "position": 2,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -98,6 +101,7 @@
       "is_unique": false,
       "position": 0,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -115,6 +119,7 @@
       "is_unique": false,
       "position": 1,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -149,6 +154,7 @@
       "is_unique": false,
       "position": 0,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -166,6 +172,7 @@
       "is_unique": false,
       "position": 1,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -183,6 +190,7 @@
       "is_unique": false,
       "position": 2,
       "enum_options": "[\"lead\", \"qualified\", \"proposal\", \"won\", \"lost\"]",
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -200,6 +208,7 @@
       "is_unique": false,
       "position": 3,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -283,7 +292,10 @@
       "name": "crm_company",
       "title": "Companies",
       "description": null,
-      "purpose": "data"
+      "purpose": "data",
+      "in_catalog": false,
+      "catalog_group": null,
+      "portal_close_state": null
     },
     {
       "id": 2,
@@ -291,7 +303,10 @@
       "name": "crm_contact",
       "title": "Contacts",
       "description": null,
-      "purpose": "data"
+      "purpose": "data",
+      "in_catalog": false,
+      "catalog_group": null,
+      "portal_close_state": null
     },
     {
       "id": 3,
@@ -299,7 +314,10 @@
       "name": "crm_deal",
       "title": "Deals",
       "description": null,
-      "purpose": "data"
+      "purpose": "data",
+      "in_catalog": false,
+      "catalog_group": null,
+      "portal_close_state": null
     }
   ],
   "form_fields": [
@@ -502,5 +520,8 @@
       "icon": null
     }
   ],
-  "workflows": []
+  "workflows": [],
+  "roles": [],
+  "sla_policies": [],
+  "approval_steps": []
 }

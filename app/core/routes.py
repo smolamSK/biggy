@@ -6,6 +6,7 @@ from flask import (
     flash,
     redirect,
     render_template,
+    request,
     url_for,
 )
 from flask_login import current_user, login_required
@@ -61,12 +62,25 @@ def setup():
             current_app.config["_BOOTSTRAPPED"] = True
             from ..auth.routes import establish_session
             establish_session(user)
-            flash("Setup complete. Welcome to Biggy!", "success")
+            # optional ITIL process modules picked on the wizard
+            from .. import itsm_modules
+            enabled = []
+            for key in request.form.getlist("modules"):
+                if key not in itsm_modules.MODULES:
+                    continue
+                try:
+                    if itsm_modules.enable(session, key):
+                        enabled.append(itsm_modules.MODULES[key]["title"])
+                except Exception as exc:  # noqa: BLE001 - setup must still finish
+                    flash(f"Could not enable {key}: {exc}", "warning")
+            flash("Setup complete. Welcome to Biggy!"
+                  + (f" Enabled: {', '.join(enabled)}." if enabled else ""), "success")
             return redirect(url_for("designer.dashboard"))
 
+    from .. import itsm_modules
     return render_template(
         "core/setup.html", form=form, conn_ok=conn_ok, conn_msg=conn_msg,
-        db_url=_safe_url(),
+        db_url=_safe_url(), modules=itsm_modules.MODULES,
     )
 
 

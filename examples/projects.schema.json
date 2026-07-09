@@ -47,6 +47,7 @@
       "is_unique": false,
       "position": 0,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -64,6 +65,7 @@
       "is_unique": false,
       "position": 1,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -81,6 +83,7 @@
       "is_unique": false,
       "position": 2,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -98,6 +101,7 @@
       "is_unique": false,
       "position": 0,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -115,6 +119,7 @@
       "is_unique": false,
       "position": 0,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -132,6 +137,7 @@
       "is_unique": false,
       "position": 1,
       "enum_options": "[\"todo\", \"doing\", \"done\"]",
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -149,6 +155,7 @@
       "is_unique": false,
       "position": 2,
       "enum_options": "[\"low\", \"medium\", \"high\"]",
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -166,6 +173,7 @@
       "is_unique": false,
       "position": 3,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -183,6 +191,7 @@
       "is_unique": false,
       "position": 4,
       "enum_options": null,
+      "enum_colors": null,
       "related_table_id": null,
       "on_delete": null
     },
@@ -237,7 +246,10 @@
       "name": "pr_task",
       "title": "Tasks",
       "description": null,
-      "purpose": "data"
+      "purpose": "data",
+      "in_catalog": false,
+      "catalog_group": null,
+      "portal_close_state": null
     },
     {
       "id": 2,
@@ -245,7 +257,10 @@
       "name": "pr_project",
       "title": "Projects",
       "description": null,
-      "purpose": "data"
+      "purpose": "data",
+      "in_catalog": false,
+      "catalog_group": null,
+      "portal_close_state": null
     },
     {
       "id": 3,
@@ -253,7 +268,10 @@
       "name": "pr_label",
       "title": "Labels",
       "description": null,
-      "purpose": "data"
+      "purpose": "data",
+      "in_catalog": false,
+      "catalog_group": null,
+      "portal_close_state": null
     }
   ],
   "form_fields": [
@@ -443,5 +461,8 @@
       "icon": null
     }
   ],
-  "workflows": []
+  "workflows": [],
+  "roles": [],
+  "sla_policies": [],
+  "approval_steps": []
 }

@@ -12,7 +12,7 @@ import hashlib
 import json
 import secrets
 
-from sqlalchemy import delete, select, text, update
+from sqlalchemy import delete, func, select, text, update
 
 from .db import engine_for, engine_for_table
 from .identifiers import junction_name, validate_identifier
@@ -254,8 +254,28 @@ def wipe_model(session, engine):
     session.commit()
 
 
-def import_schema(session, engine, data, replace=False):
-    """Recreate the model from an exported dict. Returns a counts summary."""
+def _check_additive_collisions(session, engine, tables, forms):
+    """Additive import: every incoming table/form must be new."""
+    existing_phys = {t.phys_name for t in session.scalars(select(MetaTable))}
+    for t in tables:
+        if t["phys_name"] in existing_phys \
+                or schema_service.table_exists(engine, t["phys_name"]):
+            raise SchemaError(f"Table '{t['phys_name']}' already exists — "
+                              "cannot add this module.")
+    existing_forms = {f.name for f in session.scalars(select(MetaForm))}
+    for fm in forms:
+        if fm["name"] in existing_forms:
+            raise SchemaError(f"Form '{fm['name']}' already exists.")
+
+
+def import_schema(session, engine, data, replace=False, additive=False):
+    """Recreate the model from an exported dict. Returns a counts summary.
+
+    ``additive=True`` adds the fragment **next to** an existing model instead of
+    replacing it (used by the ITSM process modules): incoming tables and forms
+    must not collide, ids are remapped as usual, menus are appended after the
+    existing ones, and roles that already exist are reused.
+    """
     if not isinstance(data, dict) or data.get("version") != SCHEMA_VERSION:
         raise SchemaError("Unsupported or missing schema version.")
 
@@ -276,12 +296,15 @@ def import_schema(session, engine, data, replace=False):
             raise SchemaError(f"Unknown field type: {f['data_type']}")
 
     if session.scalar(select(MetaTable.id).limit(1)):
-        if not replace:
+        if additive:
+            _check_additive_collisions(session, engine, tables, forms)
+        elif not replace:
             raise SchemaError(
                 "The target database already contains a model. "
                 "Tick 'Replace existing' to wipe it and import."
             )
-        wipe_model(session, engine)
+        else:
+            wipe_model(session, engine)
 
     phys_by_old = {t["id"]: t["phys_name"] for t in tables}
     field_by_old = {f["id"]: f for f in fields}
@@ -450,7 +473,11 @@ def import_schema(session, engine, data, replace=False):
                 content=w.get("content"), width=w.get("width", 1), limit=w.get("limit", 5),
                 position=w.get("position", 0)))
 
-        # 6. menus (create, then wire parents)
+        # 6. menus (create, then wire parents; additive appends after existing)
+        pos_offset = 0
+        if additive and menus:
+            pos_offset = (session.scalar(
+                select(func.max(MetaMenu.position))) or 0) + 1
         for m in menus:
             mm = MetaMenu(
                 label=m["label"], kind=m["kind"],
@@ -458,7 +485,7 @@ def import_schema(session, engine, data, replace=False):
                 target_table_id=(tmap.get(m["target_table_id"]) if m.get("target_table_id") else None),
                 target_dashboard_id=(dashmap.get(m["target_dashboard_id"])
                                      if m.get("target_dashboard_id") else None),
-                position=m.get("position", 0), icon=m.get("icon"),
+                position=m.get("position", 0) + pos_offset, icon=m.get("icon"),
             )
             session.add(mm)
             session.flush()

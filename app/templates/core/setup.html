@@ -22,6 +22,18 @@
       {{ render_field(form.username) }}
       {{ render_field(form.password) }}
       {{ render_field(form.confirm) }}
+
+      <h2>ITSM processes (optional)</h2>
+      <p class="muted" style="font-size:var(--fs-sm)">Start with ready-made ITIL processes —
+        tables, forms, workflows, SLAs and portal catalog cards. They can also be enabled
+        later under <em>Designer → Examples</em>.</p>
+      {% for key, mod in modules.items() %}
+        <div class="field checkline" style="margin-bottom:.4rem">
+          <input type="checkbox" name="modules" value="{{ key }}" id="mod-{{ key }}">
+          <label for="mod-{{ key }}" style="margin:0">{{ mod.title }}</label>
+        </div>
+      {% endfor %}
+
       <button class="btn primary" type="submit" {{ 'disabled' if not conn_ok }}>Complete setup</button>
     </form>
   </div>

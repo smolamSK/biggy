@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "tables": {
+    "kb_category": [
+      {
+        "id": 1,
+        "name": "Accounts"
+      },
+      {
+        "id": 2,
+        "name": "Network"
+      },
+      {
+        "id": 3,
+        "name": "Hardware"
+      }
+    ],
+    "kb_article": [
+      {
+        "id": 1,
+        "title": "How to reset your password",
+        "body": "1. Open **Account** (top right)\n2. Choose *Change password*\n\n> Locked out? An admin can reset it under **Users**.",
+        "tags": "[\"how-to\", \"faq\"]",
+        "status": "published",
+        "category_id": 1
+      },
+      {
+        "id": 2,
+        "title": "VPN troubleshooting",
+        "body": "## Common fixes\n\n- Restart the client\n- Check the gateway: `vpn.example.com`\n- Still stuck? Raise an incident from the catalog.",
+        "tags": "[\"troubleshooting\"]",
+        "status": "published",
+        "category_id": 2
+      },
+      {
+        "id": 3,
+        "title": "Laptop refresh policy (draft)",
+        "body": "Laptops are refreshed every **3 years**. _Draft \u2014 pending approval._",
+        "tags": "[\"policy\"]",
+        "status": "draft",
+        "category_id": 3
+      }
+    ]
+  }
+}

@@ -1856,7 +1856,28 @@ def data_import():
 # --------------------------------------------------------------------------- #
 @bp.route("/examples")
 def examples_home():
-    return render_template("designer/examples.html", examples=examples.EXAMPLES)
+    from .. import itsm_modules
+    return render_template("designer/examples.html", examples=examples.EXAMPLES,
+                           modules=itsm_modules.MODULES,
+                           module_status=itsm_modules.status(_s()))
+
+
+@bp.route("/modules/<key>/enable", methods=["POST"])
+def module_enable(key):
+    from .. import itsm_modules
+    if key not in itsm_modules.MODULES:
+        flash("Unknown module.", "danger")
+        return redirect(url_for("designer.examples_home"))
+    session = _s()
+    try:
+        added = itsm_modules.enable(session, key)
+        flash(f"'{itsm_modules.MODULES[key]['title']}' enabled — its forms are in "
+              "the ITSM menu group." if added else "That module is already enabled.",
+              "success" if added else "info")
+    except Exception as exc:  # noqa: BLE001 - surface import errors to the designer
+        session.rollback()
+        flash(f"Could not enable the module: {exc}", "danger")
+    return redirect(url_for("designer.examples_home"))
 
 
 @bp.route("/examples/<key>/load", methods=["POST"])
