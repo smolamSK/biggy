@@ -128,9 +128,22 @@ def _ripple(session, engine, meta_table, row):
         pass
 
 
+def _apply_company_default(session, meta_table, values, user_id):
+    """Stamp the creator's company on the (first) company field when absent —
+    records made by company-scoped users must stay visible to them."""
+    cf = next((f for f in meta_table.fields if f.data_type == "company"), None)
+    if cf is None or values.get(cf.phys_name) not in (None, ""):
+        return
+    from .metadata.models import AppUser
+    u = session.get(AppUser, user_id) if user_id else None
+    if u is not None and u.company_id:
+        values[cf.phys_name] = u.company_id
+
+
 def create(session, engine, meta_table, values, user_id):
     values = dict(values)
     _apply_generated(session, meta_table, values, user_id)
+    _apply_company_default(session, meta_table, values, user_id)
     if _has_formulas(meta_table):
         values.update(_compute_self(session, engine, meta_table, values, None))
     if _has_audit_cols(meta_table):
@@ -302,12 +315,33 @@ def destroy(session, engine, meta_table, pk, user_id):
 # --------------------------------------------------------------------------- #
 # Reads (scoped by soft-delete + ownership)
 # --------------------------------------------------------------------------- #
+def _company_scope(meta_table, user_id, is_designer):
+    """``(column, allowed company ids)`` when this caller is company-scoped on
+    this table — i.e. the table has a ``company`` field and the user belongs to
+    a company. ``None`` for designers, unscoped users and unscoped tables."""
+    if is_designer or not user_id:
+        return None
+    cf = next((f for f in meta_table.fields if f.data_type == "company"), None)
+    if cf is None:
+        return None
+    from .companies import allowed_for_user
+    from .db import SessionLocal
+    allowed = allowed_for_user(SessionLocal(), user_id)
+    if allowed is None:
+        return None
+    return cf.phys_name, allowed
+
+
 def _scope_filters(meta_table, *, user_id, is_designer, include_deleted):
     extra = []
     if meta_table.soft_delete:
         extra.append({"col": "deleted_at", "op": "not_empty" if include_deleted else "empty"})
     if meta_table.row_owned and not is_designer:
         extra.append({"col": "created_by", "op": "eq", "value": user_id})
+    cscope = _company_scope(meta_table, user_id, is_designer)
+    if cscope is not None:
+        col, allowed = cscope
+        extra.append({"col": col, "op": "in", "value": sorted(allowed)})
     return extra
 
 
@@ -325,5 +359,8 @@ def get_record(engine, meta_table, pk, *, user_id, is_designer, allow_deleted=Fa
     if meta_table.soft_delete and not allow_deleted and row.get("deleted_at") is not None:
         return None
     if meta_table.row_owned and not is_designer and row.get("created_by") not in (None, user_id):
+        return None
+    cscope = _company_scope(meta_table, user_id, is_designer)
+    if cscope is not None and row.get(cscope[0]) not in cscope[1]:
         return None
     return row

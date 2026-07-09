@@ -59,12 +59,31 @@ def graph_for(session, user, table, pk, *, direction="both", depth=2, max_nodes=
             disp_cache[t.id] = display_field_name(session, t)
         return disp_cache[t.id]
 
+    from .companies import allowed_for_user
+    allowed_companies = None if is_designer else allowed_for_user(session, user_id)
+    company_col = {}                    # table id -> company column name (or None)
+
+    def _company_visible(t, row_pk):
+        """Company-scoped users only see nodes inside their company subtree."""
+        if allowed_companies is None:
+            return True
+        if t.id not in company_col:
+            cf = next((f for f in t.fields if f.data_type == "company"), None)
+            company_col[t.id] = cf.phys_name if cf else None
+        col = company_col[t.id]
+        if col is None:
+            return True                 # unscoped table
+        row = data_service.get_row(engine_for_table(t), t.phys_name, row_pk)
+        return bool(row) and row.get(col) in allowed_companies
+
     def add_node(t, row_pk, d):
         nid = _node_id(t.id, row_pk)
         if nid in nodes:
             return nid, False
         if len(nodes) >= max_nodes:
             state["truncated"] = True
+            return None, False
+        if not _company_visible(t, row_pk):
             return None, False
         eng = engine_for_table(t)
         labels = data_service.labels_for(eng, t.phys_name, [row_pk], [disp(t)])

@@ -28,6 +28,7 @@ _TYPE_MAP = {
     "json": {"type": "object"},
     "tags": {"type": "array", "items": {"type": "string"}},
     "user": {"type": "integer", "description": "App user id (assignee)"},
+    "company": {"type": "integer", "description": "Company id (tenant scope)"},
     "autonumber": {"type": "string"},
 }
 _GENERATED = {"formula", "autonumber"}

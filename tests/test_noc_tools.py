@@ -192,3 +192,69 @@ def test_activity_stream(app, client):
             select(AppUser).where(AppUser.username == "amy")).id
     page = client.get(f"/u/activity?user={amy_id}").get_data(as_text=True)
     assert "No activity in this window" in page
+
+
+def test_company_separation_staff(app, client):
+    from app.metadata.models import Company
+    from tests.test_portal import _mk_company, _mk_user
+    _setup(client)
+
+    hold_id = _mk_company(client, app, "HoldCo")
+    acme_id = _mk_company(client, app, "Acme", hold_id)
+    glob_id = _mk_company(client, app, "Globex")
+
+    # cycle guard: HoldCo can't be re-parented under its own child
+    client.post(f"/designer/companies/{hold_id}", data={"name": "HoldCo",
+                "parent_id": acme_id}, follow_redirects=True)
+    with app.app_context():
+        assert SessionLocal().get(Company, hold_id).parent_id is None
+
+    tid = _make_table(client, app, "circuit", "Circuit", "name")
+    _add_field(client, tid, "tenant", "company")
+    fid = _make_form(client, app, "circuit_form", "Circuits", tid)
+    _make_form_p(client, app, "circuit_view", "Circuit", tid, "view")
+
+    # designer (unscoped) seeds one row per tenant + one without
+    for name, cid in (("acme-fiber", acme_id), ("glob-fiber", glob_id),
+                      ("unassigned-fiber", "")):
+        _ok(client.post(f"/u/forms/{fid}/new", data={"name": name, "tenant": str(cid)},
+                        follow_redirects=True))
+
+    eng_acme = _mk_user(client, app, "eng.acme", "user", acme_id)
+    eng_hold = _mk_user(client, app, "eng.hold", "user", hold_id)
+    eng_free = _mk_user(client, app, "eng.free", "user")
+
+    # scoped engineer: only their company's rows; direct record access walled off
+    lst = eng_acme.get(f"/u/forms/{fid}").get_data(as_text=True)
+    assert "acme-fiber" in lst
+    assert "glob-fiber" not in lst and "unassigned-fiber" not in lst
+    assert eng_acme.get(f"/u/view/{tid}/2").status_code == 404      # glob row
+    assert eng_acme.get(f"/u/view/{tid}/3").status_code == 404      # unassigned row
+
+    # parent-company engineer covers the chain below (but not the unassigned row)
+    lst = eng_hold.get(f"/u/forms/{fid}").get_data(as_text=True)
+    assert "acme-fiber" in lst and "glob-fiber" not in lst
+    assert "unassigned-fiber" not in lst
+
+    # unscoped staff and the designer still see everything
+    lst = eng_free.get(f"/u/forms/{fid}").get_data(as_text=True)
+    assert "acme-fiber" in lst and "glob-fiber" in lst and "unassigned-fiber" in lst
+    assert "glob-fiber" in client.get(f"/u/forms/{fid}").get_data(as_text=True)
+
+    # a scoped engineer's new record is auto-stamped with their company
+    _ok(eng_acme.post(f"/u/forms/{fid}/new", data={"name": "acme-new", "tenant": ""},
+                      follow_redirects=True))
+    with app.app_context():
+        with get_engine().connect() as c:
+            assert c.execute(text("SELECT tenant FROM circuit WHERE name='acme-new'")
+                             ).scalar() == acme_id
+    assert "acme-new" in eng_acme.get(f"/u/forms/{fid}").get_data(as_text=True)
+
+    # global search respects the scope too
+    hits = eng_acme.get("/u/search", query_string={"q": "fiber"}).get_data(as_text=True)
+    assert "acme-fiber" in hits and "glob-fiber" not in hits
+
+    # delete guard: a company with users assigned can't be removed
+    client.post(f"/designer/companies/{acme_id}/delete", follow_redirects=True)
+    with app.app_context():
+        assert SessionLocal().get(Company, acme_id) is not None

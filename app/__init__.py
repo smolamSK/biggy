@@ -116,6 +116,27 @@ def create_app(config_object=Config):
         except (TypeError, ValueError):
             return str(value)
 
+    # app_company id -> name, cached per request (used by 'company' fields)
+    @app.template_filter("company_name")
+    def _company_name(value):
+        if value in (None, ""):
+            return "—"
+        from flask import g
+
+        from .db import SessionLocal
+        from .metadata.models import Company
+        cache = getattr(g, "_company_names", None)
+        if cache is None:
+            try:
+                cache = {c.id: c.name for c in SessionLocal().query(Company)}
+            except Exception:  # noqa: BLE001 - never break rendering
+                cache = {}
+            g._company_names = cache
+        try:
+            return cache.get(int(value), f"#{value}")
+        except (TypeError, ValueError):
+            return str(value)
+
     @app.template_filter("chip_hue")
     def _chip_hue(value, colors=None):
         if value is None or value == "":

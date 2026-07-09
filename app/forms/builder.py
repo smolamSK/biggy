@@ -33,7 +33,7 @@ from wtforms.validators import (
 
 from .. import data_service
 from ..metadata.field_types import FILE_TYPES, RELATION_TYPE
-from ..metadata.models import AppUser, MetaField, MetaRelation, MetaTable
+from ..metadata.models import AppUser, Company, MetaField, MetaRelation, MetaTable
 
 
 def _valid_json(form, field):
@@ -239,11 +239,15 @@ def build_form(meta_form, session, engine, user=None):
                                       help_text=it.help_text or "", readonly=locked,
                                       column=mf.phys_name, meta=mf))
                 attrs[mf.phys_name] = field
-            elif mf.data_type == "user":
-                # references an app account (assignee); needs the session for choices
-                choices = [(str(u.id), u.username) for u in session.scalars(
-                    select(AppUser).where(AppUser.is_active_flag.is_(True))
-                    .order_by(AppUser.username))]
+            elif mf.data_type in ("user", "company"):
+                # references an app account / company; needs the session for choices
+                if mf.data_type == "user":
+                    choices = [(str(u.id), u.username) for u in session.scalars(
+                        select(AppUser).where(AppUser.is_active_flag.is_(True))
+                        .order_by(AppUser.username))]
+                else:
+                    choices = [(str(c.id), c.name) for c in session.scalars(
+                        select(Company).order_by(Company.name))]
                 if not required:
                     choices = [(_NONE, "— none —")] + choices
                 rk = {"data-picker": "1"}

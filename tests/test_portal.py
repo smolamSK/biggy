@@ -207,6 +207,25 @@ def test_portal_close_ticket(app, client):
                              {"i": pk2}).scalar() == "new"   # unchanged
 
 
+def _mk_company(client, app, name, parent_id=""):
+    from app.metadata.models import Company
+    _ok(client.post("/designer/companies", data={"name": name, "parent_id": parent_id},
+                    follow_redirects=True))
+    with app.app_context():
+        return SessionLocal().scalar(select(Company).where(Company.name == name)).id
+
+
+def _mk_user(client, app, username, role, company_id=""):
+    _ok(client.post("/auth/users/new",
+                    data=dict(username=username, password="pw123456", role=role,
+                              is_active="y", company_id=company_id),
+                    follow_redirects=True))
+    c = app.test_client()
+    _ok(c.post("/auth/login", data=dict(username=username, password="pw123456"),
+               follow_redirects=True))
+    return c
+
+
 def test_portal_org_visibility(app, client):
     _setup(client)
     tid = _make_table(client, app, "oreq", "Org req", "title")
@@ -217,19 +236,15 @@ def test_portal_org_visibility(app, client):
     _ok(client.post(f"/designer/forms/{fid}/catalog", data={"in_catalog": "y"},
                     follow_redirects=True))
 
-    def make_user(username, role, org):
-        _ok(client.post("/auth/users/new",
-                        data=dict(username=username, password="pw123456", role=role,
-                                  is_active="y", organization=org),
-                        follow_redirects=True))
-        c = app.test_client()
-        _ok(c.post("/auth/login", data=dict(username=username, password="pw123456"),
-                   follow_redirects=True))
-        return c
+    # a company chain: HoldCo ─ Acme; Globex stands alone
+    hold_id = _mk_company(client, app, "HoldCo")
+    acme_id = _mk_company(client, app, "Acme", hold_id)
+    glob_id = _mk_company(client, app, "Globex")
 
-    ann = make_user("ann", "portal", "Acme")
-    ben = make_user("ben", "portal", "Acme")
-    gil = make_user("gil", "portal", "Globex")
+    ann = _mk_user(client, app, "ann", "portal", acme_id)
+    ben = _mk_user(client, app, "ben", "portal", acme_id)
+    gil = _mk_user(client, app, "gil", "portal", glob_id)
+    hq = _mk_user(client, app, "hq", "portal", hold_id)
 
     _ok(ann.post(f"/portal/new/{fid}", data={"title": "VPN down"},
                  follow_redirects=True))
@@ -251,12 +266,19 @@ def test_portal_org_visibility(app, client):
                                                 Notification.event == "comment"))
         assert n is not None                      # the creator heard about it
 
-    # another organization is walled off completely
+    # the parent-company account sees the whole chain below it
+    assert "VPN down" in hq.get("/portal/").get_data(as_text=True)
+    _ok(hq.get(f"/portal/ticket/{tid}/{pk}"))
+
+    # another company is walled off completely — and can't see upward either
     assert gil.get(f"/portal/ticket/{tid}/{pk}").status_code == 404
     assert "VPN down" not in gil.get("/portal/").get_data(as_text=True)
+    _ok(gil.post(f"/portal/new/{fid}", data={"title": "Globex issue"},
+                 follow_redirects=True))
+    assert "Globex issue" not in ann.get("/portal/").get_data(as_text=True)
 
-    # a *staff* account sharing the org label never widens the portal scope
-    stan = make_user("stan", "user", "Acme")
+    # a *staff* account in the same company never widens the portal scope
+    stan = _mk_user(client, app, "stan", "user", acme_id)
     _ok(stan.post(f"/u/forms/{fid}/new", data={"title": "internal-only item"},
                   follow_redirects=True))
     assert "internal-only item" not in ben.get("/portal/").get_data(as_text=True)

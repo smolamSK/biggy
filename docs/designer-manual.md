@@ -52,6 +52,12 @@ Open a table to add, edit, reorder (▲▼), or drop fields. Each field has a **
   saved view works for everyone), with an **Assign to me** button on record pages
   and a **My work** panel on the User-mode home. Default value `me` assigns the
   creator automatically.
+- **Company** — references a company from the **company tree** (*Admin →
+  Companies*) and turns on **data separation** for the table: users assigned a
+  company (Users page) see only rows of their company *and the companies below
+  it*; rows they create are stamped with their company automatically. Users
+  without a company, and designers, see everything. Applies to lists, search,
+  reports, dashboards, the API and the impact map.
 - **Email**, **URL**, **Phone** — validated and rendered as clickable links.
 - **Currency**, **Percent** — numeric with formatted display.
 - **JSON** — stores/validates a JSON value.
@@ -128,12 +134,12 @@ The third mode, next to Designer and User: a narrow surface at `/portal` for
 **external customers**.
 
 1. Create accounts with the **portal** role (*Users* page or bulk import —
-   `username,portal[,password[,organization]]`). Portal users are locked out of
+   `username,portal[,password[,company]]`). Portal users are locked out of
    Designer and User mode; signing in lands them on the portal.
-   Set the same **Organization** on colleagues' accounts and they see each
-   other's tickets (list, ticket page, comments, closing); accounts without an
-   organization stay strictly personal. Staff accounts never widen a portal
-   scope, whatever their organization says.
+   Assign colleagues the same **Company** and they see each other's tickets
+   (list, ticket page, comments, closing); a portal user of a **parent** company
+   also sees the tickets of every company below it in the tree. Accounts without
+   a company stay strictly personal. Staff accounts never widen a portal scope.
 2. Publish request/incident forms via the **catalog** (above). A form being in
    the catalog *is* what grants portal access to it; only tables with **audit**
    or **row ownership** work there (everything is scoped to the record creator —

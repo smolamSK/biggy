@@ -24,7 +24,15 @@ from flask import (
 from flask_login import current_user, login_required
 from sqlalchemy import select
 
-from .. import approvals, comments, data_service, file_store, record_service, workflow
+from .. import (
+    approvals,
+    comments,
+    companies,
+    data_service,
+    file_store,
+    record_service,
+    workflow,
+)
 from ..db import SessionLocal, engine_for_table
 from ..forms.builder import build_form, display_field_name
 from ..helpers import current_user_id
@@ -33,6 +41,7 @@ from ..metadata.models import (
     ROLE_PORTAL,
     AppUser,
     Attachment,
+    Company,
     MetaField,
     MetaForm,
     MetaTable,
@@ -77,15 +86,17 @@ def _get_catalog_form(session, form_id):
 def _member_ids(session):
     """Account ids whose tickets the caller may see.
 
-    Just the caller when they have no organization; otherwise every *portal*
-    account of the same organization (staff accounts never widen the scope).
+    Just the caller when they have no company; otherwise every *portal* account
+    of the caller's company **and the companies below it** in the tree (staff
+    accounts never widen the scope).
     """
     me = current_user_id()
-    org = (getattr(current_user, "organization", None) or "").strip()
-    if not org:
+    cid = getattr(current_user, "company_id", None)
+    if not cid:
         return {me}
+    allowed = companies.subtree_ids(session, cid)
     ids = set(session.scalars(select(AppUser.id).where(
-        AppUser.organization == org, AppUser.role == ROLE_PORTAL)).all())
+        AppUser.company_id.in_(allowed), AppUser.role == ROLE_PORTAL)).all())
     ids.add(me)
     return ids
 
@@ -174,9 +185,11 @@ def home():
     groups = {}
     for f in forms:
         groups.setdefault(f.catalog_group or "General", []).append(f)
+    cid = getattr(current_user, "company_id", None)
+    company = session.get(Company, cid) if cid else None
     return render_template("portal/home.html", groups=dict(sorted(groups.items())),
                            tickets=_my_tickets(session, forms),
-                           org=(getattr(current_user, "organization", None) or "").strip())
+                           org=company.name if company else "")
 
 
 @bp.route("/new/<int:form_id>", methods=["GET", "POST"])

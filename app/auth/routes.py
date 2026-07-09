@@ -19,7 +19,7 @@ from flask_login import current_user, login_required, login_user, logout_user
 from sqlalchemy import select
 from werkzeug.security import generate_password_hash
 
-from .. import oidc, rate_limit, totp
+from .. import companies, oidc, rate_limit, totp
 from ..db import SessionLocal
 from ..forms.admin_forms import LoginForm, MfaCodeForm, PasswordChangeForm, UserForm
 from ..helpers import designer_required, ensure_roles
@@ -279,7 +279,12 @@ def _map_oidc_user(claims):
 def users():
     session = SessionLocal()
     rows = session.scalars(select(AppUser).order_by(AppUser.username)).all()
-    return render_template("auth/users.html", users=rows)
+    cmap = {c.id: c.name for c in companies.all_companies(session)}
+    return render_template("auth/users.html", users=rows, cmap=cmap)
+
+
+def _company_choices(session):
+    return [(0, "— none —")] + [(c.id, c.name) for c in companies.all_companies(session)]
 
 
 @bp.route("/users/bulk", methods=["POST"])
@@ -299,15 +304,16 @@ def users_bulk():
         username = parts[0]
         role = parts[1] if len(parts) > 1 and parts[1] else ROLE_USER
         password = parts[2] if len(parts) > 2 else ""
-        organization = parts[3] if len(parts) > 3 else ""
+        company_name = parts[3] if len(parts) > 3 else ""
         if not username or role not in valid_roles:
             errors += 1
             continue
         if session.scalar(select(AppUser).where(AppUser.username == username)):
             skipped += 1
             continue
+        company = companies.get_or_create(session, company_name)
         user = AppUser(username=username, role=role, is_active_flag=True,
-                       organization=organization or None)
+                       company_id=company.id if company else None)
         if password:
             user.set_password(password)
         else:                       # no password → SSO-only / awaiting an admin reset
@@ -327,6 +333,7 @@ def user_new():
     session = SessionLocal()
     form = UserForm()
     form.role.choices = _role_choices(session)
+    form.company_id.choices = _company_choices(session)
     if form.validate_on_submit():
         if session.scalar(select(AppUser).where(AppUser.username == form.username.data)):
             flash("Username already exists.", "danger")
@@ -335,14 +342,13 @@ def user_new():
         else:
             user = AppUser(username=form.username.data, role=form.role.data,
                           is_active_flag=form.is_active.data,
-                          organization=(form.organization.data or "").strip() or None)
+                          company_id=form.company_id.data or None)
             user.set_password(form.password.data)
             session.add(user)
             session.commit()
             flash("User created.", "success")
             return redirect(url_for("auth.users"))
-    return render_template("auth/user_form.html", form=form, title="New user",
-                           orgs=_org_names(session))
+    return render_template("auth/user_form.html", form=form, title="New user")
 
 
 @bp.route("/users/<int:user_id>/edit", methods=["GET", "POST"])
@@ -356,25 +362,22 @@ def user_edit(user_id):
         return redirect(url_for("auth.users"))
     form = UserForm(obj=user)
     form.role.choices = _role_choices(session)
+    form.company_id.choices = _company_choices(session)
     form.is_active.data = user.is_active_flag if request.method == "GET" else form.is_active.data
     if form.validate_on_submit():
         user.username = form.username.data
         user.role = form.role.data
         user.is_active_flag = form.is_active.data
-        user.organization = (form.organization.data or "").strip() or None
+        user.company_id = form.company_id.data or None
         if form.password.data:
             user.set_password(form.password.data)
         session.commit()
         flash("User updated.", "success")
         return redirect(url_for("auth.users"))
+    if request.method == "GET":
+        form.company_id.data = user.company_id or 0
     return render_template("auth/user_form.html", form=form, title=f"Edit {user.username}",
-                           user=user, orgs=_org_names(session))
-
-
-def _org_names(session):
-    """Distinct organization labels — the datalist on the user form."""
-    return sorted({u.organization for u in session.scalars(select(AppUser))
-                   if u.organization})
+                           user=user)
 
 
 @bp.route("/users/<int:user_id>/delete", methods=["POST"])

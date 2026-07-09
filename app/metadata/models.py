@@ -54,8 +54,9 @@ class AppUser(Base, UserMixin):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False, default=ROLE_USER)
     is_active_flag: Mapped[bool] = mapped_column("is_active", Boolean, default=True)
-    # company/tenant label: portal users of the same organization share tickets
-    organization: Mapped[str | None] = mapped_column(String(120))
+    # company/tenant (app_company): scopes portal ticket sharing and — for staff
+    # on tables with a company field — data visibility (subtree of this company)
+    company_id: Mapped[int | None] = mapped_column(Integer)
     # TOTP two-factor (see app/totp.py). Secret encrypted at rest; backup codes hashed.
     totp_secret: Mapped[str | None] = mapped_column(EncryptedText)
     mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -893,6 +894,17 @@ class AppSetting(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     key: Mapped[str] = mapped_column(String(40), unique=True, nullable=False)
     value: Mapped[str | None] = mapped_column(Text)
+
+
+class Company(Base):
+    """A company/tenant. Chains via ``parent_id``: being allowed on a company
+    implies access to every company below it in the tree."""
+    __tablename__ = "app_company"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
+    parent_id: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
 
 class Watch(Base):

@@ -65,6 +65,7 @@
   {%- elif dt == 'tags' -%}{% for t in v|fromjson %}<span class="badge">{{ t }}</span> {% endfor %}
   {%- elif dt == 'enum' -%}<span class="chip c-{{ v|chip_hue(colors) }}">{{ v }}</span>
   {%- elif dt == 'user' -%}{{ v|user_name }}
+  {%- elif dt == 'company' -%}{{ v|company_name }}
   {%- elif dt == 'markdown' -%}<div class="md-content">{{ v|markdown_safe|safe }}</div>
   {%- else -%}{{ v }}{%- endif -%}
 {% endmacro %}

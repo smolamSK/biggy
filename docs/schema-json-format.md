@@ -158,6 +158,7 @@ must live in the same data source.
 | `enum` | one of the options | `enum_options` = JSON-string list (§3) |
 | `tags` | list of options | `enum_options` = JSON-string list (§3) |
 | `user` | app-account id (assignee) | rendered as the username; `default_value` `"me"` assigns the creator; filterable by `me` |
+| `company` | company id (tenant) | scopes visibility to the user's company subtree; companies themselves are instance data (Admin → Companies), not exported |
 | `autonumber` | generated | `default_value` = prefix (e.g. `"INV-"`); pair with a `sequences` entry |
 | `formula` | computed (read-only) | `formula` = expression, `result_type` = a scalar type |
 | `relation` | FK id | virtual; defined via `relations` (§4) — needs `related_table_id` |

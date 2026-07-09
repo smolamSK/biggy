@@ -67,6 +67,7 @@ OPS_BY_KIND = {
     "boolean": _BOOL,
     "relation": _RELATION,
     "user": _RELATION,     # is / is not / empty — with user choices (incl. "me")
+    "company": _RELATION,  # is / is not / empty — with company choices
 }
 
 _KIND_BY_TYPE = {
@@ -79,6 +80,7 @@ _KIND_BY_TYPE = {
     "enum": "enum",
     "boolean": "boolean",
     "user": "user",
+    "company": "company",
 }
 
 
@@ -128,6 +130,10 @@ def build_meta(session, engine, columns):
             from .metadata.models import AppUser
             choices = [["me", "Me"]] + [[u.id, u.username] for u in session.scalars(
                 select(AppUser).order_by(AppUser.username))]
+        elif it.meta.data_type == "company":
+            from .metadata.models import Company
+            choices = [[c.id, c.name] for c in session.scalars(
+                select(Company).order_by(Company.name))]
         filter_meta[it.column] = {
             "label": it.label, "kind": kind, "data_type": it.meta.data_type,
             "ops": OPS_BY_KIND[kind], "choices": choices,

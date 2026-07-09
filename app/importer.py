@@ -164,6 +164,8 @@ def template_csv(meta_table):
 class _UserResolver:
     """Resolve a cell to an app_user id, by id or exact username."""
 
+    label = "user"
+
     def __init__(self, session):
         from .metadata.models import AppUser
         users = session.scalars(select(AppUser)).all()
@@ -175,7 +177,19 @@ class _UserResolver:
             return int(raw)
         if raw in self.by_name:
             return self.by_name[raw]
-        raise ValueError(f"no user matching '{raw}'")
+        raise ValueError(f"no {self.label} matching '{raw}'")
+
+
+class _CompanyResolver(_UserResolver):
+    """Resolve a cell to an app_company id, by id or exact name."""
+
+    label = "company"
+
+    def __init__(self, session):
+        from .metadata.models import Company
+        rows = session.scalars(select(Company)).all()
+        self.ids = {c.id for c in rows}
+        self.by_name = {c.name: c.id for c in rows}
 
 
 class _RelationResolver:
@@ -219,9 +233,9 @@ def coerce_value(field, raw, resolver=None):
             v = int(raw)
             _check_rules(field, v)
             return v
-        if dt == "user":
+        if dt in ("user", "company"):
             if resolver is not None:
-                return resolver.resolve(raw)      # id or unique username
+                return resolver.resolve(raw)      # id, or unique username / name
             return int(raw)
         if dt == "decimal":
             v = Decimal(raw)
@@ -318,6 +332,9 @@ def import_rows(session, engine, meta_table, file_text, skip_invalid,
     if any(f.data_type == "user" for f in fields):
         ur = _UserResolver(session)
         resolvers.update({f.phys_name: ur for f in fields if f.data_type == "user"})
+    if any(f.data_type == "company" for f in fields):
+        cr = _CompanyResolver(session)
+        resolvers.update({f.phys_name: cr for f in fields if f.data_type == "company"})
 
     inserts, updates, errors, total = [], [], [], 0
     for line_no, row in enumerate(reader, start=2):  # header occupies line 1

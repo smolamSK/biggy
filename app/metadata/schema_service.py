@@ -51,7 +51,7 @@ def sa_type_for_field(field):
         return Text()
     if dt == "integer":
         return Integer()
-    if dt == "user":                 # references an app_user id (assignee etc.)
+    if dt in ("user", "company"):    # references an app_user / app_company id
         return Integer()
     if dt == "bigint":
         return BigInteger()
@@ -135,7 +135,7 @@ _META_ADDITIONS = {
         {"name": "mfa_enabled", "type": Boolean(), "nullable": False, "default": "false"},
         {"name": "mfa_backup_codes", "type": Text()},
         {"name": "oidc_subject", "type": String(255)},
-        {"name": "organization", "type": String(120)},
+        {"name": "company_id", "type": Integer()},
     ],
     "app_meta_relation": [
         {"name": "to_display_field_ids", "type": Text()},

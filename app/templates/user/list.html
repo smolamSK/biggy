@@ -127,7 +127,7 @@
           {% for c in columns %}
             {% set v = row.get(c.column) %}
             {% set editable = can_edit and c.kind == 'field' and not c.readonly and c.column != display_col
-                              and c.meta.data_type not in ('json', 'tags', 'autonumber', 'formula', 'user') %}
+                              and c.meta.data_type not in ('json', 'tags', 'autonumber', 'formula', 'user', 'company') %}
             {% set wf_cell = c.column in wf_cols %}
             {% set numcol = c.kind == 'field' and c.meta and c.meta.data_type in ('integer','bigint','decimal','float','currency','percent','autonumber') %}
             <td data-col="{{ c.column }}"{% if numcol %} class="num"{% endif %}
@@ -146,7 +146,7 @@
               {% elif v is none %}<span class="muted">—</span>
               {% elif v is sameas true %}yes{% elif v is sameas false %}no
               {% elif c.column == display_col %}{{ record_link(view_table_id, rid, v) }}
-              {% elif c.meta.data_type in ('email','url','phone','currency','percent','json','tags','user') %}{{ typed_value(c.meta.data_type, v) }}
+              {% elif c.meta.data_type in ('email','url','phone','currency','percent','json','tags','user','company') %}{{ typed_value(c.meta.data_type, v) }}
               {% elif c.meta.data_type == 'enum' %}<span class="chip c-{{ v|chip_hue(enum_colors.get(c.column)) }}">{{ v }}</span>
               {% else %}{{ v }}{% endif %}
             </td>

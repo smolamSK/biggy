@@ -45,6 +45,7 @@ from .. import (
     sql_console,
     workflow,
 )
+from .. import companies as company_svc
 from .. import settings as instance_settings
 from ..db import SessionLocal, engine_for, engine_for_table, get_engine, test_source
 from ..forms.admin_forms import (
@@ -89,6 +90,7 @@ from ..metadata.models import (
     AppUser,
     Attachment,
     AuditLog,
+    Company,
     CompositeUnique,
     Connection,
     Dashboard,
@@ -204,6 +206,101 @@ def settings_page():
         "designer/settings.html", stored=instance_settings.get_all(session),
         themes=instance_settings.THEMES,
         default_name=current_app.config.get("APP_NAME", "Biggy"))
+
+
+# --------------------------------------------------------------------------- #
+# Companies (tenants) — a tree; access to one implies access to all below
+# --------------------------------------------------------------------------- #
+def _company_tree(session):
+    """(company, depth) rows in tree order; orphans appended at the root level."""
+    rows = company_svc.all_companies(session)
+    children = {}
+    for c in rows:
+        children.setdefault(c.parent_id, []).append(c)
+    out, seen = [], set()
+
+    def walk(pid, depth):
+        for c in sorted(children.get(pid, []), key=lambda x: x.name.lower()):
+            if c.id in seen:
+                continue
+            seen.add(c.id)
+            out.append((c, depth))
+            walk(c.id, depth + 1)
+
+    walk(None, 0)
+    for c in rows:                      # orphaned parents (broken chain) — flat
+        if c.id not in seen:
+            seen.add(c.id)
+            out.append((c, 0))
+            walk(c.id, 1)
+    return out
+
+
+@bp.route("/companies", methods=["GET", "POST"])
+def companies_home():
+    session = _s()
+    if request.method == "POST":        # add
+        name = (request.form.get("name") or "").strip()[:120]
+        raw = request.form.get("parent_id") or ""
+        parent_id = int(raw) if raw.isdigit() and int(raw) else None
+        if not name:
+            flash("Company name is required.", "danger")
+        elif session.scalar(select(Company).where(Company.name == name)):
+            flash("A company with that name already exists.", "danger")
+        else:
+            session.add(Company(name=name, parent_id=parent_id))
+            session.commit()
+            flash("Company added.", "success")
+        return redirect(url_for("designer.companies_home"))
+    tree = _company_tree(session)
+    # per-company: descendants (invalid as its own parent) + assigned user count
+    invalid_parents = {c.id: company_svc.subtree_ids(session, c.id) for c, _ in tree}
+    user_counts = {}
+    for u in session.scalars(select(AppUser)):
+        if u.company_id:
+            user_counts[u.company_id] = user_counts.get(u.company_id, 0) + 1
+    return render_template("designer/companies.html", tree=tree,
+                           invalid_parents=invalid_parents, user_counts=user_counts)
+
+
+@bp.route("/companies/<int:cid>", methods=["POST"])
+def company_edit(cid):
+    session = _s()
+    c = session.get(Company, cid)
+    if not c:
+        flash("Company not found.", "danger")
+        return redirect(url_for("designer.companies_home"))
+    name = (request.form.get("name") or "").strip()[:120]
+    raw = request.form.get("parent_id") or ""
+    parent_id = int(raw) if raw.isdigit() and int(raw) else None
+    if not name:
+        flash("Company name is required.", "danger")
+    elif session.scalar(select(Company).where(Company.name == name, Company.id != cid)):
+        flash("A company with that name already exists.", "danger")
+    elif parent_id and parent_id in company_svc.subtree_ids(session, cid):
+        flash("A company can't be parented under itself or its descendants.", "danger")
+    else:
+        c.name, c.parent_id = name, parent_id
+        session.commit()
+        flash("Company updated.", "success")
+    return redirect(url_for("designer.companies_home"))
+
+
+@bp.route("/companies/<int:cid>/delete", methods=["POST"])
+def company_delete(cid):
+    session = _s()
+    c = session.get(Company, cid)
+    if not c:
+        return redirect(url_for("designer.companies_home"))
+    if session.scalar(select(Company.id).where(Company.parent_id == cid).limit(1)):
+        flash("Re-parent or delete its child companies first.", "warning")
+    elif session.scalar(select(AppUser.id).where(AppUser.company_id == cid).limit(1)):
+        flash("Unassign its users first.", "warning")
+    else:
+        session.delete(c)
+        session.commit()
+        flash("Company deleted.", "info")
+    return redirect(url_for("designer.companies_home"))
 
 
 # --------------------------------------------------------------------------- #

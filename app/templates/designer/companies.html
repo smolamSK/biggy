@@ -1,0 +1,74 @@
+{% extends "designer/_base.html" %}
+{% block title %}Companies · {{ branding.app_name }}{% endblock %}
+{% block inner %}
+<h1>Companies</h1>
+<p class="help" style="max-width:640px">Companies form a <strong>tree</strong>: a user
+  assigned to a company also covers every company below it. Assign users on the
+  <a href="{{ url_for('auth.users') }}">Users</a> page; scope data tables by giving them
+  a <em>Company</em> field. Users without a company — and designers — see everything.</p>
+
+<div class="panel">
+  {% if tree %}
+  <table class="grid">
+    <tr><th>Company</th><th>Parent</th><th>Users</th><th>Actions</th></tr>
+    {% for c, depth in tree %}
+      <tr>
+        <td>
+          <form method="post" action="{{ url_for('designer.company_edit', cid=c.id) }}"
+                id="cf-{{ c.id }}" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <span class="muted">{{ ('&nbsp;' * depth * 4) | safe }}{{ '└ ' if depth }}</span>
+            <input type="text" name="name" value="{{ c.name }}" style="max-width:16rem">
+          </form>
+        </td>
+        <td>
+          <select name="parent_id" form="cf-{{ c.id }}" style="max-width:14rem">
+            <option value="">— none (top level) —</option>
+            {% for p, pdepth in tree %}
+              {% if p.id not in invalid_parents[c.id] %}
+                <option value="{{ p.id }}" {{ 'selected' if c.parent_id == p.id }}>{{ p.name }}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </td>
+        <td class="muted num">{{ user_counts.get(c.id, 0) }}</td>
+        <td class="actions">
+          <button class="btn sm" type="submit" form="cf-{{ c.id }}">Save</button>
+          <form method="post" action="{{ url_for('designer.company_delete', cid=c.id) }}"
+                class="inline" onsubmit="return confirm('Delete this company?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn danger sm" type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">No companies yet — add the first one below.</p>{% endif %}
+</div>
+
+<h2>Add company</h2>
+<div class="panel" style="max-width:560px">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="pill-row">
+      <div class="field" style="flex:1">
+        <label>Name</label>
+        <input type="text" name="name" required maxlength="120">
+      </div>
+      <div class="field" style="flex:1">
+        <label>Parent</label>
+        <select name="parent_id">
+          <option value="">— none (top level) —</option>
+          {% for p, pdepth in tree %}
+            <option value="{{ p.id }}">{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <button class="btn primary" type="submit">Add company</button>
+  </form>
+  <p class="help">Deleting a company requires re-parenting its children and unassigning
+    its users first. Data rows keep their company id — rows pointing at a deleted
+    company stay hidden from scoped users until re-assigned.</p>
+</div>
+{% endblock %}
