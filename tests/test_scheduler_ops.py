@@ -141,7 +141,7 @@ def test_run_jobs_cli_and_ticker(app, client):
     assert "Ran jobs" in app.test_cli_runner().invoke(args=["sync"]).output   # alias still works
     # tick_once runs a pass within an app context and reports the job kinds
     summary = scheduler.tick_once(app)
-    assert set(summary) == {"triggers", "feeds", "pulls", "reports", "sla"}
+    assert set(summary) == {"triggers", "feeds", "pulls", "reports", "sla", "recurring"}
 
 def test_scheduled_trigger_roundtrip(app, client):
     from app.metadata.models import TriggerRule
