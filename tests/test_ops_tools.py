@@ -200,3 +200,50 @@ def test_maintenance_windows(app, client):
         "record_table_id": str(chg_tid), "record_pk": "999",
     }, follow_redirects=True)
     assert "Bad" not in client.get("/designer/maintenance").get_data(as_text=True)
+
+
+def test_recurring_records(app, client):
+    from sqlalchemy import text
+
+    from app import scheduler
+    from app.db import get_engine
+    _setup(client)
+    tid = _make_table(client, app, "pm", "PM task", "title")
+    _add_field(client, tid, "status", "enum", enum_options="open\ndone")
+    _make_form(client, app, "pm_form", "PM tasks", tid)
+
+    _ok(client.post("/designer/recurring", data={
+        "name": "UPS inspection", "table_id": str(tid), "cadence": "custom",
+        "minutes": "60", "values": "title = Inspect the UPS\nstatus = open",
+    }, follow_redirects=True))
+    page = client.get("/designer/recurring").get_data(as_text=True)
+    assert "UPS inspection" in page and ">active<" in page
+
+    with app.app_context():
+        s = SessionLocal()
+        assert scheduler.run_due(s, get_engine())["recurring"] == 1   # due (never ran)
+        assert scheduler.run_due(s, get_engine())["recurring"] == 0   # not due again
+        with get_engine().connect() as c:
+            assert c.execute(text("SELECT title, status FROM pm")).all() \
+                == [("Inspect the UPS", "open")]
+
+    # pausing stops it even when due again
+    import re as _re
+    rid = _re.search(r"/designer/recurring/(\d+)/toggle", page).group(1)
+    _ok(client.post(f"/designer/recurring/{rid}/toggle", follow_redirects=True))
+    with app.app_context():
+        s = SessionLocal()
+        from app.metadata.models import RecurringRecord
+        s.get(RecurringRecord, int(rid)).last_run_at = None
+        s.commit()
+        assert scheduler.run_due(s, get_engine())["recurring"] == 0
+
+    # a bad column or value is rejected at save time
+    client.post("/designer/recurring", data={
+        "name": "Bad col", "table_id": str(tid), "cadence": "60",
+        "values": "nope = 1"}, follow_redirects=True)
+    client.post("/designer/recurring", data={
+        "name": "Bad val", "table_id": str(tid), "cadence": "60",
+        "values": "status = not-an-option"}, follow_redirects=True)
+    page = client.get("/designer/recurring").get_data(as_text=True)
+    assert "Bad col" not in page and "Bad val" not in page

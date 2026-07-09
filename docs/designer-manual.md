@@ -128,6 +128,15 @@ links to a **form** or a **list view** of a table. Order them, nest them under
 groups, and pick an optional **icon** — it shows in the sidebar and on the home
 page's quick-access cards.
 
+## Recurring records
+
+*Admin → Recurring*: create a templated record on a cadence (hourly / daily /
+weekly / monthly / custom minutes) — preventive-maintenance tickets, recurring
+audits, renewal reminders. Values are `column = value` lines validated like CSV
+imports; unlisted columns use their field defaults. Runs with the scheduler and
+is claimed atomically, so multiple workers never double-create. Pause/resume per
+job.
+
 ## Maintenance windows
 
 *Admin → Maintenance*: schedule planned-work periods, scoped to one table or all.

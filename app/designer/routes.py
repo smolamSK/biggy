@@ -310,6 +310,94 @@ def company_delete(cid):
 
 
 # --------------------------------------------------------------------------- #
+# Recurring records — create a templated record on a cadence
+# --------------------------------------------------------------------------- #
+_CADENCES = [(60, "Hourly"), (1440, "Daily"), (10080, "Weekly"), (43200, "Monthly")]
+
+
+def _parse_value_lines(text_):
+    """``column = value`` lines → dict; '#' comments and blanks ignored."""
+    out = {}
+    for line in (text_ or "").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            raise ValueError(f"'{line}' — expected: column = value")
+        col, val = line.split("=", 1)
+        out[col.strip()] = val.strip()
+    return out
+
+
+@bp.route("/recurring", methods=["GET", "POST"])
+def recurring_home():
+    from ..metadata.models import RecurringRecord
+    session = _s()
+    if request.method == "POST":
+        name = (request.form.get("name") or "").strip()[:120]
+        raw = request.form.get("table_id") or ""
+        mt = session.get(MetaTable, int(raw)) if raw.isdigit() else None
+        cadence = request.form.get("cadence") or ""
+        try:
+            minutes = int(request.form.get("minutes") or 0) if cadence == "custom" \
+                else int(cadence)
+        except ValueError:
+            minutes = 0
+        if not name or mt is None or minutes <= 0:
+            flash("A name, a table and a cadence are required.", "danger")
+            return redirect(url_for("designer.recurring_home"))
+        try:
+            values = _parse_value_lines(request.form.get("values"))
+            fields = {f.phys_name: f for f in mt.fields}
+            for col, val in values.items():
+                if col not in fields:
+                    raise ValueError(f"'{col}' is not a column of {mt.label}")
+                if fields[col].data_type not in ("relation", "user", "company"):
+                    importer.coerce_value(fields[col], val)   # fail fast on typos
+        except ValueError as exc:
+            flash(str(exc), "danger")
+            return redirect(url_for("designer.recurring_home"))
+        session.add(RecurringRecord(name=name, table_id=mt.id,
+                                    field_values=json.dumps(values),
+                                    schedule_minutes=minutes))
+        session.commit()
+        flash("Recurring job scheduled.", "success")
+        return redirect(url_for("designer.recurring_home"))
+
+    tmap = {t.id: t for t in _tables(session)}
+    rows = [{"j": j, "table": tmap.get(j.table_id),
+             "vals": json.loads(j.field_values or "{}")}
+            for j in session.scalars(select(RecurringRecord)
+                                     .order_by(RecurringRecord.name))]
+    return render_template("designer/recurring.html", rows=rows,
+                           tables=_tables(session), cadences=_CADENCES)
+
+
+@bp.route("/recurring/<int:rid>/toggle", methods=["POST"])
+def recurring_toggle(rid):
+    from ..metadata.models import RecurringRecord
+    session = _s()
+    j = session.get(RecurringRecord, rid)
+    if j:
+        j.active = not j.active
+        session.commit()
+        flash(f"'{j.name}' {'resumed' if j.active else 'paused'}.", "info")
+    return redirect(url_for("designer.recurring_home"))
+
+
+@bp.route("/recurring/<int:rid>/delete", methods=["POST"])
+def recurring_delete(rid):
+    from ..metadata.models import RecurringRecord
+    session = _s()
+    j = session.get(RecurringRecord, rid)
+    if j:
+        session.delete(j)
+        session.commit()
+        flash("Recurring job removed.", "info")
+    return redirect(url_for("designer.recurring_home"))
+
+
+# --------------------------------------------------------------------------- #
 # Maintenance windows — hold SLA/alerts during planned work
 # --------------------------------------------------------------------------- #
 @bp.route("/maintenance", methods=["GET", "POST"])

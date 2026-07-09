@@ -1,0 +1,80 @@
+{% extends "designer/_base.html" %}
+{% block title %}Recurring · {{ branding.app_name }}{% endblock %}
+{% block inner %}
+<h1>Recurring records</h1>
+<p class="help" style="max-width:640px">Create a templated record on a cadence — preventive
+  maintenance tickets, recurring audits, renewal reminders. Runs with the scheduler
+  (<code>flask run-jobs</code> / the in-process ticker), claimed atomically so multiple
+  workers never double-create. Values go through the same validation as CSV imports;
+  field <em>defaults</em> (e.g. <code>now</code>, an auto-number) apply as usual.</p>
+
+<div class="panel">
+  {% if rows %}
+  <table class="grid">
+    <tr><th>Job</th><th>Table</th><th>Cadence</th><th>Values</th><th>Last run</th><th>Status</th><th>Actions</th></tr>
+    {% for r in rows %}
+      <tr>
+        <td class="display">{{ r.j.name }}</td>
+        <td class="muted">{{ r.table.label if r.table else '?' }}</td>
+        <td class="muted">every {{ r.j.schedule_minutes }} min</td>
+        <td class="muted" style="font-size:var(--fs-xs)">
+          {% for c, v in r.vals.items() %}<code>{{ c }}={{ v }}</code> {% endfor %}</td>
+        <td class="muted num">{{ r.j.last_run_at.strftime('%Y-%m-%d %H:%M') if r.j.last_run_at else 'never' }}</td>
+        <td><span class="chip c-{{ 'green' if r.j.active else 'gray' }}">{{ 'active' if r.j.active else 'paused' }}</span></td>
+        <td class="actions">
+          <form method="post" action="{{ url_for('designer.recurring_toggle', rid=r.j.id) }}" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn sm" type="submit">{{ 'Pause' if r.j.active else 'Resume' }}</button>
+          </form>
+          <form method="post" action="{{ url_for('designer.recurring_delete', rid=r.j.id) }}"
+                class="inline" onsubmit="return confirm('Remove this job?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn danger sm" type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">No recurring jobs yet.</p>{% endif %}
+</div>
+
+<h2>Add a recurring job</h2>
+<div class="panel" style="max-width:620px">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label>Name</label>
+      <input type="text" name="name" required maxlength="120"
+             placeholder="e.g. Weekly UPS inspection">
+    </div>
+    <div class="pill-row">
+      <div class="field" style="flex:2">
+        <label>Table</label>
+        <select name="table_id" required>
+          {% for t in tables %}<option value="{{ t.id }}">{{ t.label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field" style="flex:1">
+        <label>Cadence</label>
+        <select name="cadence">
+          {% for m, lbl in cadences %}<option value="{{ m }}">{{ lbl }}</option>{% endfor %}
+          <option value="custom">Custom…</option>
+        </select>
+      </div>
+      <div class="field" style="flex:1">
+        <label>Custom (minutes)</label>
+        <input type="number" name="minutes" min="1" placeholder="e.g. 720">
+      </div>
+    </div>
+    <div class="field">
+      <label>Field values (one per line)</label>
+      <textarea name="values" rows="4" style="font-family:var(--font-mono)"
+                placeholder="title = Inspect the UPS&#10;status = open"></textarea>
+      <div class="help"><code>column = value</code> per line; choice lists expect one of
+        their options, user/company/relation fields accept an id or exact name.
+        Unlisted columns fall back to their field defaults.</div>
+    </div>
+    <button class="btn primary" type="submit">Schedule</button>
+  </form>
+</div>
+{% endblock %}

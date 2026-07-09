@@ -910,6 +910,22 @@ class Company(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
 
+class RecurringRecord(Base):
+    """Create a templated record on a cadence (preventive maintenance tickets,
+    recurring audits). Values are raw strings coerced like CSV imports; runs are
+    claimed atomically by the scheduler (multi-worker safe)."""
+    __tablename__ = "app_recurring"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    table_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    field_values: Mapped[str | None] = mapped_column(Text)   # JSON {column: raw}
+    schedule_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
 class MaintenanceWindow(Base):
     """A planned-work period. While active, SLA breaches/escalations are held
     and trigger/watch notifications suppressed for the scoped table (or all

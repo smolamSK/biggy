@@ -17,6 +17,7 @@ the rest. Idempotency for scheduled triggers is by design: the designer pairs a
 **condition** with a **set_field** action so an already-handled row stops matching
 (no per-row run ledger needed).
 """
+import json
 import logging
 import threading
 import time
@@ -26,9 +27,17 @@ from urllib.parse import parse_qsl
 from sqlalchemy import delete, select
 from werkzeug.datastructures import MultiDict
 
-from . import feeds, jobs, pull, record_service, reporting, sla, triggers
+from . import feeds, importer, jobs, pull, record_service, reporting, sla, triggers
 from .db import SessionLocal, engine_for_table, get_engine
-from .metadata.models import AppUser, MetaTable, Notification, RateHit, ReportDef, TriggerRule
+from .metadata.models import (
+    AppUser,
+    MetaTable,
+    Notification,
+    RateHit,
+    RecurringRecord,
+    ReportDef,
+    TriggerRule,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -123,10 +132,35 @@ def _run_report(session, report):
 # --------------------------------------------------------------------------- #
 # Run all due work
 # --------------------------------------------------------------------------- #
+def _run_recurring(session, job):
+    """Create one templated record for a due recurring job. Returns 1 on success."""
+    mt = session.get(MetaTable, job.table_id)
+    if not mt:
+        return 0
+    engine = engine_for_table(mt)
+    fields = {f.phys_name: f for f in mt.fields}
+    values = {}
+    for col, raw in json.loads(job.field_values or "{}").items():
+        f = fields.get(col)
+        if f is None:
+            continue                    # column dropped since the job was defined
+        resolver = None
+        if f.data_type == "relation":
+            resolver = importer._RelationResolver(session, engine, f)
+        elif f.data_type == "user":
+            resolver = importer._UserResolver(session)
+        elif f.data_type == "company":
+            resolver = importer._CompanyResolver(session)
+        values[col] = importer.coerce_value(f, str(raw), resolver)
+    record_service.create(session, engine, mt, values, None)
+    return 1
+
+
 def run_due(session, engine, now=None):
     """Run every due scheduled trigger, feed and report. Returns a counts summary."""
     now = now or _now()
-    summary = {"triggers": 0, "feeds": 0, "pulls": 0, "reports": 0, "sla": 0}
+    summary = {"triggers": 0, "feeds": 0, "pulls": 0, "reports": 0, "sla": 0,
+               "recurring": 0}
 
     # 1. scheduled triggers (atomically claimed so concurrent workers don't double-run)
     for rule in session.scalars(select(TriggerRule).where(
@@ -151,6 +185,18 @@ def run_due(session, engine, now=None):
         summary["pulls"] = pull.run_scheduled(SessionLocal(), engine)
     except Exception as exc:  # noqa: BLE001
         _log_error("pull", "scheduled pulls", exc)
+
+    # 2c'. recurring record creation (atomically claimed)
+    for job in session.scalars(select(RecurringRecord).where(
+            RecurringRecord.active.is_(True))).all():
+        if not jobs.claim_due(session, RecurringRecord, job.id, job.schedule_minutes, now):
+            continue
+        try:
+            summary["recurring"] += _run_recurring(session, job)
+            session.commit()
+        except Exception as exc:  # noqa: BLE001
+            session.rollback()
+            _log_error("recurring", job.name, exc)
 
     # 2c. SLA breach sweep (global; runs every pass — granularity = the cron cadence)
     try:
