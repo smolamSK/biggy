@@ -8,6 +8,7 @@ recomputes (formula ripple, SLA write-backs) go through the low-level
 """
 from sqlalchemy import select
 
+from . import mailer
 from .metadata.models import AppUser, Notification, Watch
 
 _AUDIT_COLS = {"created_by", "created_at", "updated_by", "updated_at",
@@ -53,13 +54,16 @@ def notify_update(session, meta_table, pk, values, user_id):
         int_pk = int(pk)
     except (TypeError, ValueError):
         int_pk = None
+    base = mailer.base_url()
+    link = f"\n\n{base}/u/view/{meta_table.id}/{pk}" if base else ""
+    subject = f"{meta_table.label} #{pk} was updated"
     for uid in ids:
         u = session.get(AppUser, uid)
         if u is None or not u.is_active:
             continue
         session.add(Notification(
             table_phys=meta_table.phys_name, row_pk=int_pk, event="watch",
-            channel="in_app", user_id=uid,
-            subject=f"{meta_table.label} #{pk} was updated", body=body,
+            channel="in_app", user_id=uid, subject=subject, body=body,
             status="unread"))
+        mailer.email_user(u, subject, body + link)
     session.commit()

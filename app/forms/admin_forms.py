@@ -48,6 +48,8 @@ class UserForm(FlaskForm):
     is_active = BooleanField("Active", default=True)
     company_id = SelectField("Company", coerce=int, validate_choice=False,
                              validators=[Optional()])
+    email = StringField("Email (notifications)",
+                        validators=[Optional(), Length(max=255)])
 
 
 class MfaCodeForm(FlaskForm):

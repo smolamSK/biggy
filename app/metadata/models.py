@@ -57,6 +57,9 @@ class AppUser(Base, UserMixin):
     # company/tenant (app_company): scopes portal ticket sharing and — for staff
     # on tables with a company field — data visibility (subtree of this company)
     company_id: Mapped[int | None] = mapped_column(Integer)
+    # outbound email for comments/watch/assignment notifications (opt-out toggle)
+    email: Mapped[str | None] = mapped_column(String(255))
+    notify_email: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     # TOTP two-factor (see app/totp.py). Secret encrypted at rest; backup codes hashed.
     totp_secret: Mapped[str | None] = mapped_column(EncryptedText)
     mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

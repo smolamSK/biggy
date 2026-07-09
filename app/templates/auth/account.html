@@ -13,6 +13,21 @@
       <button class="btn primary" type="submit">Change password</button>
     </form>
     <hr style="margin:1rem 0;border:none;border-top:1px solid var(--line)">
+    <h2 style="margin-top:0">Notifications</h2>
+    <form method="post" action="{{ url_for('auth.account_contact') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field">
+        <label>Email address</label>
+        <input type="email" name="email" value="{{ current_user.email or '' }}"
+               maxlength="255" placeholder="you@example.com">
+      </div>
+      <div class="field checkline">
+        <input type="checkbox" name="notify_email" {{ 'checked' if current_user.notify_email }}>
+        <label style="margin:0">Email me about replies, updates and assignments</label>
+      </div>
+      <button class="btn primary" type="submit">Save</button>
+    </form>
+    <hr style="margin:1rem 0;border:none;border-top:1px solid var(--line)">
     <p><a class="btn" href="{{ url_for('auth.mfa') }}">Two-factor authentication →</a></p>
   </div>
 </div>

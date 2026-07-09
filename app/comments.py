@@ -8,7 +8,8 @@ public comments.
 """
 from sqlalchemy import select
 
-from .metadata.models import ROLE_PORTAL, AppUser, Comment, Notification
+from . import mailer
+from .metadata.models import ROLE_PORTAL, AppUser, Comment, MetaTable, Notification
 
 SNIPPET_LEN = 140
 
@@ -68,6 +69,8 @@ def add(session, table_phys, row_pk, user, body, *, internal=False,
         int_pk = int(row_pk)
     except (TypeError, ValueError):
         int_pk = None
+    table = session.scalar(select(MetaTable).where(MetaTable.phys_name == table_phys))
+    base = mailer.base_url()
     for uid in recipients:
         u = users.get(uid)
         if u is None or not u.is_active:
@@ -78,5 +81,11 @@ def add(session, table_phys, row_pk, user, body, *, internal=False,
             table_phys=table_phys, row_pk=int_pk, event="comment",
             channel="in_app", user_id=uid, subject=subject,
             body=f"{user.username}: {snippet}", status="unread"))
+        link = ""
+        if base and table is not None:
+            path = (f"/portal/ticket/{table.id}/{row_pk}" if u.role == ROLE_PORTAL
+                    else f"/u/view/{table.id}/{row_pk}")
+            link = f"\n\n{base}{path}"
+        mailer.email_user(u, subject, f"{user.username} wrote:\n\n{body}{link}")
     session.commit()
     return comment

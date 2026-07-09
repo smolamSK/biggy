@@ -154,6 +154,7 @@ def create(session, engine, meta_table, values, user_id):
                if meta_table.track_audit else None)
     _log(session, meta_table, pk, "create", user_id, changes)
     _fire(session, engine, meta_table, "create", pk, None, user_id)
+    _notify_assignees(session, meta_table, pk, values, {}, user_id)
     _ripple(session, engine, meta_table, {**values, meta_table.pk_col: pk})
     return pk
 
@@ -161,7 +162,10 @@ def create(session, engine, meta_table, values, user_id):
 def update(session, engine, meta_table, pk, values, user_id):
     values = dict(values)
     changes, old = None, None
-    if meta_table.track_audit or _has_triggers(session, meta_table) or _has_formulas(meta_table):
+    if meta_table.track_audit or _has_triggers(session, meta_table) \
+            or _has_formulas(meta_table) \
+            or any(f.data_type == "user" and f.phys_name in values
+                   for f in meta_table.fields):
         old = data_service.get_row(engine, meta_table.phys_name, pk) or {}
     if _has_formulas(meta_table):
         values.update(_compute_self(session, engine, meta_table, {**old, **values}, pk))
@@ -173,6 +177,7 @@ def update(session, engine, meta_table, pk, values, user_id):
     _log(session, meta_table, pk, "update", user_id, changes)
     _fire(session, engine, meta_table, "update", pk, old, user_id)
     _notify_watchers(session, meta_table, pk, values, user_id)
+    _notify_assignees(session, meta_table, pk, values, old, user_id)
     _ripple(session, engine, meta_table, data_service.get_row(engine, meta_table.phys_name, pk)
             or {**old, **values, meta_table.pk_col: pk})
 
@@ -183,6 +188,42 @@ def _notify_watchers(session, meta_table, pk, values, user_id):
         watch.notify_update(session, meta_table, pk, values, user_id)
     except Exception:  # noqa: BLE001 - watching must never break a write
         _logger.exception("watch notify failed on %s #%s", meta_table.phys_name, pk)
+
+
+def _notify_assignees(session, meta_table, pk, values, old, user_id):
+    """In-app + email to users newly set as a user-field value (assignment)."""
+    try:
+        from . import mailer
+        from .metadata.models import AppUser, Notification
+        actor = session.get(AppUser, user_id) if user_id else None
+        try:
+            int_pk = int(pk)
+        except (TypeError, ValueError):
+            int_pk = None
+        added = False
+        for f in meta_table.fields:
+            if f.data_type != "user" or f.phys_name not in values:
+                continue
+            new = values.get(f.phys_name)
+            if not new or new == user_id or (old or {}).get(f.phys_name) == new:
+                continue
+            u = session.get(AppUser, new)
+            if u is None or not u.is_active:
+                continue
+            subject = f"{meta_table.label} #{pk} assigned to you"
+            body = f"{actor.username if actor else 'someone'} set {f.label} to you."
+            session.add(Notification(
+                table_phys=meta_table.phys_name, row_pk=int_pk, event="assign",
+                channel="in_app", user_id=new, subject=subject, body=body,
+                status="unread"))
+            base = mailer.base_url()
+            link = f"\n\n{base}/u/view/{meta_table.id}/{pk}" if base else ""
+            mailer.email_user(u, subject, body + link)
+            added = True
+        if added:
+            session.commit()
+    except Exception:  # noqa: BLE001 - notifying must never break a write
+        _logger.exception("assign notify failed on %s #%s", meta_table.phys_name, pk)
 
 
 def _incoming_m1(session, meta_table):

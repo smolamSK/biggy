@@ -33,6 +33,13 @@
       </select>
       <div class="help">Used until a visitor picks a theme themselves (top-bar selector).</div>
     </div>
+    <div class="field">
+      <label>Public base URL</label>
+      <input type="url" name="base_url" value="{{ stored.get('base_url', '') }}"
+             placeholder="https://itsm.example.com">
+      <div class="help">Used for links in notification emails (replies, updates,
+        assignments). Blank = emails carry no links.</div>
+    </div>
     <button class="btn primary" type="submit">Save</button>
   </form>
 </div>

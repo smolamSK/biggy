@@ -136,6 +136,8 @@ _META_ADDITIONS = {
         {"name": "mfa_backup_codes", "type": Text()},
         {"name": "oidc_subject", "type": String(255)},
         {"name": "company_id", "type": Integer()},
+        {"name": "email", "type": String(255)},
+        {"name": "notify_email", "type": Boolean(), "nullable": False, "default": "true"},
     ],
     "app_meta_relation": [
         {"name": "to_display_field_ids", "type": Text()},

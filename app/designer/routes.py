@@ -195,10 +195,15 @@ def settings_page():
             flash("Accent must be a hex color like #4f46e5.", "danger")
             return redirect(url_for("designer.settings_page"))
         theme = request.form.get("default_theme") or ""
+        base_url = (request.form.get("base_url") or "").strip().rstrip("/")
+        if base_url and not base_url.startswith(("http://", "https://")):
+            flash("Base URL must start with http:// or https://.", "danger")
+            return redirect(url_for("designer.settings_page"))
         instance_settings.save(session, {
             "app_name": (request.form.get("app_name") or "").strip()[:40],
             "accent": accent,
             "default_theme": theme if theme in instance_settings.THEMES else "",
+            "base_url": base_url,
         })
         flash("Settings saved.", "success")
         return redirect(url_for("designer.settings_page"))

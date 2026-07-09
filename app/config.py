@@ -20,6 +20,9 @@ class Config:
     # Instance branding fallback — the Designer-mode Settings page (app_setting
     # table) overrides this at runtime.
     APP_NAME = os.environ.get("APP_NAME", "Biggy")
+    # Public URL of this instance, used for links in notification emails
+    # (blank = emails carry no links); the Settings page can override it.
+    APP_BASE_URL = os.environ.get("APP_BASE_URL", "")
 
     # --- Database connection (configurable; default = local MariaDB) ---
     # A full DATABASE_URL takes precedence if provided.

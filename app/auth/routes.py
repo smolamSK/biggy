@@ -184,6 +184,23 @@ def account():
     return render_template("auth/account.html", form=form)
 
 
+@bp.route("/account/contact", methods=["POST"])
+@login_required
+def account_contact():
+    """Self-service: email address + email-notification opt-out."""
+    session = SessionLocal()
+    user = session.get(AppUser, current_user.id)
+    email = (request.form.get("email") or "").strip()[:255]
+    if email and "@" not in email:
+        flash("Enter a valid email address.", "danger")
+    else:
+        user.email = email or None
+        user.notify_email = bool(request.form.get("notify_email"))
+        session.commit()
+        flash("Contact settings saved.", "success")
+    return redirect(url_for("auth.account"))
+
+
 # --------------------------------------------------------------------------- #
 # SSO (OpenID Connect)
 # --------------------------------------------------------------------------- #
@@ -342,7 +359,8 @@ def user_new():
         else:
             user = AppUser(username=form.username.data, role=form.role.data,
                           is_active_flag=form.is_active.data,
-                          company_id=form.company_id.data or None)
+                          company_id=form.company_id.data or None,
+                          email=(form.email.data or "").strip() or None)
             user.set_password(form.password.data)
             session.add(user)
             session.commit()
@@ -369,6 +387,7 @@ def user_edit(user_id):
         user.role = form.role.data
         user.is_active_flag = form.is_active.data
         user.company_id = form.company_id.data or None
+        user.email = (form.email.data or "").strip() or None
         if form.password.data:
             user.set_password(form.password.data)
         session.commit()
