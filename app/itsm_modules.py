@@ -74,6 +74,7 @@ CROSS_LINKS = [
     ("change", "problem", "problem_id", "Fixes problem"),
     ("incident", "ci", "ci_id", "Configuration item"),
     ("change", "ci", "ci_id", "Configuration item"),
+    ("request", "ci", "ci_id", "Configuration item"),
 ]
 
 # tables that carry a Company (tenant) field for per-company data separation —

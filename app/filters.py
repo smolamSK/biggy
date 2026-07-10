@@ -101,18 +101,19 @@ def valid_op(kind, op):
     return any(op == key for key, _, _ in OPS_BY_KIND.get(kind, ()))
 
 
-def build_meta(session, engine, columns):
+def build_meta(session, engine, columns, user=None):
     """Per-column filter UI metadata for list/report condition builders.
 
     ``columns`` are builder ``FormItem``s (kind ``field``/``relation_m1``) with
     ``.meta``/``.column``/``.label``. Returns
     ``(filter_meta, filter_order, label_maps, m1_targets)`` — the JSON the browser
     uses to render the add-condition controls, plus M:1 label/target maps.
+    Relation choices are company-scoped for ``user`` like form pickers are.
     """
     import json
 
     from . import data_service
-    from .forms.builder import m1_target_and_columns
+    from .forms.builder import _company_where, m1_target_and_columns
 
     filter_meta, filter_order, label_maps, m1_targets = {}, [], {}, {}
     for it in columns:
@@ -120,7 +121,9 @@ def build_meta(session, engine, columns):
         choices = None
         if it.kind == "relation_m1":
             target, disp_cols = m1_target_and_columns(session, it.meta)
-            opts = data_service.load_options(engine, target.phys_name, disp_cols)
+            opts = data_service.load_options(engine, target.phys_name, disp_cols,
+                                             where_in=_company_where(session, user,
+                                                                     target))
             label_maps[it.column] = dict(opts)
             m1_targets[it.column] = target.id
             choices = [[i, lbl] for i, lbl in opts]

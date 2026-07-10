@@ -1001,6 +1001,23 @@
       "enum_options": null,
       "related_table_id": 7,
       "on_delete": "SET NULL"
+    },
+    {
+      "id": 53,
+      "table_id": 2,
+      "phys_name": "ci_id",
+      "label": "Configuration item",
+      "data_type": "relation",
+      "length": null,
+      "precision": null,
+      "scale": null,
+      "nullable": true,
+      "default_value": null,
+      "is_unique": false,
+      "position": 7,
+      "enum_options": null,
+      "related_table_id": 7,
+      "on_delete": "SET NULL"
     }
   ],
   "relations": [
@@ -1083,6 +1100,18 @@
       "from_table_id": 5,
       "to_table_id": 7,
       "from_field_id": 52,
+      "junction_phys_name": null,
+      "on_delete": "SET NULL",
+      "to_display_field_ids": null,
+      "from_display_field_ids": null
+    },
+    {
+      "id": 8,
+      "name": "Configuration item",
+      "kind": "m1",
+      "from_table_id": 2,
+      "to_table_id": 7,
+      "from_field_id": 53,
       "junction_phys_name": null,
       "on_delete": "SET NULL",
       "to_display_field_ids": null,
@@ -2597,6 +2626,32 @@
       "readonly": false,
       "help_text": null,
       "position": 12
+    },
+    {
+      "id": 105,
+      "form_id": 3,
+      "kind": "field",
+      "field_id": 53,
+      "relation_id": null,
+      "label_override": null,
+      "widget": null,
+      "required": false,
+      "readonly": false,
+      "help_text": null,
+      "position": 7
+    },
+    {
+      "id": 106,
+      "form_id": 4,
+      "kind": "field",
+      "field_id": 53,
+      "relation_id": null,
+      "label_override": null,
+      "widget": null,
+      "required": false,
+      "readonly": false,
+      "help_text": null,
+      "position": 7
     }
   ],
   "menus": [

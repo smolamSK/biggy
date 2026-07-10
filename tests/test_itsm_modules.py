@@ -112,3 +112,40 @@ def test_module_tenant_fields(app, client):
             assert c.execute(text(
                 "SELECT company FROM incident WHERE title='Acme printer'")
             ).scalar() == acme_id
+
+
+def test_tenant_scoped_pickers(app, client):
+    """CI pickers on catalog forms only offer the chooser's tenant's CIs."""
+    from sqlalchemy import text
+
+    from app.db import get_engine
+    from tests.test_portal import _mk_company, _mk_user
+    _setup(client)
+    _make_table(client, app, "ci", "CI", "name")
+    _ok(client.post("/designer/modules/incidents/enable", follow_redirects=True))
+
+    acme_id = _mk_company(client, app, "Acme")
+    glob_id = _mk_company(client, app, "Globex")
+    with app.app_context():
+        with get_engine().begin() as c:
+            c.execute(text("INSERT INTO ci (name, company) VALUES "
+                           "('acme-rtr', :a), ('glob-rtr', :g), ('shared-rtr', NULL)"),
+                      {"a": acme_id, "g": glob_id})
+        fid = SessionLocal().scalar(
+            select(MetaForm).where(MetaForm.name == "incident_form")).id
+
+    # scoped staff: form picker + list filter choices show only Acme CIs
+    eng = _mk_user(client, app, "eng.acme", "user", acme_id)
+    page = eng.get(f"/u/forms/{fid}/new").get_data(as_text=True)
+    assert "acme-rtr" in page and "glob-rtr" not in page and "shared-rtr" not in page
+    lst = eng.get(f"/u/forms/{fid}").get_data(as_text=True)
+    assert "glob-rtr" not in lst
+
+    # scoped portal customer: same wall on the catalog form
+    ann = _mk_user(client, app, "ann", "portal", acme_id)
+    page = ann.get(f"/portal/new/{fid}").get_data(as_text=True)
+    assert "acme-rtr" in page and "glob-rtr" not in page
+
+    # designers keep the full picker
+    page = client.get(f"/u/forms/{fid}/new").get_data(as_text=True)
+    assert "acme-rtr" in page and "glob-rtr" in page and "shared-rtr" in page

@@ -931,6 +931,8 @@ def build_itsm():
          on_forms=(chg["form"], chg["view"]))
     b.m1(chg["table"], ci, "ci_id", "Configuration item",
          on_forms=(chg["form"], chg["view"]))
+    b.m1(req["table"], ci, "ci_id", "Configuration item",
+         on_forms=(req["form"], req["view"]))
 
     b.rows(svc, [
         {"id": 1, "name": "Internet access", "criticality": "gold"},

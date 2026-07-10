@@ -367,20 +367,24 @@ def _compose_label(pk, values):
     return LABEL_SEP.join(parts) if parts else f"#{pk}"
 
 
-def load_options(engine, phys_name, display_cols):
+def load_options(engine, phys_name, display_cols, where_in=None):
     """Return ``[(id, label), ...]`` for a FK/relation picker.
 
     ``display_cols`` is a column name or list of names; multiple are composed
-    into one label (e.g. ``"Acme — a@acme.test"``).
+    into one label (e.g. ``"Acme — a@acme.test"``). ``where_in`` is an optional
+    ``(column, values)`` restriction — company-scoped pickers use it so one
+    tenant never sees another tenant's record names.
     """
     table = reflect_table(engine, phys_name)
     cols = _as_columns(table, display_cols)
     stmt = select(_pk(table), *cols).order_by(cols[0].asc())
+    if where_in and where_in[0] in table.c:
+        stmt = stmt.where(table.c[where_in[0]].in_(list(where_in[1])))
     with engine.connect() as conn:
         return [(r[0], _compose_label(r[0], r[1:])) for r in conn.execute(stmt).all()]
 
 
-def load_options_with(engine, phys_name, display_cols, extra_col):
+def load_options_with(engine, phys_name, display_cols, extra_col, where_in=None):
     """Like :func:`load_options` but each tuple also carries ``extra_col``'s value.
 
     Returns ``[(id, label, extra_value), ...]`` — used for cascading pickers
@@ -392,6 +396,8 @@ def load_options_with(engine, phys_name, display_cols, extra_col):
     has_extra = extra_col in table.c
     selected = [_pk(table), *cols] + ([table.c[extra_col]] if has_extra else [])
     stmt = select(*selected).order_by(cols[0].asc())
+    if where_in and where_in[0] in table.c:
+        stmt = stmt.where(table.c[where_in[0]].in_(list(where_in[1])))
     n = 1 + len(cols)
     with engine.connect() as conn:
         return [(r[0], _compose_label(r[0], r[1:n]), (r[n] if has_extra else None))

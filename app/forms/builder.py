@@ -171,11 +171,28 @@ def _scalar_field(meta: MetaField, label, required, render_kw=None):
     raise ValueError(f"Unsupported field type {dt!r}")
 
 
+def _company_where(session, user, target):
+    """``(column, allowed ids)`` when the chooser is company-scoped on the
+    picker's target table — so tenant record names never leak into pickers."""
+    if user is None or getattr(user, "is_designer", False):
+        return None
+    cf = next((f for f in target.fields if f.data_type == "company"), None)
+    if cf is None:
+        return None
+    from ..companies import allowed_for_user
+    allowed = allowed_for_user(session, getattr(user, "id", None))
+    if allowed is None:
+        return None
+    return (cf.phys_name, sorted(allowed))
+
+
 def build_form(meta_form, session, engine, user=None):
     """Return a :class:`BuiltForm` for the given :class:`MetaForm`.
 
     When ``user`` is a non-designer, field-level permissions apply: fields with
     ``none`` access are omitted entirely, ``read`` fields are marked read-only.
+    Relation pickers whose target carries a Company field are restricted to the
+    chooser's company subtree.
     """
     attrs = {}
     items = []
@@ -209,18 +226,21 @@ def build_form(meta_form, session, engine, user=None):
 
             if mf.data_type == RELATION_TYPE:
                 target, disp_cols = m1_target_and_columns(session, mf)
+                scope = _company_where(session, user, target)
                 parent_name, match_field = _dependency(session, it, target)
                 render_kw = None
                 if parent_name and match_field:
                     opts = data_service.load_options_with(
-                        engine, target.phys_name, disp_cols, match_field.phys_name)
+                        engine, target.phys_name, disp_cols, match_field.phys_name,
+                        where_in=scope)
                     choices = [(str(i), lbl, {"data-parent": "" if pv is None else str(pv)})
                                for i, lbl, pv in opts]
                     if not required:
                         choices = [(_NONE, "— none —", {})] + choices
                     render_kw = {"data-parent-field": parent_name}
                 else:
-                    opts = data_service.load_options(engine, target.phys_name, disp_cols)
+                    opts = data_service.load_options(engine, target.phys_name, disp_cols,
+                                                     where_in=scope)
                     choices = [(str(i), lbl) for i, lbl in opts]
                     if not required:
                         choices = [(_NONE, "— none —")] + choices
@@ -282,7 +302,9 @@ def build_form(meta_form, session, engine, user=None):
             json_ids = (rel.to_display_field_ids if other_id == rel.to_table_id
                         else rel.from_display_field_ids)
             disp_cols = display_columns(session, other_tbl, json_ids)
-            opts = data_service.load_options(engine, other_tbl.phys_name, disp_cols)
+            opts = data_service.load_options(engine, other_tbl.phys_name, disp_cols,
+                                             where_in=_company_where(session, user,
+                                                                     other_tbl))
             label = it.label_override or rel.name
             name = f"rel_{rel.id}"
             attrs[name] = SelectMultipleField(

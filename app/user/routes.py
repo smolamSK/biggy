@@ -562,7 +562,8 @@ def _list_query(mf, session, engine):
     """Parse the request into a :class:`ListQuery` (shared by list/export/bulk)."""
     built = build_form(mf, session, engine, current_user)
     columns = [it for it in built.items if it.kind in ("field", "relation_m1")]
-    filter_meta, filter_order, label_maps, m1_targets = filt.build_meta(session, engine, columns)
+    filter_meta, filter_order, label_maps, m1_targets = filt.build_meta(
+        session, engine, columns, user=current_user)
 
     q = request.args.get("q", "").strip()
     page = int(request.args.get("page", 1) or 1)

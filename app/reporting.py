@@ -172,7 +172,8 @@ def build(session, engine, table, args, base_filters=None, user=None):
         from .helpers import readable_fields
         allowed = readable_fields(session, user, table)
     columns = table_columns(table, allowed)
-    filter_meta, filter_order, label_maps, _m1 = filt.build_meta(session, engine, columns)
+    filter_meta, filter_order, label_maps, _m1 = filt.build_meta(session, engine,
+                                                                 columns, user=user)
     group_col, metrics, filters, conditions = parse(args, columns, filter_meta)
     result = run(engine, table, columns, group_col, metrics,
                  (base_filters or []) + filters, label_maps)
