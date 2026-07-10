@@ -35,9 +35,12 @@ management + known errors, Change management (with CAB approval) — as checkbox
 during setup or any time later under *Admin → Examples*. Modules are added
 **next to** your existing model (nothing is replaced) and wire themselves
 together: enable Problems after Incidents and incidents gain a *Problem* link;
-have a `ci` table and incidents/changes link to it automatically. The complete
-wired scenario, with a small CMDB and sample data, is the **ITSM / service
-desk** example.
+have a `ci` table and incidents/changes link to it automatically. Module tables
+(and `ci`/`service`) also carry a **Company** (tenant) field, so multi-tenant
+instances get per-company visibility and auto-stamping out of the box — known
+errors deliberately stay global; single-tenant instances just leave the field
+empty. The complete wired scenario, with a small CMDB and sample data, is the
+**ITSM / service desk** example.
 
 Two shortcuts collapse most of that:
 

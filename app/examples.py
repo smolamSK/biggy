@@ -742,6 +742,7 @@ def add_incidents(b, group=None):
     b.field(t, "category", "enum", "Category",
             enum=["network", "hardware", "software", "access", "other"])
     b.field(t, "assignee", "user", "Assigned to")
+    b.field(t, "company", "company", "Company")
     fid = b.form("incident_form", "Report an incident", t,
                  description="Something is broken or degraded — tell the team.",
                  in_catalog=True, catalog_group="Support", portal_close_state="closed")
@@ -779,6 +780,7 @@ def add_requests(b, group=None):
     b.field(t, "urgency", "enum", "Urgency", enum=["low", "medium", "high"],
             enum_colors={"low": "gray", "medium": "amber", "high": "red"})
     b.field(t, "assignee", "user", "Assigned to")
+    b.field(t, "company", "company", "Company")
     fid = b.form("request_form", "Request something", t,
                  description="Access, hardware, a change to your services.",
                  in_catalog=True, catalog_group="Requests", portal_close_state="closed")
@@ -813,6 +815,7 @@ def add_problems(b, group=None):
             enum_colors=_PRIORITY_COLORS)
     b.field(t, "root_cause", "markdown", "Root cause")
     b.field(t, "assignee", "user", "Assigned to")
+    b.field(t, "company", "company", "Company")
     fid = b.form("problem_form", "Problems", t)
     vid = b.view_form("problem_view", "Problem", t)
     wf = b.workflow(t, st, [
@@ -863,6 +866,7 @@ def add_changes(b, group=None):
     b.field(t, "implementation_plan", "markdown", "Implementation plan")
     b.field(t, "backout_plan", "markdown", "Backout plan")
     b.field(t, "assignee", "user", "Assigned to")
+    b.field(t, "company", "company", "Company")
     fid = b.form("change_form", "Changes", t)
     vid = b.view_form("change_view", "Change", t)
     wf = b.workflow(t, st, [
@@ -897,6 +901,7 @@ def build_itsm():
     b.field(svc, "name", "string", "Name", length=120, nullable=False, display=True)
     b.field(svc, "criticality", "enum", "Criticality", enum=["gold", "silver", "bronze"],
             enum_colors={"gold": "amber", "silver": "gray", "bronze": "teal"})
+    b.field(svc, "company", "company", "Company")
     svc_form = b.form("service_form", "Services", svc)
     b.view_form("service_view", "Service", svc)
 
@@ -908,6 +913,7 @@ def build_itsm():
     b.field(ci, "ci_status", "enum", "Status", default="operational",
             enum=["operational", "degraded", "retired"],
             enum_colors={"operational": "green", "degraded": "amber", "retired": "gray"})
+    b.field(ci, "company", "company", "Company")
     ci_form = b.form("ci_form", "Configuration items", ci)
     ci_view = b.view_form("ci_view", "Configuration item", ci)
     b.m1(ci, svc, "service_id", "Service", on_forms=(ci_form, ci_view))

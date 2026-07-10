@@ -76,6 +76,10 @@ CROSS_LINKS = [
     ("change", "ci", "ci_id", "Configuration item"),
 ]
 
+# tables that carry a Company (tenant) field for per-company data separation —
+# known errors deliberately stay global (a workaround helps every tenant)
+TENANT_TABLES = ("incident", "request", "problem", "change", "ci", "service")
+
 
 def status(session):
     """``{module key: enabled?}`` — a module is enabled when its tables exist."""
@@ -96,6 +100,7 @@ def enable(session, key):
     schema_io.import_schema(session, get_engine(), b.schema(), additive=True)
     _wire_menus(session, mod)
     wire_cross_links(session)
+    wire_tenant_fields(session)
     session.commit()
     return True
 
@@ -125,6 +130,34 @@ def _wire_menus(session, mod):
 
 def _next_menu_pos(session):
     return (session.scalar(select(func.max(MetaMenu.position))) or 0) + 1
+
+
+def wire_tenant_fields(session):
+    """Give every :data:`TENANT_TABLES` table a Company field if it lacks one —
+    retro-fits tables from earlier module versions and pre-existing ci/service
+    tables. Harmless on single-tenant instances (nobody is company-scoped, the
+    field just stays empty). Idempotent; returns the number of fields added."""
+    tables = {t.phys_name: t for t in session.scalars(select(MetaTable))}
+    added = 0
+    for phys in TENANT_TABLES:
+        mt = tables.get(phys)
+        if mt is None or not mt.managed:
+            continue
+        if any(f.data_type == "company" or f.phys_name == "company"
+               for f in mt.fields):
+            continue
+        mf = MetaField(table_id=mt.id, phys_name="company", label="Company",
+                       data_type="company", nullable=True, position=len(mt.fields))
+        session.add(mf)
+        session.flush()
+        schema_service.add_scalar_column(engine_for_table(mt), mt.phys_name, mf)
+        for form in session.scalars(select(MetaForm).where(
+                MetaForm.table_id == mt.id)):
+            session.add(MetaFormField(form_id=form.id, kind="field",
+                                      field_id=mf.id, position=len(form.items)))
+        session.flush()
+        added += 1
+    return added
 
 
 def wire_cross_links(session):

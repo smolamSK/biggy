@@ -63,3 +63,52 @@ def test_modules_at_setup(app, client):
         assert s.scalar(select(Role).where(Role.name == "change_manager")) is not None
     page = client.get("/designer/examples").get_data(as_text=True)
     assert page.count(">enabled<") == 2
+
+
+def test_module_tenant_fields(app, client):
+    """Module tables carry a Company field; scoping works; known errors stay global."""
+    from sqlalchemy import text
+
+    from app.db import get_engine
+    from tests.test_portal import _mk_company, _mk_user
+    _setup(client)
+    # a pre-existing ci table (no company field yet) gets retro-fitted
+    _make_table(client, app, "ci", "CI", "name")
+    _ok(client.post("/designer/modules/incidents/enable", follow_redirects=True))
+    _ok(client.post("/designer/modules/problems/enable", follow_redirects=True))
+    with app.app_context():
+        s = SessionLocal()
+        tables = {t.phys_name: t for t in s.scalars(select(MetaTable))}
+        for phys in ("incident", "problem", "ci"):
+            assert any(f.data_type == "company" for f in tables[phys].fields), phys
+        assert not any(f.data_type == "company"
+                       for f in tables["known_error"].fields)   # global by design
+
+    # per-tenant visibility: a scoped engineer sees only their company's incidents
+    acme_id = _mk_company(client, app, "Acme")
+    _mk_company(client, app, "Globex")
+    with app.app_context():
+        fid = SessionLocal().scalar(
+            select(MetaForm).where(MetaForm.name == "incident_form")).id
+    _ok(client.post(f"/u/forms/{fid}/new",
+                    data={"title": "Acme outage", "status": "new",
+                          "priority": "P2 - high", "category": "network",
+                          "company": str(acme_id)}, follow_redirects=True))
+    _ok(client.post(f"/u/forms/{fid}/new",
+                    data={"title": "Unscoped outage", "status": "new",
+                          "priority": "P4 - low", "category": "other",
+                          "company": ""}, follow_redirects=True))
+    eng = _mk_user(client, app, "eng.acme", "user", acme_id)
+    lst = eng.get(f"/u/forms/{fid}").get_data(as_text=True)
+    assert "Acme outage" in lst and "Unscoped outage" not in lst
+
+    # a scoped engineer's own incident is auto-stamped with their company
+    _ok(eng.post(f"/u/forms/{fid}/new",
+                 data={"title": "Acme printer", "status": "new",
+                       "priority": "P4 - low", "category": "hardware",
+                       "company": ""}, follow_redirects=True))
+    with app.app_context():
+        with get_engine().connect() as c:
+            assert c.execute(text(
+                "SELECT company FROM incident WHERE title='Acme printer'")
+            ).scalar() == acme_id
