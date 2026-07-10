@@ -910,6 +910,31 @@ class Company(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
 
+class Mailbox(Base):
+    """An IMAP inbox polled for email-to-ticket (see :mod:`app.mailbox`).
+
+    Replies whose subject carries a ticket number become comments; numberless
+    mail from known senders may create a new ticket via ``create_form_id``.
+    Credentials are encrypted at rest; polling is claimed atomically.
+    """
+    __tablename__ = "app_mailbox"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    host: Mapped[str] = mapped_column(String(255), nullable=False)
+    port: Mapped[int | None] = mapped_column(Integer)
+    use_ssl: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    username: Mapped[str | None] = mapped_column(String(255))
+    password: Mapped[str | None] = mapped_column(EncryptedText)  # encrypted at rest
+    folder: Mapped[str | None] = mapped_column(String(120))      # default INBOX
+    aliases: Mapped[str | None] = mapped_column(Text)   # JSON {letter: table phys}
+    create_form_id: Mapped[int | None] = mapped_column(Integer)  # numberless mail
+    schedule_minutes: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
 class RecurringRecord(Base):
     """Create a templated record on a cadence (preventive maintenance tickets,
     recurring audits). Values are raw strings coerced like CSV imports; runs are

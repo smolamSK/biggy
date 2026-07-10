@@ -27,10 +27,11 @@ from urllib.parse import parse_qsl
 from sqlalchemy import delete, select
 from werkzeug.datastructures import MultiDict
 
-from . import feeds, importer, jobs, pull, record_service, reporting, sla, triggers
+from . import feeds, importer, jobs, mailbox, pull, record_service, reporting, sla, triggers
 from .db import SessionLocal, engine_for_table, get_engine
 from .metadata.models import (
     AppUser,
+    Mailbox,
     MetaTable,
     Notification,
     RateHit,
@@ -160,7 +161,7 @@ def run_due(session, engine, now=None):
     """Run every due scheduled trigger, feed and report. Returns a counts summary."""
     now = now or _now()
     summary = {"triggers": 0, "feeds": 0, "pulls": 0, "reports": 0, "sla": 0,
-               "recurring": 0}
+               "recurring": 0, "mail": 0}
 
     # 1. scheduled triggers (atomically claimed so concurrent workers don't double-run)
     for rule in session.scalars(select(TriggerRule).where(
@@ -185,6 +186,17 @@ def run_due(session, engine, now=None):
         summary["pulls"] = pull.run_scheduled(SessionLocal(), engine)
     except Exception as exc:  # noqa: BLE001
         _log_error("pull", "scheduled pulls", exc)
+
+    # 2b'. inbound mailboxes — email-to-ticket (atomically claimed)
+    for mb in session.scalars(select(Mailbox).where(Mailbox.active.is_(True))).all():
+        if not jobs.claim_due(session, Mailbox, mb.id, mb.schedule_minutes, now):
+            continue
+        try:
+            summary["mail"] += mailbox.process_mailbox(session, mb)
+            session.commit()
+        except Exception as exc:  # noqa: BLE001
+            session.rollback()
+            _log_error("mailbox", mb.name, exc)
 
     # 2c'. recurring record creation (atomically claimed)
     for job in session.scalars(select(RecurringRecord).where(

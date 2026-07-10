@@ -150,6 +150,20 @@ imports; unlisted columns use their field defaults. Runs with the scheduler and
 is claimed atomically, so multiple workers never double-create. Pause/resume per
 job.
 
+## Mailboxes (email-to-ticket)
+
+*Integrations → Mailboxes*: poll an IMAP inbox on a cadence (credentials
+encrypted at rest, multi-worker safe). A reply whose subject carries a ticket
+number — any **auto-number prefix** like `INC-0007` (recognized automatically),
+or a configurable **alias** like `I-7` — becomes a **public comment** from the
+sender matched by their account email, with attachments saved to the record;
+the sender must be allowed to see the record (staff scoping / portal company
+rules). Unknown or unauthorized senders land as **internal guest notes** — kept,
+flagged with the raw address, never shown in the portal. Numberless mail from a
+known sender can optionally **create a new ticket** via a chosen catalog form.
+Outgoing comment notifications carry `[INC-0007]` subjects so plain replies
+round-trip. *Poll now* tests a mailbox immediately.
+
 ## Maintenance windows
 
 *Admin → Maintenance*: schedule planned-work periods, scoped to one table or all.

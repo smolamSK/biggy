@@ -24,7 +24,7 @@ def list_for(session, table_phys, row_pk, *, include_internal):
     users = {u.id: u.username for u in session.scalars(
         select(AppUser).where(AppUser.id.in_({c.user_id for c in comments} - {None})))}
     for c in comments:
-        c.username = users.get(c.user_id, "?")
+        c.username = users.get(c.user_id, "email" if c.user_id is None else "?")
     return comments
 
 
@@ -43,33 +43,49 @@ def _participants(session, table_phys, row_pk, row):
     return ids
 
 
+def ticket_number(table, row):
+    """The record's autonumber value ('INC-0007'), or None — used so email
+    subjects carry a token that mailbox replies can round-trip on."""
+    f = next((fd for fd in (table.fields if table else ())
+              if fd.data_type == "autonumber"), None)
+    v = row.get(f.phys_name) if (f is not None and row) else None
+    return str(v) if v not in (None, "") else None
+
+
 def add(session, table_phys, row_pk, user, body, *, internal=False,
         row=None, record_label=None):
     """Insert a comment and notify the other thread participants in-app.
 
     ``row`` (the physical record dict, if the caller has it) supplies
     ``created_by`` so the customer is included from the very first staff reply;
-    ``record_label`` makes the notification subject readable.
+    ``record_label`` makes the notification subject readable. ``user`` may be
+    None for unauthenticated content (email guest notes) — pair with
+    ``internal=True`` so it never reaches the portal.
     """
     body = (body or "").strip()
     if not body:
         raise ValueError("Comment is empty.")
     recipients = _participants(session, table_phys, row_pk, row)
-    recipients.discard(user.id)
+    if user is not None:
+        recipients.discard(user.id)
 
     comment = Comment(table_phys=table_phys, row_pk=str(row_pk),
-                      user_id=user.id, body=body, internal=internal)
+                      user_id=user.id if user is not None else None,
+                      body=body, internal=internal)
     session.add(comment)
 
     users = {u.id: u for u in session.scalars(
         select(AppUser).where(AppUser.id.in_(recipients)))} if recipients else {}
-    subject = f"New comment on {record_label or table_phys}"
+    author = user.username if user is not None else "email"
+    table = session.scalar(select(MetaTable).where(MetaTable.phys_name == table_phys))
+    number = ticket_number(table, row)
+    subject = (f"[{number}] " if number else "") \
+        + f"New comment on {record_label or table_phys}"
     snippet = body if len(body) <= SNIPPET_LEN else body[:SNIPPET_LEN - 1] + "…"
     try:
         int_pk = int(row_pk)
     except (TypeError, ValueError):
         int_pk = None
-    table = session.scalar(select(MetaTable).where(MetaTable.phys_name == table_phys))
     base = mailer.base_url()
     for uid in recipients:
         u = users.get(uid)
@@ -80,12 +96,12 @@ def add(session, table_phys, row_pk, user, body, *, internal=False,
         session.add(Notification(
             table_phys=table_phys, row_pk=int_pk, event="comment",
             channel="in_app", user_id=uid, subject=subject,
-            body=f"{user.username}: {snippet}", status="unread"))
+            body=f"{author}: {snippet}", status="unread"))
         link = ""
         if base and table is not None:
             path = (f"/portal/ticket/{table.id}/{row_pk}" if u.role == ROLE_PORTAL
                     else f"/u/view/{table.id}/{row_pk}")
             link = f"\n\n{base}{path}"
-        mailer.email_user(u, subject, f"{user.username} wrote:\n\n{body}{link}")
+        mailer.email_user(u, subject, f"{author} wrote:\n\n{body}{link}")
     session.commit()
     return comment

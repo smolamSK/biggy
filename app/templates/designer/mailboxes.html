@@ -1,0 +1,105 @@
+{% extends "designer/_base.html" %}
+{% block title %}Mailboxes · {{ branding.app_name }}{% endblock %}
+{% block inner %}
+<h1>Mailboxes (email-to-ticket)</h1>
+<p class="help" style="max-width:660px">Poll an IMAP inbox and turn replies into ticket
+  updates: a subject containing a ticket number (<code>INC-0007</code> — recognized from
+  every auto-number prefix — or an alias like <code>I-7</code>) becomes a <strong>public
+  comment</strong> from the matched sender, with attachments saved to the record. Unknown
+  or unauthorized senders land as <strong>internal guest notes</strong> (never shown in
+  the portal). Numberless mail from a known sender can create a new ticket via the
+  chosen catalog form. Outgoing comment emails carry <code>[INC-0007]</code> subjects so
+  plain replies round-trip. Note: sender matching is by <em>From</em> address —
+  convenience-grade identity, which is why unauthenticated content only ever becomes an
+  internal note.</p>
+
+{% macro mailbox_fields(mb) %}
+  <div class="pill-row">
+    <div class="field" style="flex:2"><label>Name</label>
+      <input type="text" name="name" value="{{ mb.name if mb else '' }}" required maxlength="120"></div>
+    <div class="field" style="flex:2"><label>IMAP host</label>
+      <input type="text" name="host" value="{{ mb.host if mb else '' }}" required
+             placeholder="imap.example.com"></div>
+    <div class="field" style="flex:1"><label>Port</label>
+      <input type="number" name="port" value="{{ mb.port or '' if mb else '' }}" placeholder="993"></div>
+  </div>
+  <div class="pill-row">
+    <div class="field" style="flex:2"><label>Username</label>
+      <input type="text" name="username" value="{{ mb.username or '' if mb else '' }}"></div>
+    <div class="field" style="flex:2"><label>Password</label>
+      <input type="password" name="password" placeholder="{{ '(unchanged)' if mb else '' }}"
+             autocomplete="new-password"></div>
+    <div class="field" style="flex:1"><label>Folder</label>
+      <input type="text" name="folder" value="{{ mb.folder or '' if mb else '' }}" placeholder="INBOX"></div>
+  </div>
+  <div class="pill-row" style="align-items:center">
+    <label class="checkline" style="margin:0">
+      <input type="checkbox" name="use_ssl" {{ 'checked' if (mb.use_ssl if mb else True) }}> SSL</label>
+    <label class="checkline" style="margin:0">
+      <input type="checkbox" name="active" {{ 'checked' if (mb.active if mb else True) }}> Active</label>
+    <div class="field" style="flex:1;margin:0"><label>Poll every (minutes)</label>
+      <input type="number" name="schedule_minutes" min="1"
+             value="{{ mb.schedule_minutes if mb else 5 }}"></div>
+  </div>
+  <div class="pill-row">
+    <div class="field" style="flex:1">
+      <label>Aliases (one per line: letter = table)</label>
+      <textarea name="aliases" rows="4" style="font-family:var(--font-mono)"
+                placeholder="{{ default_aliases }}">{% if mb and mb.aliases %}{% for k, v in (mb.aliases|fromjson).items() %}{{ k }} = {{ v }}
+{% endfor %}{% endif %}</textarea>
+    </div>
+    <div class="field" style="flex:1">
+      <label>Numberless mail creates…</label>
+      <select name="create_form_id">
+        <option value="">— nothing (updates only) —</option>
+        {% for f in forms %}
+          <option value="{{ f.id }}" {{ 'selected' if mb and mb.create_form_id == f.id }}>{{ f.title }}</option>
+        {% endfor %}
+      </select>
+      <div class="help">Only mail from a known sender creates tickets; the sender
+        becomes the creator (portal-visible).</div>
+    </div>
+  </div>
+{% endmacro %}
+
+<div class="panel">
+  {% if boxes %}
+    {% for mb in boxes %}
+      <details {% if loop.first and boxes|length == 1 %}{% endif %} style="margin-bottom:.6rem">
+        <summary style="cursor:pointer">
+          <strong>{{ mb.name }}</strong>
+          <span class="muted">{{ mb.host }} · every {{ mb.schedule_minutes }} min ·
+            last run {{ mb.last_run_at.strftime('%Y-%m-%d %H:%M') if mb.last_run_at else 'never' }}</span>
+          <span class="chip c-{{ 'green' if mb.active else 'gray' }}">{{ 'active' if mb.active else 'paused' }}</span>
+        </summary>
+        <form method="post" action="{{ url_for('designer.mailbox_edit', mid=mb.id) }}"
+              style="margin:.6rem 0 0">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          {{ mailbox_fields(mb) }}
+          <button class="btn primary sm" type="submit">Save</button>
+        </form>
+        <div class="toolbar" style="margin:.4rem 0 0">
+          <form method="post" action="{{ url_for('designer.mailbox_poll', mid=mb.id) }}" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn sm" type="submit">Poll now</button>
+          </form>
+          <form method="post" action="{{ url_for('designer.mailbox_delete', mid=mb.id) }}"
+                class="inline" onsubmit="return confirm('Remove this mailbox?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn danger sm" type="submit">Delete</button>
+          </form>
+        </div>
+      </details>
+    {% endfor %}
+  {% else %}<p class="muted">No mailboxes yet — add one below.</p>{% endif %}
+</div>
+
+<h2>Add mailbox</h2>
+<div class="panel" style="max-width:720px">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {{ mailbox_fields(none) }}
+    <button class="btn primary" type="submit">Add mailbox</button>
+  </form>
+</div>
+{% endblock %}

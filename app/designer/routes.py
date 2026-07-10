@@ -398,6 +398,120 @@ def recurring_delete(rid):
 
 
 # --------------------------------------------------------------------------- #
+# Mailboxes — email-to-ticket (IMAP polling)
+# --------------------------------------------------------------------------- #
+def _mailbox_from_form(session, mb=None):
+    """Apply the posted mailbox form to ``mb`` (or a new one). Returns
+    (mailbox, error)."""
+    from .. import mailbox as mailbox_svc
+    from ..metadata.models import Mailbox
+    name = (request.form.get("name") or "").strip()[:120]
+    host = (request.form.get("host") or "").strip()[:255]
+    if not name or not host:
+        return None, "A name and an IMAP host are required."
+    aliases = {}
+    for line in (request.form.get("aliases") or "").splitlines():
+        line = line.strip()
+        if not line or "=" not in line:
+            continue
+        letter, phys = (p.strip() for p in line.split("=", 1))
+        if letter and phys:
+            aliases[letter.upper()] = phys
+    try:
+        minutes = max(1, int(request.form.get("schedule_minutes") or 5))
+    except ValueError:
+        minutes = 5
+    raw_port = request.form.get("port") or ""
+    raw_form = request.form.get("create_form_id") or ""
+    if mb is None:
+        mb = Mailbox(name=name, host=host,
+                     aliases=json.dumps(aliases or mailbox_svc.DEFAULT_ALIASES))
+        session.add(mb)
+    else:
+        mb.name, mb.host = name, host
+        mb.aliases = json.dumps(aliases)
+    mb.port = int(raw_port) if raw_port.isdigit() else None
+    mb.use_ssl = bool(request.form.get("use_ssl"))
+    mb.username = (request.form.get("username") or "").strip() or None
+    if request.form.get("password"):          # blank keeps the stored secret
+        mb.password = request.form.get("password")
+    mb.folder = (request.form.get("folder") or "").strip() or None
+    mb.create_form_id = int(raw_form) if raw_form.isdigit() and int(raw_form) else None
+    mb.schedule_minutes = minutes
+    mb.active = bool(request.form.get("active"))
+    return mb, None
+
+
+@bp.route("/mailboxes", methods=["GET", "POST"])
+def mailboxes_home():
+    from .. import mailbox as mailbox_svc
+    from ..metadata.models import Mailbox
+    session = _s()
+    if request.method == "POST":
+        _mb, err = _mailbox_from_form(session)
+        if err:
+            flash(err, "danger")
+        else:
+            session.commit()
+            flash("Mailbox saved.", "success")
+        return redirect(url_for("designer.mailboxes_home"))
+    boxes = session.scalars(select(Mailbox).order_by(Mailbox.name)).all()
+    forms = session.scalars(select(MetaForm).where(MetaForm.purpose != "view")
+                            .order_by(MetaForm.title)).all()
+    fmap = {f.id: f for f in forms}
+    default_aliases = "\n".join(f"{k} = {v}"
+                                for k, v in mailbox_svc.DEFAULT_ALIASES.items())
+    return render_template("designer/mailboxes.html", boxes=boxes, forms=forms,
+                           fmap=fmap, default_aliases=default_aliases)
+
+
+@bp.route("/mailboxes/<int:mid>", methods=["POST"])
+def mailbox_edit(mid):
+    from ..metadata.models import Mailbox
+    session = _s()
+    mb = session.get(Mailbox, mid)
+    if mb is None:
+        flash("Mailbox not found.", "danger")
+    else:
+        _mb, err = _mailbox_from_form(session, mb)
+        if err:
+            flash(err, "danger")
+        else:
+            session.commit()
+            flash("Mailbox updated.", "success")
+    return redirect(url_for("designer.mailboxes_home"))
+
+
+@bp.route("/mailboxes/<int:mid>/delete", methods=["POST"])
+def mailbox_delete(mid):
+    from ..metadata.models import Mailbox
+    session = _s()
+    mb = session.get(Mailbox, mid)
+    if mb:
+        session.delete(mb)
+        session.commit()
+        flash("Mailbox removed.", "info")
+    return redirect(url_for("designer.mailboxes_home"))
+
+
+@bp.route("/mailboxes/<int:mid>/poll", methods=["POST"])
+def mailbox_poll(mid):
+    from .. import mailbox as mailbox_svc
+    from ..metadata.models import Mailbox
+    session = _s()
+    mb = session.get(Mailbox, mid)
+    if mb is None:
+        flash("Mailbox not found.", "danger")
+        return redirect(url_for("designer.mailboxes_home"))
+    try:
+        n = mailbox_svc.process_mailbox(session, mb)
+        flash(f"Polled '{mb.name}': {n} message(s) processed.", "success")
+    except Exception as exc:  # noqa: BLE001 - surface IMAP errors to the designer
+        flash(f"Poll failed: {exc}", "danger")
+    return redirect(url_for("designer.mailboxes_home"))
+
+
+# --------------------------------------------------------------------------- #
 # Maintenance windows — hold SLA/alerts during planned work
 # --------------------------------------------------------------------------- #
 @bp.route("/maintenance", methods=["GET", "POST"])
