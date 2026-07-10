@@ -4,6 +4,95 @@ All notable changes to Biggy are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [2.0.0] — 2026-07-10
+
+Biggy grows from a low-code database tool into a full **CMDB / ITSM platform**
+with three modes (Designer, User, customer **Portal**) and multi-tenant data
+separation. Upgrades from 1.x are seamless: new metadata columns and tables
+backfill automatically on boot; nothing existing is changed.
+
+### Added — customer portal (third mode)
+- **Portal mode** (`/portal`) for external `portal`-role accounts: submit
+  requests/incidents from the service catalog, track own tickets (status chips,
+  read-only field summary defined by the catalog form), attachments, a
+  notifications page. Portal users are isolated from Designer and User mode.
+- **Record conversations**: a per-record thread with a ServiceNow-style split —
+  **Reply to customer** vs **internal note** (never shown in the portal) — on
+  every record page; participants are notified in-app and by email.
+- **Close my ticket** (designer opt-in per catalog form): customers close their
+  own tickets into a designer-chosen status; workflow edges and approval gates
+  are honored, and a public "Closed by customer" comment notifies staff.
+- **Company-scoped sharing**: portal colleagues of the same company see each
+  other's tickets; a parent-company account sees the whole chain below.
+
+### Added — companies & multi-tenancy
+- **Company tree** (*Admin → Companies*): companies chain via a parent — access
+  to one implies access to everything below it. Users (staff and portal) are
+  assigned a company on the Users page / bulk import.
+- **`company` field type**: adding it to a table turns on per-tenant data
+  separation, enforced in the read chokepoint — lists, search, reports,
+  dashboards, kanban, the REST API and the impact map all inherit it. Records
+  created by scoped users are auto-stamped; relation pickers and filter
+  dropdowns only offer the chooser's subtree (no tenant name leaks).
+
+### Added — ITIL process modules
+- **Enable-able processes** — Incident management (priorities, workflow, 4h
+  resolution SLA, portal card), Request fulfilment, Problem management + a
+  known-error database, Change management (type/risk, implementation & backout
+  plans, CAB approval) — switched on at setup or any time later, added
+  *additively* next to the existing model (new `import_schema(additive=True)`).
+- Modules **wire themselves together** in any order: incident → problem,
+  change → problem, incident → change, and incident/request/change → `ci`
+  links appear automatically once both tables exist; module tables carry the
+  tenant Company field (known errors stay global).
+- A complete **ITSM / service desk example**: all four processes wired to a
+  small CMDB (services + CIs) with cross-linked sample data.
+
+### Added — staff (NOC) toolkit
+- **Assignments**: a `user` (assignee) field type, a **"Me" filter token** so
+  one shared saved view works for everyone, an **Assign to me** button, a
+  **My work** home panel, and "assigned to you" notifications.
+- **SLA where triage happens**: a color-coded time-to-breach column on lists
+  and an "SLA — due next" home panel.
+- **Watch a record**: subscribers get notified of every update (any write
+  path) and comment; **Activity stream** (`/u/activity`): all changes +
+  comments across readable tables, filterable — built for shift handover.
+- **Bulk edit**: set a field across selected rows through the write chokepoint,
+  with per-row workflow/approval/scope guards.
+- **Maintenance windows** (linkable to change records): SLA breaches and
+  escalations held, trigger/watch alerts suppressed, banners shown while
+  active; **recurring records** create templated tickets on a cadence via the
+  multi-worker-safe scheduler.
+- **Email for people**: accounts have an email + opt-out; conversation
+  replies, watch updates, assignments and portal notifications go out as real
+  mail with links (Settings-page base URL).
+
+### Added — designer productivity & customization
+- **Generate form from table** (one click, optional view form + menu entry),
+  **table-from-CSV wizard** (types sniffed, rows imported), **duplicate**
+  table/form, a central **service-catalog editor**, **Settings** (app name,
+  accent color, default theme, base URL), rendered **menu icons**, per-option
+  **enum chip colors**, per-form **list defaults** (sort/page size).
+
+### Added — interface modernization
+- Inline SVG icon set (no more OS-dependent emoji), self-hosted Inter,
+  **Ctrl+K command palette**, account dropdown, row action menus + toolbar
+  overflow, removable filter chips, a real home page, searchable relation
+  pickers, breadcrumbs, live badges, unsaved-changes guard, off-canvas mobile
+  navigation, accessibility pass (skip link, ARIA tabs, `aria-sort`), chart
+  tooltips, friendly empty states.
+
+### Changed
+- The app now has **three modes**; the user-mode Catalog / My requests links
+  appear only once the catalog has content.
+- The topbar was decluttered into an account menu; brand name and accent
+  follow the Settings page.
+
+### Removed
+- The short-lived `AppUser.organization` text label (never in a release) was
+  replaced by the Company tree; the leftover column on interim databases is
+  harmless.
+
 ## [1.1.0] — 2026-07-03
 
 ### Added
