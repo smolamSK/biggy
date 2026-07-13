@@ -1,16 +1,55 @@
 {% extends "designer/_base.html" %}
 {% block title %}Settings · {{ branding.app_name }}{% endblock %}
+
+{% macro generic_field(key) %}
+  {% set spec = registry[key] %}
+  <div class="field">
+    <label>{{ spec.label or key }}</label>
+    {% if spec.secret %}
+      <input type="password" name="{{ key }}" autocomplete="new-password"
+             placeholder="{{ '•••••• (stored — blank keeps it)' if has_secret.get(key) else '(not set)' }}">
+      {% if has_secret.get(key) %}
+        <label class="checkline" style="margin-top:.2rem;font-size:var(--fs-sm)">
+          <input type="checkbox" name="clear_{{ key }}"> clear the stored value</label>
+      {% endif %}
+    {% elif spec.type == 'bool' %}
+      {% set cur = stored.get(key, '') %}
+      <select name="{{ key }}">
+        <option value="" {{ 'selected' if cur == '' }}>default ({{ 'on' if fallbacks[key] else 'off' }} — from env)</option>
+        <option value="1" {{ 'selected' if cur == '1' }}>on</option>
+        <option value="0" {{ 'selected' if cur == '0' }}>off</option>
+      </select>
+    {% elif spec.type == 'int' %}
+      <input type="number" name="{{ key }}" value="{{ stored.get(key, '') }}"
+             placeholder="{{ fallbacks[key] if fallbacks[key] is not none else '' }}">
+    {% else %}
+      <input type="text" name="{{ key }}" value="{{ stored.get(key, '') }}"
+             placeholder="{{ fallbacks[key] or '' }}">
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{% macro section_fields(section) %}
+  {% for key, spec in registry.items() if spec.section == section %}
+    {{ generic_field(key) }}
+  {% endfor %}
+{% endmacro %}
+
 {% block inner %}
 <h1>Settings</h1>
-<div class="panel" style="max-width:560px">
-  <form method="post">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<p class="help" style="max-width:640px">Everything here takes effect <strong>immediately</strong> —
+  no restart. Blank fields fall back to the server environment (<code>.env</code>); the
+  placeholder shows the current fallback.</p>
+
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <h2>Branding</h2>
+  <div class="panel" style="max-width:560px">
     <div class="field">
       <label>Application name</label>
       <input type="text" name="app_name" value="{{ stored.get('app_name', '') }}"
              placeholder="{{ default_name }}" maxlength="40">
-      <div class="help">Shown in the top bar and on the sign-in page.
-        Leave blank for “{{ default_name }}”.</div>
     </div>
     <div class="field">
       <label>Accent color</label>
@@ -21,7 +60,6 @@
           <input type="checkbox" name="accent_default" {{ 'checked' if not stored.get('accent') }}>
           use each theme's default</label>
       </div>
-      <div class="help">Buttons, links and highlights — applied across all themes.</div>
     </div>
     <div class="field">
       <label>Default theme</label>
@@ -31,16 +69,66 @@
           <option value="{{ t }}" {{ 'selected' if stored.get('default_theme') == t }}>{{ t|capitalize }}</option>
         {% endfor %}
       </select>
-      <div class="help">Used until a visitor picks a theme themselves (top-bar selector).</div>
     </div>
     <div class="field">
       <label>Public base URL</label>
       <input type="url" name="base_url" value="{{ stored.get('base_url', '') }}"
              placeholder="https://itsm.example.com">
-      <div class="help">Used for links in notification emails (replies, updates,
-        assignments). Blank = emails carry no links.</div>
+      <div class="help">Used for links in notification emails; blank = no links.</div>
     </div>
-    <button class="btn primary" type="submit">Save</button>
+  </div>
+
+  <h2>Email (SMTP)</h2>
+  <div class="panel" style="max-width:560px">
+    {{ section_fields('email') }}
+    <div class="help">Outbound mail for trigger rules, conversation replies, watch
+      updates and assignments. Inbound email-to-ticket is configured per mailbox
+      under <a href="{{ url_for('designer.mailboxes_home') }}">Mailboxes</a>.</div>
+  </div>
+
+  <h2>Single sign-on (OpenID Connect)</h2>
+  <div class="panel" style="max-width:560px">
+    {{ section_fields('sso') }}
+    <div class="help">SSO turns on once an issuer and client id are set (here or in
+      the environment). See the setup &amp; operations guide for provider examples.</div>
+  </div>
+
+  <h2>Sign-in policy</h2>
+  <div class="panel" style="max-width:560px">
+    {{ section_fields('signin') }}
+  </div>
+
+  <h2>Limits &amp; defaults</h2>
+  <div class="panel" style="max-width:560px">
+    {{ section_fields('limits') }}
+  </div>
+
+  <button class="btn primary" type="submit">Save all settings</button>
+</form>
+
+<h2>Test email delivery</h2>
+<div class="panel" style="max-width:560px">
+  <form method="post" action="{{ url_for('designer.settings_test_email') }}"
+        class="toolbar" style="margin:0;flex-wrap:wrap">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="email" name="to" placeholder="{{ current_user.email or 'recipient@example.com' }}"
+           style="flex:1;min-width:14rem">
+    <button class="btn" type="submit">Send test email</button>
   </form>
+  <p class="help">Uses the SMTP settings above (falling back to the environment).
+    Save first if you just changed them.</p>
+</div>
+
+<h2>Server environment (read-only)</h2>
+<div class="panel" style="max-width:560px">
+  <table class="grid">
+    {% for label, val in readonly %}
+      <tr><th style="text-align:left;width:45%">{{ label }}</th><td class="muted">{{ val }}</td></tr>
+    {% endfor %}
+  </table>
+  <p class="help">These are process-level and change via <code>.env</code> + restart —
+    like the database connection (see
+    <a href="{{ url_for('core.connection') }}">Connection</a>), secret keys and
+    file storage.</p>
 </div>
 {% endblock %}

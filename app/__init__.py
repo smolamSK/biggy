@@ -93,7 +93,16 @@ def create_app(config_object=Config):
     # map) wins; otherwise a deterministic hash. Mirrors chipHue() in
     # static/inline.js (char-code sum mod 7) so inline-edited cells re-render
     # the same color.
+    # effective instance settings (Settings page over env) for templates
+    from . import settings as _settings_mod
     from .helpers import CHIP_HUES
+
+    @app.template_global("setting")
+    def _setting(key):
+        try:
+            return _settings_mod.value(key)
+        except Exception:  # noqa: BLE001 - never break rendering
+            return ""
 
     # app_user id -> username, cached per request (used by 'user' fields)
     @app.template_filter("user_name")
@@ -187,8 +196,13 @@ def _register_lifecycle(app):
 
     @app.before_request
     def require_mfa_enrolled():
-        """When REQUIRE_MFA is on, force an authenticated user to enroll first."""
-        if not app.config.get("REQUIRE_MFA"):
+        """When require-MFA is on (Settings page or env), force enrollment."""
+        from . import settings as app_settings
+        try:
+            required = app_settings.value("require_mfa")
+        except Exception:  # noqa: BLE001 - pre-bootstrap
+            required = app.config.get("REQUIRE_MFA")
+        if not required:
             return None
         from flask_login import current_user
 
@@ -245,13 +259,20 @@ def _register_context(app):
             except Exception:  # noqa: BLE001
                 return False
 
+        from . import oidc as oidc_mod
         from . import settings as app_settings
 
+        try:
+            sso = {"enabled": oidc_mod.enabled(),
+                   "label": app_settings.value("oidc_button_label") or "Sign in with SSO"}
+        except Exception:  # noqa: BLE001 - pre-bootstrap
+            sso = {"enabled": False, "label": ""}
         return {"nav_menu": nav, "current_user": current_user,
                 "menu_url": menu_url, "designer_tables": designer_tables,
                 "menu_can_see": can_see, "can_view": can_view,
                 "unread_notifications": unread, "pending_approvals": pending_appr,
-                "has_catalog": has_catalog, "branding": app_settings.branding()}
+                "has_catalog": has_catalog, "sso": sso,
+                "branding": app_settings.branding()}
 
 
 def _register_cli(app):

@@ -22,6 +22,42 @@
       {{ render_field(form.username) }}
       {{ render_field(form.password) }}
       {{ render_field(form.confirm) }}
+      <div class="field">
+        <label>Your email (notifications, optional)</label>
+        <input type="email" name="admin_email" maxlength="255"
+               placeholder="you@example.com">
+      </div>
+
+      <h2>Instance basics (optional)</h2>
+      <p class="muted" style="font-size:var(--fs-sm)">All of this is editable later
+        under <em>Designer → Settings</em>.</p>
+      <div class="field">
+        <label>Application name</label>
+        <input type="text" name="app_name" maxlength="40" placeholder="Biggy">
+      </div>
+      <div class="field">
+        <label>Public base URL</label>
+        <input type="url" name="base_url" placeholder="https://itsm.example.com">
+      </div>
+      <details style="margin-bottom:1rem">
+        <summary class="muted" style="cursor:pointer">Outgoing email (SMTP)…</summary>
+        <div class="field" style="margin-top:.6rem">
+          <label>SMTP server</label>
+          <input type="text" name="mail_server" placeholder="smtp.example.com">
+        </div>
+        <div class="field"><label>Port</label>
+          <input type="number" name="mail_port" placeholder="25"></div>
+        <div class="field checkline">
+          <input type="checkbox" name="mail_use_tls" id="setup-tls">
+          <label for="setup-tls" style="margin:0">Use TLS (STARTTLS)</label>
+        </div>
+        <div class="field"><label>Username</label>
+          <input type="text" name="mail_username"></div>
+        <div class="field"><label>Password</label>
+          <input type="password" name="mail_password" autocomplete="new-password"></div>
+        <div class="field"><label>Sender address</label>
+          <input type="text" name="mail_default_sender" placeholder="biggy@example.com"></div>
+      </details>
 
       <h2>ITSM processes (optional)</h2>
       <p class="muted" style="font-size:var(--fs-sm)">Start with ready-made ITIL processes —

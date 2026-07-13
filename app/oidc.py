@@ -62,7 +62,19 @@ def _get_json(url):
 
 
 def _cfg(key, default=None):
+    """OIDC config: the Settings page wins, env is the fallback."""
+    from . import settings
+    skey = key.lower()
+    if skey in settings.REGISTRY:
+        v = settings.value(skey)
+        if v not in (None, ""):
+            return v
     return current_app.config.get(key, default)
+
+
+def enabled():
+    """SSO is on once an issuer and client id are configured (UI or env)."""
+    return bool(_cfg("OIDC_ISSUER") and _cfg("OIDC_CLIENT_ID"))
 
 
 # --------------------------------------------------------------------------- #

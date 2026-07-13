@@ -55,10 +55,23 @@ def setup():
             session = SessionLocal()
             from ..helpers import ensure_roles
             ensure_roles(session)
-            user = AppUser(username=form.username.data, role=ROLE_DESIGNER)
+            user = AppUser(username=form.username.data, role=ROLE_DESIGNER,
+                           email=(request.form.get("admin_email") or "").strip()
+                           or None)
             user.set_password(form.password.data)
             session.add(user)
             session.commit()
+            # optional instance basics — all editable later under Settings
+            from .. import settings as instance_settings
+            basics = {}
+            for key in ("app_name", "base_url", "mail_server", "mail_port",
+                        "mail_username", "mail_password", "mail_default_sender"):
+                basics[key] = (request.form.get(key) or "").strip()
+            basics["mail_use_tls"] = "1" if request.form.get("mail_use_tls") else ""
+            try:
+                instance_settings.save(session, {k: v for k, v in basics.items() if v})
+            except Exception as exc:  # noqa: BLE001 - setup must still finish
+                flash(f"Could not store instance settings: {exc}", "warning")
             current_app.config["_BOOTSTRAPPED"] = True
             from ..auth.routes import establish_session
             establish_session(user)

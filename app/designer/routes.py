@@ -189,6 +189,7 @@ def dashboard():
 @bp.route("/settings", methods=["GET", "POST"])
 def settings_page():
     session = _s()
+    reg = instance_settings.REGISTRY
     if request.method == "POST":
         accent = "" if request.form.get("accent_default") \
             else (request.form.get("accent") or "").strip()
@@ -200,18 +201,71 @@ def settings_page():
         if base_url and not base_url.startswith(("http://", "https://")):
             flash("Base URL must start with http:// or https://.", "danger")
             return redirect(url_for("designer.settings_page"))
-        instance_settings.save(session, {
+        updates = {
             "app_name": (request.form.get("app_name") or "").strip()[:40],
             "accent": accent,
             "default_theme": theme if theme in instance_settings.THEMES else "",
             "base_url": base_url,
-        })
-        flash("Settings saved.", "success")
+        }
+        for key, spec in reg.items():
+            if spec["section"] == "branding":
+                continue
+            if spec.get("secret"):
+                # blank keeps the stored secret; the clear checkbox removes it
+                if request.form.get(f"clear_{key}"):
+                    updates[key] = ""
+                elif (request.form.get(key) or "").strip():
+                    updates[key] = request.form.get(key).strip()
+                continue
+            raw = (request.form.get(key) or "").strip()
+            if spec["type"] == "bool":
+                updates[key] = raw if raw in ("1", "0") else ""
+            elif spec["type"] == "int":
+                if raw and not raw.lstrip("-").isdigit():
+                    flash(f"'{spec.get('label', key)}' must be a number.", "danger")
+                    return redirect(url_for("designer.settings_page"))
+                updates[key] = raw
+            else:
+                updates[key] = raw
+        instance_settings.save(session, updates)
+        flash("Settings saved — changes apply immediately.", "success")
         return redirect(url_for("designer.settings_page"))
+
+    stored = instance_settings.get_all(session)
+    fallbacks = {k: ("" if s.get("secret") else
+                     current_app.config.get(s["config"]) if s.get("config") else "")
+                 for k, s in reg.items()}
+    has_secret = {k: bool(stored.get(k)) for k, s in reg.items() if s.get("secret")}
+    cfg = current_app.config
+    readonly = [
+        ("Scheduler ticker", "on" if cfg.get("SCHEDULER_ENABLED") else
+         "off — driven by `flask run-jobs` (cron)"),
+        ("Scheduler tick", f"{cfg.get('SCHEDULER_TICK_SECONDS')} s"),
+        ("Session lifetime", f"{cfg.get('SESSION_LIFETIME_MINUTES') or 'browser session'}"),
+        ("Secure cookies (HTTPS)", "on" if cfg.get("SESSION_COOKIE_SECURE") else "off"),
+        ("Max upload size", f"{(cfg.get('MAX_CONTENT_LENGTH') or 0) // (1024 * 1024)} MB"),
+        ("Log level", cfg.get("LOG_LEVEL", "INFO")),
+    ]
     return render_template(
-        "designer/settings.html", stored=instance_settings.get_all(session),
+        "designer/settings.html", stored=stored, registry=reg,
+        fallbacks=fallbacks, has_secret=has_secret, readonly=readonly,
         themes=instance_settings.THEMES,
         default_name=current_app.config.get("APP_NAME", "Biggy"))
+
+
+@bp.route("/settings/test-email", methods=["POST"])
+def settings_test_email():
+    from .. import mailer
+    to = (request.form.get("to") or "").strip() \
+        or getattr(current_user, "email", None)
+    if not to:
+        flash("Enter a recipient address (or set your account email).", "warning")
+    else:
+        status = mailer.send(to, "Biggy test email",
+                             "It works — sent from the Settings page.")
+        flash(f"Test email to {to}: {status}.",
+              "success" if status == "sent" else "warning")
+    return redirect(url_for("designer.settings_page"))
 
 
 # --------------------------------------------------------------------------- #

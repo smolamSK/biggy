@@ -12,10 +12,10 @@
       {{ render_field(form.password) }}
       <button class="btn primary" type="submit">Sign in</button>
     </form>
-    {% if config.OIDC_ENABLED %}
+    {% if sso.enabled %}
       <hr style="margin:1rem 0;border:none;border-top:1px solid var(--line)">
       <a class="btn" style="display:block;text-align:center"
-         href="{{ url_for('auth.oidc_login', next=request.args.get('next')) }}">{{ config.OIDC_BUTTON_LABEL }}</a>
+         href="{{ url_for('auth.oidc_login', next=request.args.get('next')) }}">{{ sso.label }}</a>
     {% endif %}
   </div>
 </div>

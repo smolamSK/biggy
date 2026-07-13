@@ -12,7 +12,7 @@ import json
 import logging
 from datetime import datetime, timezone
 
-from flask import Blueprint, current_app, g, jsonify, request
+from flask import Blueprint, g, jsonify, request
 from sqlalchemy import select
 from werkzeug.exceptions import RequestEntityTooLarge
 
@@ -34,8 +34,9 @@ def _err(status, message, **headers):
 
 
 def _limit(value, cfg_key):
-    """Per-webhook override, else the global ``WEBHOOK_*`` config default."""
-    return value if value is not None else current_app.config.get(cfg_key)
+    """Per-webhook override, else the global default (Settings page or env)."""
+    from .. import settings
+    return value if value is not None else settings.value(cfg_key.lower())
 
 
 def _rate_ok(key, limit, window):

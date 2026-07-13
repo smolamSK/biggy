@@ -59,7 +59,7 @@
   {%- elif dt == 'email' -%}<a href="mailto:{{ v }}">{{ v }}</a>
   {%- elif dt == 'url' -%}<a href="{{ v }}" target="_blank" rel="noopener">{{ v }}</a>
   {%- elif dt == 'phone' -%}<a href="tel:{{ v|string|replace(' ', '') }}">{{ v }}</a>
-  {%- elif dt == 'currency' -%}{{ config.CURRENCY_SYMBOL }}{{ '{:,.2f}'.format(v|float) }}
+  {%- elif dt == 'currency' -%}{{ setting('currency_symbol') }}{{ '{:,.2f}'.format(v|float) }}
   {%- elif dt == 'percent' -%}{{ '{:g}'.format(v|float) }}%
   {%- elif dt == 'json' -%}<pre style="margin:0;white-space:pre-wrap;max-width:30rem">{{ v }}</pre>
   {%- elif dt == 'tags' -%}{% for t in v|fromjson %}<span class="badge">{{ t }}</span> {% endfor %}

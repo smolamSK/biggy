@@ -267,21 +267,24 @@ def _jsonable(row):
 
 
 def _deliver_email(to, subject, body):
-    cfg = current_app.config
-    if current_app.config.get("TESTING") or not cfg.get("MAIL_SERVER") or not to:
+    from . import settings
+    server = settings.value("mail_server")
+    if current_app.config.get("TESTING") or not server or not to:
         return "skipped", None
     try:
         msg = EmailMessage()
-        msg["From"] = cfg.get("MAIL_DEFAULT_SENDER", "biggy@localhost")
+        msg["From"] = settings.value("mail_default_sender") or "biggy@localhost"
         msg["To"] = to
         msg["Subject"] = subject or ""
         msg.set_content(body or "")
-        timeout = cfg.get("NOTIFY_WEBHOOK_TIMEOUT", 5)
-        with smtplib.SMTP(cfg["MAIL_SERVER"], cfg.get("MAIL_PORT", 25), timeout=timeout) as s:
-            if cfg.get("MAIL_USE_TLS"):
+        timeout = settings.value("notify_webhook_timeout") or 5
+        with smtplib.SMTP(server, settings.value("mail_port") or 25,
+                          timeout=timeout) as s:
+            if settings.value("mail_use_tls"):
                 s.starttls()
-            if cfg.get("MAIL_USERNAME"):
-                s.login(cfg["MAIL_USERNAME"], cfg.get("MAIL_PASSWORD", ""))
+            if settings.value("mail_username"):
+                s.login(settings.value("mail_username"),
+                        settings.value("mail_password") or "")
             s.send_message(msg)
         return "sent", None
     except Exception as exc:  # noqa: BLE001
@@ -292,11 +295,12 @@ def _deliver_webhook(url, payload):
     if current_app.config.get("TESTING") or not url:
         return "skipped", None
     try:
+        from . import settings
         data = json.dumps(payload, default=str).encode("utf-8")
         req = urllib.request.Request(url, data=data, method="POST",
                                      headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(
-                req, timeout=current_app.config.get("NOTIFY_WEBHOOK_TIMEOUT", 5)) as r:
+                req, timeout=settings.value("notify_webhook_timeout") or 5) as r:
             return ("sent" if 200 <= r.status < 300 else "failed"), f"HTTP {r.status}"
     except Exception as exc:  # noqa: BLE001
         return "failed", str(exc)[:300]

@@ -203,12 +203,29 @@ The third mode, next to Designer and User: a narrow surface at `/portal` for
    a public "Closed by customer" comment; with a workflow, the current → close
    transition must exist (approval-gated transitions never offer the button).
 
-## Instance settings (branding)
+## Instance settings
 
-*Admin → Settings*: rename the application (top bar + sign-in page), pick an
-**accent color** applied across all themes, and choose the **default theme**
-visitors get before they pick their own. Stored in the database; blank fields
-fall back to the server configuration.
+*Admin → Settings* — everything applies **immediately**, no restart; blank
+fields fall back to the server environment (`.env`), whose current value shows
+as the placeholder:
+
+- **Branding**: application name, accent color (all themes), default theme,
+  public base URL (links in notification emails).
+- **Email (SMTP)**: server, port, TLS, credentials (password encrypted at
+  rest), sender — plus a **Send test email** button.
+- **Single sign-on (OIDC)**: issuer, client id/secret (encrypted), scopes,
+  username claim, provisioning mode, default role, button label. SSO turns on
+  once issuer + client id are set.
+- **Sign-in policy**: require two-factor for everyone, login lockout limit and
+  window.
+- **Limits & defaults**: webhook caps, impact-map depth/nodes, SLA default warn
+  minutes, outbound timeout, currency symbol.
+
+Process-level configuration (database connection, secret keys, upload folder,
+scheduler ticker, session cookies, log level) stays in the environment and is
+shown read-only. The **setup wizard** also offers the day-one basics — app
+name, base URL, your email, SMTP — so a new instance can notify people from
+the first minute.
 
 ## Existing databases & multiple sources
 

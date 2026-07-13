@@ -19,7 +19,6 @@ import json
 import logging
 from datetime import datetime, timedelta, timezone
 
-from flask import current_app
 from sqlalchemy import select
 
 from . import data_service, triggers
@@ -94,7 +93,8 @@ def _classify(policy, status_value):
 def _warn_minutes(policy):
     if policy.warn_minutes is not None:
         return policy.warn_minutes
-    return current_app.config["SLA_DEFAULT_WARN_MINUTES"]
+    from . import settings
+    return settings.value("sla_default_warn_minutes")
 
 
 # --------------------------------------------------------------------------- #

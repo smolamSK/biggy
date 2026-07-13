@@ -43,8 +43,9 @@ def establish_session(user):
 
 
 def _login_limits():
-    cfg = current_app.config
-    return cfg.get("LOGIN_RATE_LIMIT", 0), cfg.get("LOGIN_RATE_WINDOW", 300)
+    from .. import settings
+    return (settings.value("login_rate_limit") or 0,
+            settings.value("login_rate_window") or 300)
 
 
 @bp.route("/login", methods=["GET", "POST"])
@@ -211,7 +212,7 @@ def _oidc_redirect_uri():
 
 @bp.route("/oidc/login")
 def oidc_login():
-    if not current_app.config.get("OIDC_ENABLED"):
+    if not oidc.enabled():
         abort(404)
     state, nonce = secrets.token_urlsafe(24), secrets.token_urlsafe(24)
     web_session["_oidc_state"] = state
@@ -226,7 +227,7 @@ def oidc_login():
 
 @bp.route("/oidc/callback")
 def oidc_callback():
-    if not current_app.config.get("OIDC_ENABLED"):
+    if not oidc.enabled():
         abort(404)
     if request.args.get("error"):
         flash(f"SSO error: {request.args.get('error')}", "danger")

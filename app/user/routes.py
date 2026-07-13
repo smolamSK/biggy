@@ -10,7 +10,6 @@ from flask import (
     Blueprint,
     Response,
     abort,
-    current_app,
     flash,
     jsonify,
     redirect,
@@ -1723,18 +1722,20 @@ def record_topology(table_id, pk):
         abort(404)
     pk = root.get(table.pk_col, pk)   # canonical, correctly-typed pk from the row
 
-    max_depth = current_app.config["TOPOLOGY_MAX_DEPTH"]
+    from .. import settings as app_settings
+    max_depth = app_settings.value("topology_max_depth")
     direction = request.args.get("direction", "both")
     if direction not in topology.DIRECTIONS:
         direction = "both"
     try:
-        depth = int(request.args.get("depth", current_app.config["TOPOLOGY_DEFAULT_DEPTH"]))
+        depth = int(request.args.get("depth",
+                                     app_settings.value("topology_default_depth")))
     except (TypeError, ValueError):
-        depth = current_app.config["TOPOLOGY_DEFAULT_DEPTH"]
+        depth = app_settings.value("topology_default_depth")
     depth = max(1, min(depth, max_depth))
 
     graph = topology.graph_for(session, current_user, table, pk, direction=direction,
-                               depth=depth, max_nodes=current_app.config["TOPOLOGY_MAX_NODES"])
+                               depth=depth, max_nodes=app_settings.value("topology_max_nodes"))
     summary = {}
     for n in graph["nodes"]:
         summary[n["table_label"]] = summary.get(n["table_label"], 0) + 1
