@@ -1,0 +1,5 @@
+{% if form.rule_config %}
+<script type="application/json" id="form-rule-config">{{ form.rule_config|tojson }}</script>
+<script type="application/json" id="form-rule-trusted">{{ form.rule_trusted|tojson }}</script>
+<script src="{{ url_for('static', filename='form-rules.js') }}" defer></script>
+{% endif %}

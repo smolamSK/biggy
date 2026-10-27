@@ -4,8 +4,8 @@
 {% block title %}{{ label }} · {{ branding.app_name }}{% endblock %}
 {% block inner %}
 <div class="crumbs"><a href="{{ url_for('portal.home') }}">← My tickets</a> / {{ label }}</div>
-<div class="toolbar">
-  <h1 style="margin:0">{{ label }}</h1>
+<div class="toolbar page-header">
+  <h1>{{ label }}</h1>
   {% if status %}<span class="chip c-{{ status|chip_hue(status_colors) }}">{{ status }}</span>{% endif %}
   <span style="flex:1"></span>
   {% if created_at %}<span class="muted" style="font-size:var(--fs-sm)">opened {{ created_at.strftime('%Y-%m-%d %H:%M') }}{% if opened_by %} by {{ opened_by|user_name }}{% endif %}</span>{% endif %}
@@ -22,7 +22,7 @@
 </form>
 {% endif %}
 
-<div class="panel" style="max-width:680px">
+<div class="panel record-details">
   <table class="grid">
     {% for it in items %}
       <tr>
@@ -39,7 +39,7 @@
             {% else %}<span class="muted">—</span>{% endfor %}
           {% elif it.kind == 'file' %}
             {% for f in it.files %}
-              <a href="{{ url_for('portal.attachment', att_id=f.id) }}" target="_blank">{{ f.name }}</a>{% if not loop.last %}, {% endif %}
+              <a href="{{ url_for('portal.attachment', att_id=f.id) }}" target="_blank">{{ f.name }}</a> {% if config.PREVIEW_BASE_URL %}<a href="{{ url_for('portal.attachment', att_id=f.id, preview=1) }}" target="_blank" rel="noopener noreferrer">Preview</a>{% endif %}{% if not loop.last %}, {% endif %}
             {% else %}<span class="muted">—</span>{% endfor %}
           {% endif %}
         </td>
@@ -48,8 +48,9 @@
   </table>
 </div>
 
-<h2>Conversation</h2>
-<div class="panel" style="max-width:680px">
+<h2 class="section-title">Conversation</h2>
+<p class="muted">Updates and replies from your support team.</p>
+<div class="panel conversation-panel">
   {% for c in thread %}
     <div class="comment">
       <div class="comment-head">
@@ -64,7 +65,8 @@
   <form method="post" action="{{ url_for('portal.ticket_comment', table_id=table.id, pk=pk) }}"
         style="margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--line)">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <textarea name="body" rows="3" placeholder="Add an update or question…" style="max-width:none"></textarea>
+    <label class="sr-only" for="portal-reply">Add an update or question</label>
+    <textarea id="portal-reply" name="body" rows="3" placeholder="Add an update or question…" style="max-width:none"></textarea>
     <div style="margin-top:.4rem">
       <button class="btn primary sm" type="submit">Add comment</button>
     </div>

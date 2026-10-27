@@ -3,6 +3,7 @@
 {% block title %}Edit field · Biggy{% endblock %}
 {% block inner %}
 <h1>Edit field <span class="muted">{{ table.label }}.{{ field.phys_name }}</span></h1>
+<p><a class="btn" href="{{ url_for('studio.schema_impact', table_id=table.id, field_id=field.id) }}">Review field impact</a></p>
 <div class="panel" style="max-width:640px">
   <form method="post">
     {{ form.hidden_tag() }}

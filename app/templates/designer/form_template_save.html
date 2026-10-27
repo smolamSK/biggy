@@ -1,0 +1,15 @@
+{% extends "designer/_base.html" %}
+{% block title %}Save form template · Biggy{% endblock %}
+{% block inner %}
+<nav class="crumbs"><a href="{{ url_for('studio.builder', form_id=mf.id) }}">{{ mf.title }}</a> / Save template</nav>
+<h1>Save a reusable template</h1><p>Capture the layout, labels, required settings, conditions and relationship requirements. Templates remain available if the source form is later changed or deleted.</p>
+{% if error %}<p class="flash danger" role="alert">{{ error }}</p>{% endif %}
+<form method="post" class="panel template-save">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="live_hash" value="{{ live_hash }}"><input type="hidden" name="version" value="{{ draft.version if draft else '' }}">
+<label>Template name <input name="name" required maxlength="160" value="{{ request.form.get('name', mf.title) }}"></label>
+<label>Description <textarea name="description" maxlength="2000">{{ request.form.get('description', '') }}</textarea></label>
+<label>Configuration to save <select name="source"><option value="live">Current live form</option>{% if draft %}<option value="draft" selected>Saved draft (version {{ draft.version }})</option>{% endif %}</select></label>
+<p class="muted">Unsaved builder edits are not included. Permissions, catalog settings, data and approval routing are not copied.</p>
+<div class="toolbar"><button class="btn primary" type="submit">Save template</button><a class="btn" href="{{ url_for('studio.builder', form_id=mf.id) }}">Back to builder</a></div>
+</form>
+{% endblock %}

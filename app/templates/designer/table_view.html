@@ -7,6 +7,7 @@
     {% if not table.managed %}<span class="badge">external</span>{% endif %}
     {% if source %}<span class="badge" title="Data source">⛁ {{ source.name }}</span>{% endif %}</h1>
   <span style="flex:1"></span>
+  <a class="btn" href="{{ url_for('studio.schema_impact', table_id=table.id) }}">Schema impact</a>
   <a class="btn" href="{{ url_for('designer.field_permissions', table_id=table.id) }}">Field permissions</a>
   {{ delete_form(url_for('designer.table_delete', table_id=table.id),
                  label=('Unmap table' if not table.managed else 'Delete table'),
@@ -90,6 +91,7 @@
           {{ move_form(url_for('designer.field_move', table_id=table.id, field_id=f.id, direction='down'), '↓') }}
         </td>
         <td class="actions">
+          <a class="btn sm" href="{{ url_for('studio.schema_impact', table_id=table.id, field_id=f.id) }}">Impact</a>
           {% if table.managed %}
             {% if f.data_type != 'relation' %}
               <a class="btn sm" href="{{ url_for('designer.field_edit', table_id=table.id, field_id=f.id) }}">Edit</a>

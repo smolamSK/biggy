@@ -1,6 +1,7 @@
 """Pytest fixtures. Integration tests use a dedicated ``biggy_test`` database
 and are skipped automatically if it is unreachable."""
 import gc
+import os
 
 import pytest
 from sqlalchemy import text
@@ -21,6 +22,8 @@ def app():
     init_engine(application)  # rebind engine/session to the test database
     ok, msg = test_connection(build_url(application.config))
     if not ok:
+        if os.environ.get("REQUIRE_TEST_DATABASE") == "1":
+            pytest.fail(f"Required test database unavailable: {msg}")
         pytest.skip(f"Test database '{TEST_DB}' unavailable: {msg}")
     return application
 
@@ -65,6 +68,8 @@ def src2(app):
                      "DB_NAME": SRC2_DB})
     ok, msg = test_connection(url)
     if not ok:
+        if os.environ.get("REQUIRE_TEST_DATABASE") == "1":
+            pytest.fail(f"Required second test database unavailable: {msg}")
         pytest.skip(f"Second test database '{SRC2_DB}' unavailable: {msg}")
     eng = make_engine(url)
 

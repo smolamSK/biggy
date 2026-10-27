@@ -469,6 +469,18 @@ def test_adopt_string_pk_on_sqlite(app, client, sqlite_source):
     with sqlite_source["engine"].connect() as c:
         assert c.execute(text("SELECT name FROM account WHERE uuid='u-1'")).scalar() == "Acme"
     assert "Acme" in client.get(f"/u/view/{aid}/u-1").get_data(as_text=True)   # string-key view URL
+    response = client.post("/api/v1/account", json={"uuid": "u-2", "name": "Beta"})
+    assert response.status_code == 201
+    location = response.headers["Location"]
+    assert client.get(location).get_json()["uuid"] == "u-2"
+    for method in (client.patch, client.put):
+        assert method(location, json={"name": "Updated"}).get_json()["name"] == "Updated"
+    assert client.get("/api/v1/account/fields").status_code == 200
+    spec = client.get("/api/v1/openapi.json").get_json()
+    assert spec["paths"]["/tables/account/records/{id}"]["parameters"][0]["schema"]["type"] == "string"
+    assert client.delete(location).status_code == 204
+    assert client.get(location).status_code == 404
+
 
 
 def test_markdown_field(app, client):

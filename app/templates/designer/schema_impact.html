@@ -1,0 +1,35 @@
+{% extends "designer/_base.html" %}
+{% block title %}Schema impact · {{ relation.name if relation else field.label if field else table.label }}{% endblock %}
+{% block inner %}
+<nav class="crumbs"><a href="{{ url_for('designer.table_view', table_id=table.id) }}">{{ table.label }}</a> / Schema impact</nav>
+<header class="page-header"><div><h1>{{ relation.name if relation else field.label if field else table.label }}: schema impact</h1>
+<p class="page-description">Inspect the records and configuration involved before editing the schema.</p></div>
+<div class="toolbar"><a class="btn" href="{{ url_for('designer.table_view', table_id=table.id) }}">Open table</a>
+{% if relation %}<a class="btn" href="{{ url_for('designer.relation_edit', relation_id=relation.id) }}">Edit relationship</a>
+{% elif field and table.managed and field.data_type != 'relation' %}<a class="btn" href="{{ url_for('designer.field_edit', table_id=table.id, field_id=field.id) }}">Edit field</a>{% endif %}</div></header>
+<section class="panel"><h2>Scope of the change</h2>
+{% if relation and relation.kind == 'mn' %}<p>Removing this relationship deletes its linking table and saved links. The records on either side remain.</p>
+{% elif relation %}<p>Removing this relationship removes its field mapping{% if table.managed %} and the stored links in its column{% endif %}. Records in the related table remain.</p>
+{% elif field %}<p>Changing this field can affect validation, conditions and the references below. {% if field.data_type in ('file', 'image') %}Deleting it also removes its attachments.{% elif table.managed %}Deleting it drops its column and stored values.{% else %}This external column is managed outside Biggy.{% endif %}</p>
+{% elif table.managed %}<p>Deleting this table removes its records, field definitions and forms. Existing relationships must be removed first.</p>
+{% else %}<p>Unmapping this external table removes its Biggy field definitions and forms. Its physical table and records remain.</p>{% endif %}
+<p>Schema changes apply immediately. Form revisions restore form configuration; they cannot restore deleted columns or records.</p>
+</section>
+<section class="panel"><div class="toolbar"><h2>Existing data</h2><a class="btn sm" href="{{ request.path }}?counts=1">{{ 'Refresh counts' if counts else 'Count existing records' }}</a></div>
+{% if counts %}
+{% if counts.error %}<p class="flash warning" role="status">{{ counts.error }}</p>{% endif %}
+<dl class="impact-counts">
+{% if counts.rows is not none %}<div><dt>{{ 'Saved relationship links' if relation and relation.kind == 'mn' else 'Records in this table' }}</dt><dd>{{ counts.rows }}</dd></div>{% endif %}
+{% if counts.populated is not none %}<div><dt>Records with a non-NULL value</dt><dd>{{ counts.populated }}</dd></div>{% endif %}
+{% if counts.attachments is not none %}<div><dt>Stored attachments</dt><dd>{{ counts.attachments }}</dd></div>{% endif %}
+</dl><p class="muted">Counts include soft-deleted records and every owner. They reflect this request and can change as users work.</p>
+{% else %}<p class="muted">Request counts when needed. Counting a large or external table can take time.</p>{% endif %}
+</section>
+<h2>References and review items <span class="badge">{{ dependency_count }}</span></h2>
+{% for group in groups %}<section class="panel"><h3>{{ group.title }}</h3><ul class="impact-references">
+{% for entry in group.entries %}<li><a href="{{ entry.url }}">{{ entry.label }}</a><p class="muted">{{ entry.reason }}</p></li>{% endfor %}
+</ul></section>{% else %}<div class="panel">No references found in the configuration inspected below.</div>{% endfor %}
+{% for note in notes %}<p class="flash warning">{{ note }}</p>{% endfor %}
+<details class="panel"><summary>What this report covers</summary><p>Live forms, saved drafts, conditional rules, dependent dropdowns, picker labels, relationships, uniqueness constraints, permissions, navigation and status workflows. Related automations, integrations, reports and formulas are listed for manual review; they may use other fields from the same table.</p>
+<p>Historical form revisions, saved user filters, dashboard widgets, raw SQL and external API clients are not fully analyzed. This report does not simulate a migration or guarantee that a change is compatible with every record.</p></details>
+{% endblock %}

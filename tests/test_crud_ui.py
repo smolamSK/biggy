@@ -298,6 +298,14 @@ def test_dependent_dropdown(app, client):
     assert 'data-parent-field="company_id"' in html          # contact select is dependent
     assert 'data-parent="1"' in html and 'data-parent="2"' in html   # each contact's company id
 
+    rejected = client.post(f"/u/forms/{deal_fid}/new",
+                           data={"code":"wrong", "company_id":"1", "contact_id":"11"})
+    assert rejected.status_code == 200
+    assert 'Choose a record belonging to the selected parent.' in rejected.text
+    accepted = client.post(f"/u/forms/{deal_fid}/new",
+                           data={"code":"valid", "company_id":"1", "contact_id":"10"})
+    assert accepted.status_code == 302
+
     # the dependency config survives a schema export/import (ids remapped)
     exp = client.get("/designer/schema/export.json")
     _ok(exp)
@@ -620,10 +628,12 @@ def test_attachments_crud(app, client):
         assert len(atts) == 2
         first_id, first_stored = atts[0].id, atts[0].stored_name
 
-    # serve returns the bytes with an image content-type
+    # serve untrusted uploads as downloads
     r = client.get(f"/u/attachment/{first_id}")
     _ok(r)
-    assert r.mimetype.startswith("image/") and r.get_data() == b"img-a"
+    assert r.mimetype == "application/octet-stream" and r.get_data() == b"img-a"
+    assert r.headers["Content-Disposition"].startswith("attachment;")
+    assert r.headers["X-Content-Type-Options"] == "nosniff"
 
     # remove one on save -> row + file gone, the other remains
     _ok(client.post(f"/u/forms/{fid}/{pk}/edit", data={
@@ -663,6 +673,21 @@ def test_attachment_access(app, client):
 
     _ok(client.get(f"/u/attachment/{att_id}"))          # designer can fetch
     amy = _new_amy(app, client)
+    from app.metadata.models import MetaFieldPermission
+    with app.app_context():
+        session = SessionLocal()
+        permission = MetaFieldPermission(role="user", field_id=fids["photo"], access="none")
+        session.add(permission)
+        session.commit()
+    assert amy.get(f"/u/attachment/{att_id}").status_code == 403
+    _ok(client.get(f"/u/attachment/{att_id}"))
+    with app.app_context():
+        session = SessionLocal()
+        permission = session.scalar(select(MetaFieldPermission).where(
+            MetaFieldPermission.field_id == fids["photo"]))
+        permission.access = "read"
+        session.commit()
+    _ok(amy.get(f"/u/attachment/{att_id}"))
     _ok(client.post("/designer/permissions", data={f"access_{fid}": "none"},
                     follow_redirects=True))
     assert amy.get(f"/u/attachment/{att_id}").status_code == 403

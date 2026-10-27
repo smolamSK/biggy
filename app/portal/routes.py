@@ -9,7 +9,6 @@ catalog *is* the grant, and only tables with owner stamps (``track_audit`` or
 Customers never edit fields — staff does that in User mode.
 """
 import json
-import os
 
 from flask import (
     Blueprint,
@@ -18,16 +17,15 @@ from flask import (
     redirect,
     render_template,
     request,
-    send_file,
     url_for,
 )
 from flask_login import current_user, login_required
 from sqlalchemy import select
 
 from .. import (
+    access,
     approvals,
     comments,
-    companies,
     data_service,
     file_store,
     record_service,
@@ -38,11 +36,8 @@ from ..forms.builder import build_form, display_field_name
 from ..helpers import current_user_id
 from ..importer import coerce_value
 from ..metadata.models import (
-    ROLE_PORTAL,
     AppUser,
-    Attachment,
     Company,
-    MetaField,
     MetaForm,
     MetaTable,
     Notification,
@@ -90,28 +85,11 @@ def _member_ids(session):
     of the caller's company **and the companies below it** in the tree (staff
     accounts never widen the scope).
     """
-    me = current_user_id()
-    cid = getattr(current_user, "company_id", None)
-    if not cid:
-        return {me}
-    allowed = companies.subtree_ids(session, cid)
-    ids = set(session.scalars(select(AppUser.id).where(
-        AppUser.company_id.in_(allowed), AppUser.role == ROLE_PORTAL)).all())
-    ids.add(me)
-    return ids
+    return access.portal_members(session, current_user)
 
 
 def _own_row(session, table, pk):
-    """The record, if the caller's account/organization owns it
-    (designers may preview any)."""
-    row = record_service.get_record(engine_for_table(table), table, pk,
-                                    user_id=current_user_id(), is_designer=True)
-    if not row:
-        abort(404)
-    if not current_user.is_designer \
-            and row.get("created_by") not in _member_ids(session):
-        abort(404)
-    return row
+    return access.portal_record(session, current_user, table, pk)
 
 
 def _label(session, table, row, pk):
@@ -209,7 +187,7 @@ def new(form_id):
                 data_service.set_links(engine, item.junction, item.this_col, pk,
                                        item.other_col, ids)
             for item in built.items:
-                if item.kind == "file":
+                if item.kind == "file" and not item.readonly:
                     _save_attachments(session, item, pk)
             flash("Request submitted — you can follow it here.", "success")
             return redirect(url_for("portal.ticket", table_id=mf.table_id, pk=pk))
@@ -304,20 +282,10 @@ def ticket_close(table_id, pk):
 @bp.route("/attachment/<int:att_id>")
 def attachment(att_id):
     """Serve a file from the caller's own catalog record (owner-checked)."""
-    session = _s()
-    att = session.get(Attachment, att_id)
-    field = session.get(MetaField, att.field_id) if att else None
-    table = session.get(MetaTable, field.table_id) if field else None
-    if not att or not field or not table:
-        abort(404)
-    if not any(f.table_id == table.id for f in _catalog_forms(session)):
-        abort(404)
-    _own_row(session, table, att.row_pk)
-    path = file_store.abs_path(att.field_id, att.stored_name)
-    if not os.path.exists(path):
-        abort(404)
-    return send_file(path, mimetype=att.content_type or "application/octet-stream",
-                     download_name=att.original_name, as_attachment=False)
+    from .. import access
+    att = access.attachment(_s(), current_user, att_id, portal=True)
+    return file_store.deliver(att)
+
 
 
 @bp.route("/notifications", methods=["GET", "POST"])

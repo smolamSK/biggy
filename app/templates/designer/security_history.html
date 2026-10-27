@@ -1,0 +1,20 @@
+{% extends "designer/_base.html" %}
+{% block title %}Security history · Biggy{% endblock %}
+{% block inner %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="{{ url_for('designer.dashboard') }}">Administration</a> / Security history</nav>
+<header class="page-header"><div><h1>Security history</h1><p class="page-description">Account, permission and access changes in one place.</p></div></header>
+<form method="get" class="search-control panel">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search actor, event or target" aria-label="Search security history">
+  <button class="btn" type="submit">Search</button>
+</form>
+<div class="panel table-scroll"><table class="grid">
+<tr><th>When (UTC)</th><th>Actor</th><th>Event</th><th>Target</th><th>What changed</th></tr>
+{% for entry in entries %}
+<tr><td>{{ entry.at }}</td><td>{{ entry.actor }}</td><td>{{ entry.event }}</td><td>{{ entry.target }}</td><td>{{ summaries[entry.id] }}<details class="security-details"><summary>Technical details</summary><pre>{{ entry.details }}</pre></details></td></tr>
+{% else %}<tr><td colspan="5">No matching security events.</td></tr>{% endfor %}
+</table></div>
+<div class="toolbar">
+{% if page > 1 %}<a href="{{ url_for('designer.security_history', q=q, page=page-1) }}">Previous</a>{% endif %}
+{% if more %}<a href="{{ url_for('designer.security_history', q=q, page=page+1) }}">Next</a>{% endif %}
+</div>
+{% endblock %}

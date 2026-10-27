@@ -6,6 +6,7 @@
   <span class="badge">{{ 'M:1' if rel.kind == 'm1' else 'M:N' }}</span></h1>
 <p class="muted">{{ from_t.label }} → {{ to_t.label }}</p>
 
+<p><a class="btn" href="{{ url_for('studio.schema_impact', relation_id=rel.id) }}">Review relationship impact</a></p>
 <div class="panel" style="max-width:620px">
   <form method="post">
     {{ form.hidden_tag() }}

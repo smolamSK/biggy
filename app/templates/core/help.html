@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ title }} · Biggy{% endblock %}
 {% block content %}
+<p class="muted">{{ branding.app_name }} · Version {{ config.APP_VERSION }}</p>
 <div class="toolbar">
   <h1 style="margin:0">Help</h1>
   <span style="flex:1"></span>

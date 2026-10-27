@@ -74,7 +74,7 @@ _FORM_COLS = ["id", "table_id", "name", "title", "description", "purpose",
               "default_sort", "default_order", "default_per_page"]
 _FORMFIELD_COLS = ["id", "form_id", "kind", "field_id", "relation_id", "label_override",
                    "widget", "required", "readonly", "help_text", "position",
-                   "parent_field_id", "filter_field_id"]
+                   "parent_field_id", "filter_field_id", "rules_json"]
 _MENU_COLS = ["id", "parent_id", "label", "kind", "target_form_id", "target_table_id",
               "target_dashboard_id", "position", "icon"]
 # Shared dashboards (owner_user_id NULL) + their widgets. Personal dashboards are
@@ -448,6 +448,7 @@ def import_schema(session, engine, data, replace=False, additive=False):
                 form_id=form_id, kind=it["kind"], field_id=field_id, relation_id=relation_id,
                 label_override=it.get("label_override"), widget=it.get("widget"),
                 required=it.get("required", False), readonly=it.get("readonly", False),
+                rules_json=it.get("rules_json"),
                 help_text=it.get("help_text"), position=it.get("position", 0),
                 parent_field_id=(fmap.get(it["parent_field_id"]) if it.get("parent_field_id") else None),
                 filter_field_id=(fmap.get(it["filter_field_id"]) if it.get("filter_field_id") else None),

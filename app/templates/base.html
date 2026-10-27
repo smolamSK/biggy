@@ -35,20 +35,18 @@
   {% from "_icons.html" import icon %}
   <header class="topbar">
     <button id="nav-burger" class="nav-burger" type="button" aria-label="Menu">{{ icon('menu', 18) }}</button>
-    <span class="brand">{{ branding.app_name }} <span class="muted" style="font-size:var(--fs-xs);font-weight:400" title="Version">v{{ config.APP_VERSION }}</span></span>
+    <span class="brand">{{ branding.app_name }}</span>
     {% block mode %}{% endblock %}
     <span class="spacer"></span>
-    <select id="theme-select" aria-label="Theme" title="Theme">
-      <option value="light">Light</option>
-      <option value="dark">Dark</option>
-      <option value="sepia">Sepia</option>
-      <option value="ocean">Ocean</option>
-      <option value="contrast">High contrast</option>
-    </select>
     {% if current_user.is_authenticated %}
       {% if current_user.is_designer %}
-        <a href="{{ url_for('designer.dashboard') }}">Designer</a>
-        <a href="{{ url_for('user.dashboard') }}">User mode</a>
+        <details class="menu mode-switch">
+          <summary aria-label="Switch workspace">{{ 'Designer' if request.blueprint == 'designer' else 'User mode' }} {{ icon('chevron-down', 12) }}</summary>
+          <div class="menu-panel">
+            <a href="{{ url_for('designer.dashboard') }}">Designer</a>
+            <a href="{{ url_for('user.dashboard') }}">User mode</a>
+          </div>
+        </details>
       {% endif %}
       <a id="badge-appr" href="{{ url_for('user.approvals_inbox') }}" title="Approvals"
          aria-label="Approvals">{{ icon('check-circle') }}{% if pending_approvals %} <span class="badge">{{ pending_approvals }}</span>{% endif %}</a>
@@ -63,6 +61,15 @@
             <a href="{{ url_for('core.connection') }}">{{ icon('zap') }} Connection</a>
           {% endif %}
           <a href="{{ url_for('core.help_page', topic='user') }}">{{ icon('help') }} Help</a>
+          <label class="menu-setting" for="theme-select">Appearance
+    <select id="theme-select" aria-label="Theme" title="Theme">
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+      <option value="sepia">Sepia</option>
+      <option value="ocean">Ocean</option>
+      <option value="contrast">High contrast</option>
+    </select>
+          </label>
           <hr>
           <a href="{{ url_for('auth.logout') }}">{{ icon('log-out') }} Sign out</a>
         </div>

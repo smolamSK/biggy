@@ -4,8 +4,8 @@
 {% block title %}{{ label }} · Biggy{% endblock %}
 {% block inner %}
 {% if list_url %}<div class="crumbs"><a href="{{ list_url }}">← {{ table.label }}</a> / {{ label }}</div>{% endif %}
-<div class="toolbar">
-  <h1 style="margin:0">{{ table.label }}: {{ label }}
+<div class="toolbar page-header">
+  <h1>{{ label }}
     {% if deleted %}<span class="badge">deleted</span>{% endif %}</h1>
   <span style="flex:1"></span>
   {% if send_form_id %}
@@ -34,6 +34,14 @@
        title="Schedule a maintenance window linked to this record">Plan maintenance</a>
   {% endif %}
   {% if edit_url %}<a class="btn primary" href="{{ edit_url }}">Edit</a>{% endif %}
+</div>
+
+<div class="record-summary" aria-label="Record summary">
+  <div><span class="summary-label">Record</span><strong>{{ table.label }} · {{ pk }}</strong></div>
+  {% set summary = namespace(count=0) %}
+  {% for it in items if it.kind == 'scalar' and it.data_type in ('enum', 'user', 'date', 'datetime') and it.value is not none %}
+    {% if summary.count < 5 %}<div><span class="summary-label">{{ it.label }}</span>{{ typed_value(it.data_type, it.value, it.colors) }}</div>{% set summary.count = summary.count + 1 %}{% endif %}
+  {% endfor %}
 </div>
 
 {% if maint %}
@@ -114,9 +122,10 @@
 {% endif %}
 
 {% set details %}
-<div class="panel" style="max-width:680px">
+<div class="panel record-details">
+  <h2 class="section-title">Details</h2>
   <table class="grid">
-    {% for it in items %}
+    {% for it in items if it.kind != 'file' %}
       <tr>
         <th style="width:35%; text-align:left">{{ it.label }}</th>
         <td>
@@ -131,19 +140,7 @@
             {% if it.refs %}
               {% for rid, rlabel in it.refs %}{{ record_link(it.other_table_id, rid, rlabel) }}{% if not loop.last %}, {% endif %}{% endfor %}
             {% else %}<span class="muted">—</span>{% endif %}
-          {% elif it.kind == 'file' %}
-            {% if it.files %}
-              <div class="attach-list">
-                {% for f in it.files %}
-                  {% if it.is_image %}
-                    <a href="{{ url_for('user.attachment', att_id=f.id) }}" target="_blank">
-                      <img class="thumb" src="{{ url_for('user.attachment', att_id=f.id) }}" alt="{{ f.name }}"></a>
-                  {% else %}
-                    <a href="{{ url_for('user.attachment', att_id=f.id) }}" target="_blank">{{ f.name }}</a>
-                  {% endif %}
-                {% endfor %}
-              </div>
-            {% else %}<span class="muted">—</span>{% endif %}
+
           {% endif %}
         </td>
       </tr>
@@ -152,6 +149,20 @@
     {% endfor %}
   </table>
 </div>
+{% set attachment_fields = items|selectattr('kind', 'equalto', 'file')|list %}
+{% if attachment_fields %}
+<section class="panel record-attachments">
+  <h2 class="section-title">Attachments</h2>
+  {% for it in attachment_fields %}
+    <h3>{{ it.label }}</h3><div class="attachment-cards">
+    {% for f in it.files %}
+      <div class="attachment-card">{% if it.is_image and config.PREVIEW_BASE_URL %}<img class="thumb" src="{{ url_for('user.attachment', att_id=f.id, preview=1) }}" alt="{{ f.name }}">{% endif %}<a href="{{ url_for('user.attachment', att_id=f.id) }}">{{ f.name }}</a>
+      {% if config.PREVIEW_BASE_URL %}<a class="btn sm" href="{{ url_for('user.attachment', att_id=f.id, preview=1) }}" target="_blank" rel="noopener noreferrer">Preview</a>{% endif %}</div>
+    {% else %}<p class="muted">No files attached.</p>{% endfor %}
+    </div>
+  {% endfor %}
+</section>
+{% endif %}
 {% endset %}
 
 {% if related or history %}
@@ -178,8 +189,8 @@
   {{ details }}
 {% endif %}
 
-<h2>Conversation</h2>
-<div class="panel" style="max-width:680px">
+<h2 class="section-title">Conversation</h2>
+<div class="panel conversation-panel">
   {% for c in thread %}
     <div class="comment{{ ' internal' if c.internal }}">
       <div class="comment-head">

@@ -141,6 +141,29 @@
       });
     });
 
+    // Keep row-action menus outside the clipping area of scrollable tables.
+    document.querySelectorAll(".table-scroll details.menu").forEach(function (menu) {
+      function positionMenu() {
+        if (!menu.open) return;
+        var panel = menu.querySelector(".menu-panel");
+        var summary = menu.querySelector("summary");
+        if (!panel || !summary) return;
+        var anchor = summary.getBoundingClientRect();
+        panel.style.position = "fixed";
+        panel.style.right = "auto";
+        var size = panel.getBoundingClientRect();
+        panel.style.left = Math.max(8, Math.min(anchor.right - size.width, innerWidth - size.width - 8)) + "px";
+        var top = anchor.bottom + 4;
+        if (top + size.height > innerHeight - 8) top = anchor.top - size.height - 4;
+        panel.style.top = Math.max(8, top) + "px";
+      }
+      menu.addEventListener("toggle", positionMenu);
+      function close() { menu.removeAttribute("open"); }
+      menu.closest(".table-scroll").addEventListener("scroll", positionMenu);
+      window.addEventListener("resize", close);
+      window.addEventListener("scroll", positionMenu);
+    });
+
     // mobile: ☰ toggles the off-canvas sidebar (scrim click closes)
     var burger = document.getElementById("nav-burger");
     var sidebar = document.querySelector(".sidebar");

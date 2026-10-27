@@ -20,6 +20,7 @@
         <td>{% if r.to_table_id in tmap %}{{ obj_link('designer.table_view', 'table_id', r.to_table_id, tmap[r.to_table_id].label) }}{% endif %}</td>
         <td><code>{{ r.junction_phys_name or ('FK column') }}</code></td>
         <td class="actions">
+          <a class="btn sm" href="{{ url_for('studio.schema_impact', relation_id=r.id) }}">Impact</a>
           <a class="btn sm" href="{{ url_for('designer.relation_edit', relation_id=r.id) }}">Edit</a>
           {{ delete_form(url_for('designer.relation_delete', relation_id=r.id),
                         confirm='Delete this relation?') }}

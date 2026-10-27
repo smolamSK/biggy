@@ -1,7 +1,6 @@
 """User mode: menu-driven list/search, CRUD, trash, related records."""
 import calendar as _calendar
 import json
-import os
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from urllib.parse import parse_qsl, urlencode
@@ -15,7 +14,6 @@ from flask import (
     redirect,
     render_template,
     request,
-    send_file,
     url_for,
 )
 from flask_login import current_user, login_required
@@ -1069,6 +1067,8 @@ def _cell_value(field, value):
 @bp.route("/forms/<int:form_id>/<pk>/cell", methods=["POST"])
 def cell_update(form_id, pk):
     mf, _a = _require(form_id, "write")
+    if any(getattr(it, "rules_json", None) for it in mf.items):
+        abort(400, "Use the full form to edit records with conditional rules.")
     session = _s()
     engine = engine_for_table(mf.table)
     built = build_form(mf, session, engine, current_user)
@@ -1124,7 +1124,11 @@ def _save_record(form_id, pk, clone_from):
     user_id, is_designer = _ctx()
 
     if request.method == "POST":
-        form = built.form_class()
+        trusted = record_service.get_record(engine, mf.table, pk, user_id=user_id,
+                                            is_designer=is_designer) if pk is not None else {}
+        if pk is not None and not trusted:
+            abort(404)
+        form = built.form_class(data=trusted or {}, trusted_values=trusted or {})
         if form.validate():
             values, mn = _collect(built, form)
             ok, diverted = True, []
@@ -1152,7 +1156,7 @@ def _save_record(form_id, pk, clone_from):
                         engine, item.junction, item.this_col, new_pk, item.other_col, ids
                     )
                 for item in built.items:
-                    if item.kind == "file":
+                    if item.kind == "file" and not item.readonly:
                         _save_attachments(session, item, new_pk)
                 if diverted:
                     flash("Submitted for approval: " + ", ".join(
@@ -1302,24 +1306,10 @@ def _table_readable(session, table):
 
 @bp.route("/attachment/<int:att_id>")
 def attachment(att_id):
-    session = _s()
-    att = session.get(Attachment, att_id)
-    field = session.get(MetaField, att.field_id) if att else None
-    table = session.get(MetaTable, field.table_id) if field else None
-    if not att or not field or not table:
-        abort(404)
-    if not _table_readable(session, table):
-        abort(403)
-    engine = engine_for_table(table)
-    user_id, is_designer = _ctx()
-    if not record_service.get_record(engine, table, att.row_pk, user_id=user_id,
-                                     is_designer=is_designer, allow_deleted=True):
-        abort(404)
-    path = file_store.abs_path(att.field_id, att.stored_name)
-    if not os.path.exists(path):
-        abort(404)
-    return send_file(path, mimetype=att.content_type or "application/octet-stream",
-                     download_name=att.original_name, as_attachment=False)
+    from .. import access
+    att = access.attachment(_s(), current_user, att_id, portal=False)
+    return file_store.deliver(att)
+
 
 
 def _record_label(session, engine, mf, pk):
@@ -1488,6 +1478,8 @@ def _bulk_editable_fields(session, mf):
 @bp.route("/forms/<int:form_id>/bulk-edit", methods=["POST"])
 def bulk_edit_form(form_id):
     mf, _access = _require(form_id, "write")
+    if any(getattr(it, "rules_json", None) for it in mf.items):
+        abort(400, "Use the full form to edit records with conditional rules.")
     ids = request.form.getlist("ids")
     if not ids:
         flash("Select at least one row first.", "warning")
@@ -1500,6 +1492,8 @@ def bulk_edit_form(form_id):
 @bp.route("/forms/<int:form_id>/bulk-edit/apply", methods=["POST"])
 def bulk_edit_apply(form_id):
     mf, _access = _require(form_id, "write")
+    if any(getattr(it, "rules_json", None) for it in mf.items):
+        abort(400, "Use the full form to edit records with conditional rules.")
     session = _s()
     engine = engine_for_table(mf.table)
     back = redirect(_safe_next(url_for("user.form_list", form_id=form_id)))

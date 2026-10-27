@@ -1,0 +1,33 @@
+{% extends "designer/_base.html" %}
+{% block title %}Set up {{ template.name }} · Biggy{% endblock %}
+{% block inner %}
+<nav class="crumbs"><a href="{{ url_for('form_templates.library') }}">Form templates</a> / {{ template.name }}</nav>
+<h1>Set up {{ template.name }}</h1><p>{{ template.description }}</p>
+<ol class="wizard-steps" aria-label="Setup progress"><li data-wizard-step="1">Choose form</li><li data-wizard-step="2">Map fields</li><li data-wizard-step="3">Review conditions</li><li data-wizard-step="4">Review access</li><li data-wizard-step="5">Create draft & test</li></ol>
+<section class="panel" {% if selected %}hidden{% endif %} id="wizard-target"><h2>1. Choose a target form</h2>
+<form method="get"><label>Form to configure <select name="form_id" required><option value="">Choose a form</option>{% for form in forms %}<option value="{{ form.id }}" {{ 'selected' if selected and selected.id == form.id }}>{{ form.title }} · {{ form.table.label }}</option>{% endfor %}</select></label>
+<p class="muted">The wizard maps to existing fields and saves a draft. The live form stays unchanged until you test and publish it.</p>
+<div class="toolbar"><button class="btn primary" type="submit">Continue</button><a class="btn" href="{{ url_for('designer.form_new') }}">Create a form first</a></div></form></section>
+{% if selected %}
+<p>Target: <strong>{{ selected.title }}</strong> · {{ selected.table.label }} <a href="{{ url_for('form_templates.setup', key=key) }}">Change target</a></p>
+<p id="wizard-status" role="status" aria-live="polite"></p>
+<section class="panel wizard-page" data-page="2"><h2 tabindex="-1">2. Map fields and relationships</h2>
+<p>Select the matching field for each template control. Field types must match; enum fields must include all the listed values.</p>
+<div id="wizard-fields" class="wizard-mappings"></div><div id="wizard-relations" class="wizard-mappings"></div><div id="wizard-filters" class="wizard-mappings"></div>
+<p><a href="{{ url_for('designer.table_view', table_id=selected.table_id) }}" target="_blank" rel="noopener">Open table fields and relationships</a>. After adding fields, reload this page to update the choices.</p>
+<button class="btn primary" id="wizard-review" type="button">Review mapped configuration</button></section>
+<section class="panel wizard-page" data-page="3" hidden><h2 tabindex="-1">3. Review conditions and behavior</h2>
+<div id="wizard-behavior"></div><div id="wizard-issues"></div><p class="muted">You can edit these conditions and the layout in the draft builder after setup.</p>
+<div class="toolbar"><button class="btn" data-go="2">Back to mappings</button><button class="btn primary" data-go="4">Review access</button></div></section>
+<section class="panel wizard-page" data-page="4" hidden><h2 tabindex="-1">4. Review existing access</h2>
+<p>The target form keeps its permissions and catalog settings. These are the current role settings; field permissions can further restrict access.</p><div class="table-scroll"><table class="grid"><thead><tr><th>Role</th><th>Form access</th><th>Restricted fields</th></tr></thead><tbody id="wizard-permissions"></tbody></table></div>
+<p><a href="{{ url_for('designer.permissions') }}" target="_blank" rel="noopener">Edit form permissions</a> · <a href="{{ url_for('designer.field_permissions', table_id=selected.table_id) }}" target="_blank" rel="noopener">Edit field permissions</a>. Permission edits apply immediately. Review the mappings again if you change access.</p>
+<div class="toolbar"><button class="btn" data-go="3">Back to conditions</button><button class="btn primary" data-go="5">Continue to draft</button></div></section>
+<section class="panel wizard-page" data-page="5" hidden><h2 tabindex="-1">5. Create a draft and test scenarios</h2>
+<div id="wizard-changes"></div>
+<label class="checkline" id="wizard-replace-label" hidden><input type="checkbox" id="wizard-replace"> Replace the existing saved draft with this template configuration.</label>
+<p>Next, use the builder's role preview with matching and nonmatching sample values. Resolve configuration issues and run a successful preview before publishing.</p>
+<div class="toolbar"><button class="btn" data-go="4">Back to access</button><button class="btn primary" id="wizard-apply" type="button">Create draft and open preview</button></div></section>
+<script type="application/json" id="template-setup-data">{{ data|tojson }}</script><meta name="template-csrf" content="{{ csrf_token() }}"><script src="{{ url_for('static', filename='form-template-setup.js') }}" defer></script>
+{% else %}<script>document.querySelector('[data-wizard-step="1"]').setAttribute('aria-current','step');</script>{% endif %}
+{% endblock %}

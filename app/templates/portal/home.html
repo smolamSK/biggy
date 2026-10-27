@@ -1,17 +1,17 @@
 {% extends "portal/_base.html" %}
 {% block inner %}
-<h1>Welcome</h1>
+<header class="page-header portal-welcome"><div><p class="eyebrow">Support center</p><h1>How can we help?</h1><p class="page-description">Start a request or follow the progress of your tickets.</p></div></header>
 
 {% for group, forms in groups.items() %}
-  <h2 style="margin:1rem 0 .4rem">{{ group }}</h2>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.8rem">
+  <h2 class="section-title">{{ group }}</h2>
+  <div class="request-cards">
     {% for f in forms %}
-      <div class="panel" style="display:flex;flex-direction:column;gap:.4rem;margin:0">
-        <strong>{{ f.title }}</strong>
+      <div class="panel request-card">
+        <span class="request-card-icon" aria-hidden="true">↗</span><h3>{{ f.title }}</h3>
         {% if f.description %}<span class="muted" style="font-size:var(--fs-sm)">{{ f.description }}</span>{% endif %}
         <span style="flex:1"></span>
-        <a class="btn primary" style="align-self:flex-start"
-           href="{{ url_for('portal.new', form_id=f.id) }}">Request →</a>
+        <a class="btn"
+           href="{{ url_for('portal.new', form_id=f.id) }}">Start request →</a>
       </div>
     {% endfor %}
   </div>
@@ -19,8 +19,8 @@
   <div class="panel"><p class="muted">No request types are available yet.</p></div>
 {% endfor %}
 
-<h2 style="margin-top:1.4rem">{{ (org + ' tickets') if org else 'My tickets' }}</h2>
-<div class="panel">
+<h2 class="section-title ticket-section-title">{{ (org + ' tickets') if org else 'My tickets' }}</h2>
+<div class="panel table-scroll">
   {% if tickets %}
   <table class="grid">
     <tr><th>Ticket</th><th>Type</th>{% if org %}<th>By</th>{% endif %}<th>Status</th><th class="num">Created</th></tr>

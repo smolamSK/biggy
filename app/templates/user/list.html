@@ -4,8 +4,9 @@
 {% block title %}{{ mf.title }} · Biggy{% endblock %}
 {% block inner %}
 {% set active = conditions|length + (1 if q else 0) %}
-<div class="toolbar">
-  <h1 style="margin:0">{{ mf.title }}</h1>
+<nav class="crumbs" aria-label="Breadcrumb"><a href="{{ url_for('user.dashboard') }}">Workspace</a> / {{ mf.title }}</nav>
+<div class="toolbar page-header">
+  <div><h1>{{ mf.title }}</h1><p class="page-description">{{ total }} {{ 'record' if total == 1 else 'records' }}{% if active %} matching your filters{% endif %}</p></div>
   <span style="flex:1"></span>
   {% if has_enum %}<a class="btn" href="{{ url_for('user.form_kanban', form_id=mf.id) }}">{{ icon('kanban') }} Board</a>{% endif %}
   {% if has_dates %}<a class="btn" href="{{ url_for('user.form_calendar', form_id=mf.id) }}">{{ icon('calendar') }} Calendar</a>{% endif %}
@@ -24,45 +25,55 @@
   {% endif %}
 </div>
 
-<div class="toolbar" style="margin-bottom:.5rem;flex-wrap:wrap;gap:.4rem">
-  {% if saved_views %}
-    <span class="muted">Saved views:</span>
-    {% for v in saved_views %}
-      <span class="badge" style="display:inline-flex;align-items:center;gap:.3rem">
-        <a href="{{ url_for('user.view_apply', form_id=mf.id, vid=v.id) }}">{{ v.name }}</a>
-        <form method="post" action="{{ url_for('user.view_delete', form_id=mf.id, vid=v.id) }}" class="inline">
+<div class="list-controls panel">
+  <div class="list-toolbar">
+    <div class="search-control">
+      <label class="sr-only" for="list-search">Search {{ mf.title }}</label>
+      <input id="list-search" type="search" name="q" form="filter-form" value="{{ q }}" placeholder="Search {{ mf.title }}…">
+      <button class="btn" type="submit" form="filter-form">{{ icon('search', 16) }} Search</button>
+    </div>
+    <details class="menu left">
+      <summary class="btn">Saved views {{ icon('chevron-down', 12) }}</summary>
+      <div class="menu-panel saved-view-menu">
+        {% for v in saved_views %}
+          <div class="saved-view-row"><a href="{{ url_for('user.view_apply', form_id=mf.id, vid=v.id) }}">{{ v.name }}</a>
+          <form method="post" action="{{ url_for('user.view_delete', form_id=mf.id, vid=v.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn sm" title="Delete view" aria-label="Delete view {{ v.name }}">×</button>
+          </form></div>
+        {% else %}<p class="muted">No saved views yet.</p>{% endfor %}
+        <form method="post" action="{{ url_for('user.view_save', form_id=mf.id) }}" class="save-view-form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn sm" title="Delete view" style="padding:0 .35rem">×</button>
+          <input type="hidden" name="query" value="{{ current_query }}">
+          <label for="view-name">Save current view</label>
+          <input id="view-name" type="text" name="name" placeholder="View name" required>
+          <button class="btn sm" type="submit">Save view</button>
         </form>
-      </span>
-    {% endfor %}
-  {% endif %}
-  <span style="flex:1"></span>
-  <form method="post" action="{{ url_for('user.view_save', form_id=mf.id) }}" class="inline">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="hidden" name="query" value="{{ current_query }}">
-    <input type="text" name="name" placeholder="Save current view as…" required>
-    <button class="btn sm" type="submit">Save view</button>
-  </form>
+      </div>
+    </details>
+    <button type="button" class="btn" id="columns-btn">{{ icon('columns', 13) }} Columns</button>
+    <label class="control-label" for="table-density">Density
+      <select id="table-density"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select>
+    </label>
+    <label class="control-label">Per page
+      <select name="per_page" form="filter-form" onchange="this.form.submit()">
+        {% for n in allowed_per_page %}<option value="{{ n }}" {% if n == per_page %}selected{% endif %}>{{ n }}</option>{% endfor %}
+      </select>
+    </label>
+  </div>
+  <details class="filter-disclosure" {% if conditions %}open{% endif %}>
+    <summary>{{ icon('filter', 14) }} Filters{% if conditions %} <span class="badge">{{ conditions|length }}</span>{% endif %}</summary>
+    <form method="get" id="filter-form">
+      <div id="conditions"></div>
+      <div class="toolbar">
+        <button type="button" class="btn" id="add-condition">+ Add condition</button>
+        <button type="submit" class="btn primary">Apply filters</button>
+        <a class="btn" href="{{ url_for('user.form_list', form_id=mf.id) }}">Clear</a>
+      </div>
+      {% if sort %}<input type="hidden" name="sort" value="{{ sort }}"><input type="hidden" name="order" value="{{ order }}">{% endif %}
+    </form>
+  </details>
 </div>
-
-<details class="panel" {% if active %}open{% endif %}>
-  <summary><strong>Filters</strong>{% if active %} <span class="badge">{{ active }}</span>{% endif %}</summary>
-  <form method="get" id="filter-form" style="margin-top:.75rem">
-    <div class="field" style="margin-bottom:.75rem">
-      <label>Quick search</label>
-      <input type="text" name="q" value="{{ q }}" placeholder="Search {{ mf.title }}…">
-    </div>
-    <div id="conditions"></div>
-    <div class="toolbar" style="margin-top:.5rem">
-      <button type="button" class="btn" id="add-condition">+ Add condition</button>
-      <button type="submit" class="btn primary">Apply</button>
-      <a class="btn" href="{{ url_for('user.form_list', form_id=mf.id) }}">Clear</a>
-    </div>
-    {% if sort %}<input type="hidden" name="sort" value="{{ sort }}">
-    <input type="hidden" name="order" value="{{ order }}">{% endif %}
-  </form>
-</details>
 
 <script type="application/json" id="filter-meta">{{ filter_meta|tojson }}</script>
 <script type="application/json" id="filter-order">{{ filter_order|tojson }}</script>
@@ -86,11 +97,12 @@
 </div>
 {% endif %}
 
-<div class="panel">
-  <div class="toolbar" style="margin-bottom:.5rem">
+{% set conditional = mf.items|selectattr('rules_json')|list|length > 0 %}
+<div class="panel list-results">
+  <div class="toolbar bulk-actions" id="bulk-actions" hidden>
     <button class="btn sm" form="bulk-form" id="bulk-edit"
             formaction="{{ url_for('user.bulk_edit_form', form_id=mf.id) }}"
-            {% if not can_edit %}style="display:none"{% endif %}>Edit selected</button>
+            {% if not can_edit or conditional %}style="display:none"{% endif %}>Edit selected</button>
     <button class="btn danger sm" form="bulk-form" id="bulk-delete"
             formaction="{{ url_for('user.bulk_delete', form_id=mf.id) }}"
             {% if not can_edit %}style="display:none"{% endif %}>Delete selected</button>
@@ -100,19 +112,10 @@
       <button class="btn sm" form="bulk-form" id="bulk-send"
               formaction="{{ url_for('user.feed_send', form_id=mf.id) }}">Send to tools</button>
     {% endif %}
-    <span class="muted" id="bulk-count"></span>
-    <span style="flex:1"></span>
-    <button type="button" class="btn sm" id="columns-btn">{{ icon('columns', 13) }} Columns {{ icon('chevron-down', 11) }}</button>
-    <label class="muted">Per page
-      <select name="per_page" form="filter-form" onchange="this.form.submit()">
-        {% for n in allowed_per_page %}
-          <option value="{{ n }}" {% if n == per_page %}selected{% endif %}>{{ n }}</option>
-        {% endfor %}
-      </select>
-    </label>
+    <span class="muted" id="bulk-count" role="status" aria-live="polite"></span>
   </div>
 
-  <form method="post" id="bulk-form">
+  <form method="post" id="bulk-form" class="table-scroll">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="next" value="{{ request.full_path }}">
     <table class="grid" id="list-table">
@@ -134,7 +137,7 @@
           <td class="col-check"><input type="checkbox" name="ids" value="{{ rid }}"></td>
           {% for c in columns %}
             {% set v = row.get(c.column) %}
-            {% set editable = can_edit and c.kind == 'field' and not c.readonly and c.column != display_col
+            {% set editable = can_edit and not conditional and c.kind == 'field' and not c.readonly and c.column != display_col
                               and c.meta.data_type not in ('json', 'tags', 'autonumber', 'formula', 'user', 'company') %}
             {% set wf_cell = c.column in wf_cols %}
             {% set numcol = c.kind == 'field' and c.meta and c.meta.data_type in ('integer','bigint','decimal','float','currency','percent','autonumber') %}

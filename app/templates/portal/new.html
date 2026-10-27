@@ -9,6 +9,7 @@
   <form method="post" enctype="multipart/form-data" data-guard>
     {{ form.hidden_tag() }}
     {% for item in items %}
+      <div data-rule-field="{{ item.name }}">
       {% if item.kind == 'section' %}
         <h3>{{ item.label }}</h3>
       {% elif item.kind == 'file' %}
@@ -22,6 +23,7 @@
         {{ render_field(form[item.name]) }}
         {% if item.help_text %}<div class="help" style="margin-top:-.6rem">{{ item.help_text }}</div>{% endif %}
       {% endif %}
+      </div>
     {% endfor %}
     <button class="btn primary" type="submit">Submit request</button>
     <a class="btn" href="{{ url_for('portal.home') }}">Cancel</a>
@@ -29,4 +31,5 @@
 </div>
 <script src="{{ url_for('static', filename='dependent.js') }}" defer></script>
 <script src="{{ url_for('static', filename='pickers.js') }}" defer></script>
+{% include 'user/_form_rules.html' %}
 {% endblock %}

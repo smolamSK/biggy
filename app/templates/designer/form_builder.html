@@ -1,0 +1,28 @@
+{% extends "designer/_base.html" %}
+{% block title %}Build {{ mf.title }} · Biggy{% endblock %}
+{% block inner %}
+<nav class="crumbs"><a href="{{ url_for('designer.forms') }}">Forms</a> / {{ mf.title }}</nav>
+<header class="page-header"><div><h1>Build {{ mf.title }}</h1><p class="page-description">Draft → role preview → review → publish</p></div>
+<div class="toolbar"><button class="btn primary" id="draft-save">Save draft</button><a class="btn" href="{{ url_for('form_templates.save', form_id=mf.id) }}">Save as template</a><a class="btn" href="{{ url_for('designer.form_edit', form_id=mf.id) }}">Live settings</a></div></header>
+<p id="draft-status" role="status" aria-live="polite"></p>
+<div class="panel studio-settings"><label>Form title <input id="studio-title" type="text" maxlength="160"></label><label>Description <input id="studio-description" type="text"></label>
+<label>Purpose <select id="studio-purpose"><option value="data">Data entry</option><option value="view">Read-only view</option></select></label>
+<label><input id="studio-catalog" type="checkbox"> Show in catalog</label><label>Catalog group <input id="studio-group" type="text" maxlength="80"></label></div>
+<div class="studio-layout">
+<aside class="panel"><h2>Fields</h2><p class="muted">Choose a field to add it.</p><div id="studio-palette"></div><button class="btn" id="studio-section">Add section</button><h3>Relationships</h3><div id="studio-relations"></div></aside>
+<section class="panel"><h2>Form canvas</h2><p class="muted">Select a control to edit its settings. Drag to reorder, or use Move up / Move down.</p><div id="studio-canvas"></div></section>
+<aside class="panel"><h2>Control settings</h2><div id="studio-editor"><p class="muted">Select a control.</p></div></aside>
+</div>
+<section class="panel"><h2>Configuration checks</h2><div id="studio-issues"></div></section>
+<section class="panel" id="role-preview"><h2>Test as a role</h2><p class="muted">Use sample values to test conditions and relationship choices. Preview never creates records. Save the draft before testing.</p>
+<div class="toolbar"><label>Role <select id="preview-role"></select></label><label>Account scope <select id="preview-user"><option value="">Role only</option></select></label><button class="btn" id="preview-run">Run preview</button></div>
+<p id="preview-status" role="status"></p><div id="studio-preview" class="preview-fields"></div></section>
+<section class="panel"><h2>Review and publish</h2><p>Publishing updates this form's layout, catalog settings and rules. It does not change database columns or delete records. New rules apply to future form submissions; existing records are not rewritten.</p>
+<div id="studio-diff"></div><p id="publish-status"></p><button class="btn primary" id="draft-publish">Publish saved draft</button>
+</section>
+<section class="panel"><h2>Previous versions</h2><p class="muted">Restore a version into the draft, then test and publish it. This restores form configuration, not database structure or record data.</p><div class="toolbar"><select id="studio-revisions" aria-label="Previous version"></select><button class="btn" id="draft-restore">Restore to draft</button><button class="btn" id="draft-reset">Start fresh from live form</button></div></section>
+<script id="studio-data" type="application/json">{{ data|tojson }}</script>
+<meta name="studio-csrf" content="{{ csrf_token() }}">
+<script src="{{ url_for('static', filename='form-rules.js') }}" defer></script>
+<script src="{{ url_for('static', filename='form-studio.js') }}" defer></script>
+{% endblock %}

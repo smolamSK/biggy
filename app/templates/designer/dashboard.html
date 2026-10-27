@@ -1,7 +1,7 @@
 {% extends "designer/_base.html" %}
 {% block title %}Designer · Biggy{% endblock %}
 {% block inner %}
-<h1>Designer</h1>
+<div class="page-header"><h1>Designer</h1><a class="btn primary" href="{{ url_for('designer.setup_guide') }}">Setup checklist &amp; health</a></div>
 <div class="cards">
   <div class="card"><div class="num">{{ tables|length }}</div>Tables</div>
   <div class="card"><div class="num">{{ relations|length }}</div>Relations</div>

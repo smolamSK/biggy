@@ -64,3 +64,23 @@ def delete(field_id, stored_name):
         os.remove(abs_path(field_id, stored_name))
     except OSError:
         pass
+
+
+def deliver(att):
+    """Call only after access.attachment; downloads remain the default."""
+    from flask import abort, redirect, request, send_file
+
+    from .previews import preview_url
+    path = abs_path(att.field_id, att.stored_name)
+    if not os.path.isfile(path):
+        abort(404)
+    destination = preview_url(att, path) if request.args.get('preview') == '1' else None
+    if destination:
+        response = redirect(destination)
+    else:
+        response = send_file(path, mimetype='application/octet-stream',
+                             download_name=att.original_name, as_attachment=True)
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Referrer-Policy'] = 'no-referrer'
+    response.headers['Cache-Control'] = 'no-store'
+    return response

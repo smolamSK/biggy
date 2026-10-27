@@ -30,10 +30,28 @@ services:
       DB_USER: biggy
       DB_PASSWORD: ${DB_PASSWORD:-biggy}
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      PREVIEW_BASE_URL: ${PREVIEW_BASE_URL:-}
+      PREVIEW_SIGNING_KEY: ${PREVIEW_SIGNING_KEY:-}
     ports:
       - "8000:8000"
     volumes:
       - uploads:/app/instance
+
+  # Put behind HTTPS on a separate cookie-free domain. Enable with --profile previews.
+  previews:
+    profiles: ["previews"]
+    build: .
+    environment:
+      UPLOAD_FOLDER: /uploads/uploads
+      PREVIEW_SIGNING_KEY: ${PREVIEW_SIGNING_KEY:-}
+    command: gunicorn --bind 0.0.0.0:8001 --workers 2 'app.previews:create_preview_app()'
+    ports:
+      - "127.0.0.1:8001:8001"
+    volumes:
+      - uploads:/uploads:ro
+    read_only: true
+    tmpfs:
+      - /tmp
 
   # Scheduler runner: one process loops `run-jobs`. Even if you scale `web` and
   # also enable its ticker, atomic claims ensure each due job runs exactly once.

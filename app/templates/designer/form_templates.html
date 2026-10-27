@@ -1,0 +1,14 @@
+{% extends "designer/_base.html" %}
+{% from "_macros.html" import delete_form %}
+{% block title %}Form templates · Biggy{% endblock %}
+{% block inner %}
+<header class="page-header"><div><h1>Form templates</h1><p class="page-description">Reuse a layout and its conditions, then map it to your fields.</p></div><a class="btn" href="{{ url_for('designer.forms') }}">Open forms</a></header>
+<p>Save a live form or saved draft as a template from its builder. Templates contain configuration; record data, permissions, catalog exposure and approval routing stay with the target form.</p>
+<div class="template-grid">
+{% for template in templates %}<article class="panel template-card"><h2>{{ template.name }}</h2><span class="badge">{{ 'Starter' if template.builtin else 'Saved template' }}</span>
+<p>{{ template.description or 'Reusable form layout and behavior.' }}</p>
+{% if template.builtin %}<details><summary>Fields needed</summary><ul>{% for key, spec in template.config.fields.items() %}<li>{{ spec.label }} · {{ spec.type }}{% if spec.choices %}: {{ spec.choices|join(', ') }}{% endif %}</li>{% endfor %}</ul></details>{% endif %}
+<div class="toolbar"><a class="btn primary" href="{{ url_for('form_templates.setup', key=template.key) }}">Use template</a>
+{% if not template.builtin %}{{ delete_form(url_for('form_templates.delete', template_id=template.id), confirm='Delete this template? Existing forms and drafts are kept.') }}{% endif %}</div></article>{% endfor %}
+</div>
+{% endblock %}

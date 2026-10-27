@@ -3,14 +3,15 @@
 {% block title %}{{ mode }} · {{ mf.title }}{% endblock %}
 {% block inner %}
 <div class="crumbs"><a href="{{ url_for('user.form_list', form_id=mf.id) }}">← {{ mf.title }}</a> / {{ mode }}</div>
-<div class="toolbar">
-  <h1 style="margin:0">{{ mode }} — {{ mf.title }}</h1>
+<div class="toolbar page-header">
+  <h1>{{ mode }} — {{ mf.title }}</h1>
   <span style="flex:1"></span>
   {% if pk %}<a class="btn" href="{{ url_for('user.record_topology', table_id=mf.table_id, pk=pk) }}">Impact map</a>{% endif %}
 </div>
 {% if mf.description %}<p class="muted">{{ mf.description }}</p>{% endif %}
 
 {% macro render_item(item) %}
+<div data-rule-field="{{ item.name }}">
   {% if item.kind == 'section' %}{# section breaks are turned into sub-tabs #}
   {% elif item.kind == 'file' %}
     {{ file_field(item) }}
@@ -19,10 +20,11 @@
     {{ render_field(field) }}
     {% if item.help_text %}<div class="help" style="margin-top:-.6rem">{{ item.help_text }}</div>{% endif %}
   {% endif %}
+</div>
 {% endmacro %}
 
 {% macro details_form() %}
-  <div class="panel" style="max-width:620px">
+  <div class="panel record-editor">
     <form method="post" enctype="multipart/form-data" data-guard>
       {{ form.hidden_tag() }}
       {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
@@ -43,8 +45,8 @@
         {% for item in items %}{{ render_item(item) }}{% endfor %}
         {% if not items %}<p class="muted">This form has no items. Add some in Designer mode.</p>{% endif %}
       {% endif %}
-      <button class="btn primary" type="submit">Save</button>
-      <a class="btn" href="{{ next or url_for('user.form_list', form_id=mf.id) }}">Cancel</a>
+      <div class="form-actions"><button class="btn primary" type="submit">Save</button>
+      <a class="btn" href="{{ next or url_for('user.form_list', form_id=mf.id) }}">Cancel</a></div>
     </form>
   </div>
 {% endmacro %}
@@ -58,11 +60,11 @@
       <div class="attach-list">
         {% for a in atts %}
           <div class="attach">
-            {% if is_image %}
+            {% if is_image and config.PREVIEW_BASE_URL %}
               <a href="{{ url_for('user.attachment', att_id=a.id) }}" target="_blank">
-                <img class="thumb" src="{{ url_for('user.attachment', att_id=a.id) }}" alt="{{ a.original_name }}"></a>
+                <img class="thumb" src="{{ url_for('user.attachment', att_id=a.id, preview=1) }}" alt="{{ a.original_name }}"></a>
             {% else %}
-              <a href="{{ url_for('user.attachment', att_id=a.id) }}" target="_blank">{{ a.original_name }}</a>
+              <a href="{{ url_for('user.attachment', att_id=a.id) }}" target="_blank">{{ a.original_name }}</a> {% if config.PREVIEW_BASE_URL %}<a href="{{ url_for('user.attachment', att_id=a.id, preview=1) }}" target="_blank" rel="noopener noreferrer">Preview</a>{% endif %}
             {% endif %}
             <label class="muted rm"><input type="checkbox" name="rm_{{ item.meta.id }}" value="{{ a.id }}"> remove</label>
           </div>
@@ -70,7 +72,7 @@
       </div>
     {% endif %}
     <input type="file" name="file_{{ item.meta.id }}" multiple
-           {% if is_image %}accept="image/*"{% endif %}>
+           {% if is_image and config.PREVIEW_BASE_URL %}accept="image/*"{% endif %}>
     {% if not pk %}<div class="help">Files are saved together with the record.</div>{% endif %}
     {% if item.help_text %}<div class="help">{{ item.help_text }}</div>{% endif %}
   </div>
@@ -105,4 +107,5 @@
 <script src="{{ url_for('static', filename='dependent.js') }}" defer></script>
 <script src="{{ url_for('static', filename='pickers.js') }}" defer></script>
 <script src="{{ url_for('static', filename='tabs.js') }}" defer></script>
+{% include 'user/_form_rules.html' %}
 {% endblock %}

@@ -17,6 +17,7 @@
 <nav class="sidebar">
   <a class="{{ 'active' if request.endpoint == 'designer.dashboard' }}"
      href="{{ url_for('designer.dashboard') }}">Dashboard</a>
+  <a href="{{ url_for('designer.setup_guide') }}">Setup checklist</a>
 
   {% call group('dz-model', 'Model') %}
     {{ navlink('designer.relations', 'Relations') }}
@@ -28,6 +29,7 @@
 
   {% call group('dz-ui', 'Interface') %}
     {{ navlink('designer.forms', 'Forms') }}
+    {{ navlink('form_templates.library', 'Form templates') }}
     {{ navlink('designer.menus', 'Menus') }}
     {{ navlink('designer.catalog_home', 'Catalog') }}
     {{ navlink('designer.dashboards_list', 'Dashboards') }}
@@ -57,6 +59,7 @@
     {{ navlink('designer.roles', 'Roles') }}
     {{ navlink('designer.permissions', 'Permissions') }}
     {{ navlink('designer.audit_log', 'Audit log') }}
+    {{ navlink('designer.security_history', 'Security history') }}
     {{ navlink('designer.companies_home', 'Companies') }}
     {{ navlink('designer.settings_page', 'Settings') }}
     {{ navlink('designer.schema_home', 'Backup') }}

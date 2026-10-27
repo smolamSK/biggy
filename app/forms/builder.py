@@ -317,6 +317,8 @@ def build_form(meta_form, session, engine, user=None):
                                   this_col=this_col, other_col=other_col, meta=rel))
 
     form_class = type("DynamicForm", (FlaskForm,), attrs)
+    from ..form_rules import bind
+    form_class = bind(form_class, items, meta_form.items, session, user)
     return BuiltForm(form_class=form_class, items=items)
 
 

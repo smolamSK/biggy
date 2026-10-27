@@ -122,7 +122,9 @@ bp = Blueprint("designer", __name__, url_prefix="/designer")
 @login_required
 @designer_required
 def _guard():
-    pass
+    if request.method == 'POST' and (request.view_args or {}).get('form_id'):
+        SessionLocal().scalar(select(MetaForm).where(
+            MetaForm.id == request.view_args['form_id']).with_for_update())
 
 
 def _s():
@@ -1601,7 +1603,7 @@ def _add_form_item(session, mf, form):
 def form_item_delete(form_id, item_id):
     session = _s()
     item = session.get(MetaFormField, item_id)
-    if item:
+    if item and item.form_id == form_id:
         session.delete(item)
         session.commit()
         flash("Item removed.", "info")
@@ -1802,7 +1804,7 @@ def form_duplicate(form_id):
             form_id=mf.id, kind=it.kind, field_id=it.field_id, relation_id=it.relation_id,
             parent_field_id=it.parent_field_id, filter_field_id=it.filter_field_id,
             label_override=it.label_override, widget=it.widget, required=it.required,
-            readonly=it.readonly, help_text=it.help_text, position=it.position))
+            readonly=it.readonly, help_text=it.help_text, position=it.position, rules_json=it.rules_json))
     session.commit()
     flash(f"Form duplicated as '{mf.title}'.", "success")
     return redirect(url_for("designer.form_edit", form_id=mf.id))
@@ -3471,3 +3473,29 @@ def scheduled_run_report(report_id):
     n = scheduler.run_one_report(_s(), report_id)
     flash(f"Sent report to {n} recipient(s).", "success")
     return redirect(url_for("designer.scheduled_jobs"))
+
+
+@bp.route("/security-history")
+def security_history():
+    from ..metadata.models import SecurityEvent
+    query = (request.args.get("q") or "").strip()[:200]
+    page = max(1, request.args.get("page", 1, type=int) or 1)
+    stmt = select(SecurityEvent)
+    if query:
+        from sqlalchemy import or_
+        stmt = stmt.where(or_(SecurityEvent.actor.contains(query, autoescape=True),
+                              SecurityEvent.event.contains(query, autoescape=True),
+                              SecurityEvent.target.contains(query, autoescape=True)))
+    rows = _s().scalars(stmt.order_by(SecurityEvent.id.desc()).offset((page - 1) * 50)
+                       .limit(51)).all()
+    from ..security_audit import describe
+    summaries = {entry.id: describe(entry) for entry in rows[:50]}
+    return render_template("designer/security_history.html", entries=rows[:50], summaries=summaries,
+                           more=len(rows) > 50, page=page, q=query)
+
+
+@bp.route("/setup-guide")
+def setup_guide():
+    from ..design_health import report
+    steps, issues = report(_s())
+    return render_template("designer/setup_guide.html", steps=steps, issues=issues)

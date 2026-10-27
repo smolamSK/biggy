@@ -222,6 +222,7 @@ class MetaFormField(Base):
     field_id: Mapped[int | None] = mapped_column(Integer)        # kind == 'field'
     relation_id: Mapped[int | None] = mapped_column(Integer)     # kind == 'relation' (m:n)
     # dependent (cascading) picker: filter this relation field by a sibling field's value
+    rules_json: Mapped[str | None] = mapped_column(Text)  # conditional form behavior
     parent_field_id: Mapped[int | None] = mapped_column(Integer)   # controlling field (form table)
     filter_field_id: Mapped[int | None] = mapped_column(Integer)   # match column (target table)
     label_override: Mapped[str | None] = mapped_column(String(160))
@@ -995,4 +996,49 @@ class Comment(Base):
     user_id: Mapped[int | None] = mapped_column(Integer)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     internal: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
+class SecurityEvent(Base):
+    """Security history without secrets or foreign keys to mutable accounts."""
+    __tablename__ = "app_security_event"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, index=True)
+    actor: Mapped[str] = mapped_column(String(100), nullable=False)
+    event: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    target: Mapped[str] = mapped_column(String(255), nullable=False)
+    details: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class FormDraft(Base):
+    __tablename__ = "app_form_draft"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    form_id: Mapped[int] = mapped_column(ForeignKey("app_meta_form.id", ondelete="CASCADE"), unique=True)
+    config_json: Mapped[str] = mapped_column(Text)
+    base_hash: Mapped[str] = mapped_column(String(64))
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    tested_hash: Mapped[str | None] = mapped_column(String(64))
+    updated_by: Mapped[int | None] = mapped_column(Integer)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+
+class FormRevision(Base):
+    __tablename__ = "app_form_revision"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    form_id: Mapped[int] = mapped_column(ForeignKey("app_meta_form.id", ondelete="CASCADE"), index=True)
+    config_json: Mapped[str] = mapped_column(Text)
+    published_by: Mapped[int | None] = mapped_column(Integer)
+    published_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    description: Mapped[str] = mapped_column(String(160), default="Published")
+
+
+class FormTemplate(Base):
+    """An independent, portable snapshot of form layout and behavior."""
+    __tablename__ = "app_form_template"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    config_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_by: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)

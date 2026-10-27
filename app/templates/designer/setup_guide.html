@@ -1,0 +1,18 @@
+{% extends "designer/_base.html" %}
+{% block title %}Setup checklist · Biggy{% endblock %}
+{% block inner %}
+<header class="page-header"><div><h1>Setup checklist</h1><p class="page-description">Build, check, test and publish your configuration.</p></div></header>
+<div class="panel"><ol class="setup-steps">
+{% for title, complete, endpoint, help in steps %}
+<li><span class="chip c-{{ 'green' if complete else 'gray' }}">{{ 'Configured' if complete else 'To review' }}</span> <a href="{{ url_for(endpoint) }}">{{ title }}</a><p class="muted">{{ help }}</p></li>
+{% endfor %}
+<li><a href="{{ url_for('designer.forms') }}">Test and publish a form</a><p class="muted">Open a form's Draft builder. Preview representative roles, compare changes, then publish.</p></li>
+</ol></div>
+<h2>Configuration health</h2>
+{% for issue in issues %}
+<div class="flash {{ 'danger' if issue.level == 'error' else 'warning' }}">{{ issue.message }}
+{% if issue.item_id %}<a href="{{ url_for('designer.form_item_edit', form_id=issue.form_id, item_id=issue.item_id) }}">Open item</a>
+{% elif issue.form_id %}<a href="{{ url_for('designer.form_edit', form_id=issue.form_id) }}">Open form</a>
+{% elif issue.workflow_id %}<a href="{{ url_for('designer.workflow_edit', wf_id=issue.workflow_id) }}">Open workflow</a>{% endif %}</div>
+{% else %}<div class="panel">No configuration problems found. Test your forms with representative users before publishing changes.</div>{% endfor %}
+{% endblock %}

@@ -66,7 +66,7 @@ _DEFAULT_TOKENS = {"now", "today", "current_user", "me"}
 
 
 def _apply_generated(session, meta_table, values, user_id):
-    """Fill auto-number fields and default-expression tokens not already provided."""
+    """Fill generated values and defaults for omitted fields."""
     for f in meta_table.fields:
         if values.get(f.phys_name) not in (None, ""):
             continue
@@ -76,17 +76,35 @@ def _apply_generated(session, meta_table, values, user_id):
             v = _eval_default_token(session, f, user_id)
             if v is not None:
                 values[f.phys_name] = v
+        elif (f.phys_name not in values and f.default_value not in (None, "")
+              and f.data_type not in {"file", "image", "formula"}):
+            from .importer import coerce_value
+            values[f.phys_name] = coerce_value(f, f.default_value)
 
 
 def _next_autonumber(session, field):
     from .metadata.models import Sequence
-    seq = session.scalar(select(Sequence).where(Sequence.field_id == field.id))
-    if not seq:
-        seq = Sequence(field_id=field.id, next=1)
-        session.add(seq)
-        session.flush()
-    n = seq.next
-    seq.next = n + 1
+    # The upsert locks an existing counter and safely initializes a new one.
+    # Keep that lock through increment/read/commit; never allocate from an ORM snapshot.
+    dialect = session.get_bind().dialect.name
+    if dialect in {"mysql", "mariadb"}:
+        from sqlalchemy.dialects.mysql import insert
+        stmt = insert(Sequence).values(field_id=field.id, next=1)
+        stmt = stmt.on_duplicate_key_update(field_id=stmt.inserted.field_id)
+    elif dialect in {"sqlite", "postgresql"}:
+        if dialect == "sqlite":
+            from sqlalchemy.dialects.sqlite import insert
+        else:
+            from sqlalchemy.dialects.postgresql import insert
+        stmt = insert(Sequence).values(field_id=field.id, next=1)
+        stmt = stmt.on_conflict_do_nothing(index_elements=[Sequence.field_id])
+    else:
+        raise RuntimeError(f"Automatic numbering is unsupported on {dialect}")
+    session.execute(stmt)
+    session.execute(
+        Sequence.__table__.update().where(Sequence.field_id == field.id)
+        .values(next=Sequence.next + 1))
+    n = session.scalar(select(Sequence.next).where(Sequence.field_id == field.id)) - 1
     session.commit()
     return f"{field.default_value or ''}{n:04d}"
 
@@ -395,13 +413,7 @@ def list_records(engine, meta_table, *, user_id, is_designer, include_deleted=Fa
 
 def get_record(engine, meta_table, pk, *, user_id, is_designer, allow_deleted=False):
     row = data_service.get_row(engine, meta_table.phys_name, pk)
-    if not row:
-        return None
-    if meta_table.soft_delete and not allow_deleted and row.get("deleted_at") is not None:
-        return None
-    if meta_table.row_owned and not is_designer and row.get("created_by") not in (None, user_id):
-        return None
+    from .access import row_readable
     cscope = _company_scope(meta_table, user_id, is_designer)
-    if cscope is not None and row.get(cscope[0]) not in cscope[1]:
-        return None
-    return row
+    return row if row_readable(meta_table, row, user_id=user_id, is_designer=is_designer,
+                               allow_deleted=allow_deleted, company_scope=cscope) else None

@@ -2,8 +2,10 @@
 {% from "_macros.html" import render_field, delete_form, move_form %}
 {% block title %}{{ mf.title }} · Biggy{% endblock %}
 {% block inner %}
+<p><a class="btn" href="{{ url_for('form_templates.save', form_id=mf.id) }}">Save as template</a></p>
 <div class="toolbar">
   <h1 style="margin:0">{{ mf.title }}</h1>
+  <a class="btn primary" href="{{ url_for('studio.builder', form_id=mf.id) }}">Draft builder &amp; preview</a>
   <span class="muted">form for {{ mf.table.label }}</span>
   <span style="flex:1"></span>
   <form method="post" action="{{ url_for('designer.form_purpose', form_id=mf.id) }}" class="inline">
@@ -24,6 +26,7 @@
   <a class="btn" href="{{ url_for('user.form_list', form_id=mf.id) }}">Open in User mode</a>
 </div>
 
+<div class="flash warning">This legacy editor changes the live form immediately. Use the Draft builder to test and review changes before publishing.</div>
 <h2>Items</h2>
 <div class="panel">
   {% if mf.items %}

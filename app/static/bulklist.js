@@ -21,6 +21,9 @@
       selectAll.checked = all.length > 0 && sel.length === all.length;
       selectAll.indeterminate = sel.length > 0 && sel.length < all.length;
     }
+    var actions = document.getElementById("bulk-actions");
+    if (actions) actions.hidden = sel.length === 0;
+    all.forEach(function (box) { box.closest("tr").classList.toggle("is-selected", box.checked); });
     if (count) count.textContent = sel.length ? sel.length + " selected" : "";
   }
 
@@ -35,7 +38,7 @@
   });
 
   // Block bulk submit when nothing is selected.
-  ["bulk-delete", "bulk-export", "bulk-edit"].forEach(function (id) {
+  ["bulk-delete", "bulk-export", "bulk-edit", "bulk-send"].forEach(function (id) {
     var btn = document.getElementById(id);
     if (!btn) return;
     btn.addEventListener("click", function (e) {
@@ -46,5 +49,16 @@
     });
   });
 
+  var density = document.getElementById("table-density");
+  if (density) {
+    try { density.value = localStorage.getItem("biggy.tableDensity") === "compact" ? "compact" : "comfortable"; } catch (e) {}
+    function applyDensity() { table.dataset.density = density.value; }
+    density.addEventListener("change", function () {
+      applyDensity();
+      try { localStorage.setItem("biggy.tableDensity", density.value); } catch (e) {}
+    });
+    applyDensity();
+  }
+  window.addEventListener("pageshow", refresh);
   refresh();
 })();

@@ -103,10 +103,10 @@ class FieldForm(FlaskForm):
 
 class RelationM1Form(FlaskForm):
     name = StringField("Relation name", validators=[DataRequired()])
-    from_table_id = SelectField("From table (gets the FK)", coerce=int)
-    to_table_id = SelectField("To table (referenced)", coerce=int)
-    field_name = StringField("FK column name", validators=[DataRequired()])
-    on_delete = SelectField("On delete", choices=[(c, c) for c in ON_DELETE_CHOICES])
+    from_table_id = SelectField("Records that belong to another record", coerce=int)
+    to_table_id = SelectField("The record they belong to", coerce=int)
+    field_name = StringField("Stored link name (advanced)", validators=[DataRequired()])
+    on_delete = SelectField("When the linked record is deleted", choices=[(c, {"RESTRICT": "Prevent deletion while records link to it", "CASCADE": "Delete linked records too", "SET NULL": "Keep records and clear the link"}.get(c, c)) for c in ON_DELETE_CHOICES])
     nullable = BooleanField("Nullable", default=True)
 
 

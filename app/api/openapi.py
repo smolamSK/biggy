@@ -95,11 +95,16 @@ def _list_params(table):
     return params
 
 
-def _bulk_result():
+def _key_schema(table):
+    field = next((f for f in table.fields if f.phys_name == table.pk_col), None)
+    return _field_schema(field) if field else {"type": "integer"}
+
+
+def _bulk_result(table):
     return {"type": "object", "properties": {
-        "created": {"type": "array", "items": {"type": "integer"}},
-        "updated": {"type": "array", "items": {"type": "integer"}},
-        "deleted": {"type": "array", "items": {"type": "integer"}},
+        "created": {"type": "array", "items": _key_schema(table)},
+        "updated": {"type": "array", "items": _key_schema(table)},
+        "deleted": {"type": "array", "items": _key_schema(table)},
         "errors": {"type": "array", "items": {"type": "object"}}}}
 
 
@@ -108,7 +113,7 @@ def _paths(tables):
     for t in tables:
         ref = {"$ref": f"#/components/schemas/{t.phys_name}"}
         tag, n = t.label, t.phys_name
-        paths[f"/{n}"] = {
+        paths[f"/tables/{n}/records"] = {
             "get": {"tags": [tag], "summary": f"List {t.label}",
                     "parameters": _list_params(t),
                     "responses": {"200": _resp({"type": "object", "properties": {
@@ -118,9 +123,9 @@ def _paths(tables):
                      "requestBody": _json(ref),
                      "responses": {"201": _resp(ref, "Created"), "400": _err_resp()}},
         }
-        paths[f"/{n}/{{id}}"] = {
+        paths[f"/tables/{n}/records/{{id}}"] = {
             "parameters": [{"name": "id", "in": "path", "required": True,
-                            "schema": {"type": "integer"}}],
+                            "schema": _key_schema(t)}],
             "get": {"tags": [tag], "summary": f"Get {t.label}",
                     "responses": {"200": _resp(ref), "404": _err_resp()}},
             "patch": {"tags": [tag], "summary": f"Update {t.label}", "requestBody": _json(ref),
@@ -128,19 +133,19 @@ def _paths(tables):
             "delete": {"tags": [tag], "summary": f"Delete {t.label}",
                        "responses": {"204": {"description": "Deleted"}, "404": _err_resp()}},
         }
-        paths[f"/{n}/bulk"] = {
+        paths[f"/tables/{n}/bulk"] = {
             "post": {"tags": [tag], "summary": f"Bulk create {t.label}",
                      "requestBody": _json({"type": "object", "properties": {
                          "records": {"type": "array", "items": ref}}}),
-                     "responses": {"201": _resp(_bulk_result()), "207": _resp(_bulk_result(),
+                     "responses": {"201": _resp(_bulk_result(t)), "207": _resp(_bulk_result(t),
                                                                              "Partial success")}},
             "patch": {"tags": [tag], "summary": f"Bulk update {t.label}",
                       "requestBody": _json({"type": "array", "items": ref}),
-                      "responses": {"200": _resp(_bulk_result())}},
+                      "responses": {"200": _resp(_bulk_result(t))}},
             "delete": {"tags": [tag], "summary": f"Bulk delete {t.label}",
                        "requestBody": _json({"type": "object", "properties": {
-                           "ids": {"type": "array", "items": {"type": "integer"}}}}),
-                       "responses": {"200": _resp(_bulk_result())}},
+                           "ids": {"type": "array", "items": _key_schema(t)}}}),
+                       "responses": {"200": _resp(_bulk_result(t))}},
         }
     return paths
 

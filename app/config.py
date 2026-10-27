@@ -40,6 +40,8 @@ class Config:
     # Where uploaded attachments are stored. Defaults to <instance>/uploads
     # (set in create_app) unless overridden here.
     UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER")
+    PREVIEW_BASE_URL = os.environ.get("PREVIEW_BASE_URL", "")
+    PREVIEW_SIGNING_KEY = os.environ.get("PREVIEW_SIGNING_KEY")
 
     # Notification delivery (all optional; email is skipped unless MAIL_SERVER set)
     MAIL_SERVER = os.environ.get("MAIL_SERVER")

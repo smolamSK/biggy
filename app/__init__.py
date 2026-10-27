@@ -61,6 +61,10 @@ def create_app(config_object=Config):
     app.register_blueprint(core_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(designer_bp)
+    from .designer.studio import bp as studio_bp
+    app.register_blueprint(studio_bp)
+    from .designer.template_library import bp as form_templates_bp
+    app.register_blueprint(form_templates_bp)
     app.register_blueprint(user_bp)
     app.register_blueprint(portal_bp)
     app.register_blueprint(api_bp)
@@ -154,6 +158,9 @@ def create_app(config_object=Config):
         if hue in CHIP_HUES:
             return hue
         return CHIP_HUES[sum(ord(c) for c in str(value)) % len(CHIP_HUES)]
+
+    from . import security_audit
+    security_audit.install(app)
 
     _register_lifecycle(app)
     _register_context(app)

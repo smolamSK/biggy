@@ -1,6 +1,7 @@
 """Authentication and (designer-only) user management."""
 import logging
 import secrets
+from urllib.parse import unquote, urlsplit
 
 from flask import (
     Blueprint,
@@ -28,6 +29,27 @@ from ..metadata.models import ROLE_USER, AppUser, Role
 bp = Blueprint("auth", __name__, url_prefix="/auth")
 
 _logger = logging.getLogger(__name__)
+
+
+def _safe_next(destination):
+    """Accept only local absolute paths, including after URL decoding."""
+    if not isinstance(destination, str):
+        return url_for("core.index")
+    candidate = destination
+    while True:
+        if (not candidate.startswith("/") or candidate.startswith("//")
+                or "\\" in candidate or any(ord(c) < 32 or ord(c) == 127 for c in candidate)):
+            return url_for("core.index")
+        try:
+            parsed = urlsplit(candidate)
+        except ValueError:
+            return url_for("core.index")
+        if parsed.scheme or parsed.netloc:
+            return url_for("core.index")
+        decoded = unquote(candidate)
+        if decoded == candidate:
+            return destination
+        candidate = decoded
 
 
 def _role_choices(session):
@@ -65,10 +87,10 @@ def login():
             if user.mfa_enabled:
                 # password is correct, but require the second factor before logging in
                 web_session["_mfa_uid"] = user.id
-                web_session["_mfa_next"] = request.args.get("next") or ""
+                web_session["_mfa_next"] = _safe_next(request.args.get("next"))
                 return redirect(url_for("auth.mfa_verify"))
             establish_session(user)
-            return redirect(request.args.get("next") or url_for("core.index"))
+            return redirect(_safe_next(request.args.get("next")))
         for k in keys:                       # only *failures* count toward the lockout
             rate_limit.record(k)
         flash("Invalid credentials or inactive account.", "danger")
@@ -104,7 +126,7 @@ def mfa_verify():
             nxt = web_session.pop("_mfa_next", "")
             web_session.pop("_mfa_uid", None)
             establish_session(user)
-            return redirect(nxt or url_for("core.index"))
+            return redirect(_safe_next(nxt))
         rate_limit.record(key)               # wrong codes count toward the lockout
         flash("Invalid authentication code.", "danger")
     return render_template("auth/mfa_verify.html", form=form)
@@ -217,7 +239,7 @@ def oidc_login():
     state, nonce = secrets.token_urlsafe(24), secrets.token_urlsafe(24)
     web_session["_oidc_state"] = state
     web_session["_oidc_nonce"] = nonce
-    web_session["_oidc_next"] = request.args.get("next") or ""
+    web_session["_oidc_next"] = _safe_next(request.args.get("next"))
     try:
         return redirect(oidc.authorize_url(state, nonce, _oidc_redirect_uri()))
     except oidc.OidcError as exc:
@@ -258,7 +280,7 @@ def oidc_callback():
         flash("That account is inactive.", "danger")
         return redirect(url_for("auth.login"))
     establish_session(user)
-    return redirect(nxt or url_for("core.index"))
+    return redirect(_safe_next(nxt))
 
 
 def _map_oidc_user(claims):

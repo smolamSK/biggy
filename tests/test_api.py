@@ -39,7 +39,7 @@ def test_api_crud_and_auth(app, client):
     obj = r.get_json()
     pk = obj["id"]
     assert obj["name"] == "A" and obj["qty"] == 5
-    assert r.headers.get("Location", "").endswith(f"/api/v1/widget/{pk}")
+    assert r.headers.get("Location", "").endswith(f"/api/v1/tables/widget/records/{pk}")
 
     assert api.get(f"/api/v1/widget/{pk}", headers=H).get_json()["name"] == "A"
     lst = api.get("/api/v1/widget", headers=H).get_json()
@@ -116,8 +116,8 @@ def test_api_openapi_and_docs(app, client):
     assert spec.status_code == 200
     doc = spec.get_json()
     assert doc["openapi"].startswith("3.0")
-    assert "/widget" in doc["paths"] and "/widget/bulk" in doc["paths"]
-    assert {"post", "patch", "delete"} <= set(doc["paths"]["/widget/bulk"])
+    assert "/tables/widget/records" in doc["paths"] and "/tables/widget/bulk" in doc["paths"]
+    assert {"post", "patch", "delete"} <= set(doc["paths"]["/tables/widget/bulk"])
     props = doc["components"]["schemas"]["widget"]["properties"]
     assert props["qty"]["type"] == "integer"
     assert props["status"]["enum"] == ["new", "done"]
@@ -127,7 +127,7 @@ def test_api_openapi_and_docs(app, client):
     docs = api.get("/api/v1/docs", headers=H)
     assert docs.status_code == 200
     body = docs.get_data(as_text=True)
-    assert "/api/v1/widget/bulk" in body and "widget" in body    # self-hosted reference renders
+    assert "/api/v1/tables/widget/bulk" in body and "widget" in body    # self-hosted reference renders
 
 def test_api_bulk_operations(app, client):
     _setup(client)

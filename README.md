@@ -184,3 +184,6 @@ The model and screens extend well past the core CRUD loop. Built in:
   **Docker**/compose stack.
 - Schema/data **export & import** (JSON) to copy an app between databases — and to
   [author a whole app by hand](docs/schema-json-format.md).
+
+For staged form setup, conditional behavior, role previews and revision publishing,
+see the [administrator configuration guide](docs/admin-configuration.md).

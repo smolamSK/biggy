@@ -162,6 +162,7 @@ _META_ADDITIONS = {
         {"name": "pk_col", "type": String(64), "nullable": False, "default": "'id'"},
     ],
     "app_meta_form_field": [
+        {"name": "rules_json", "type": Text()},
         {"name": "parent_field_id", "type": Integer()},
         {"name": "filter_field_id", "type": Integer()},
     ],

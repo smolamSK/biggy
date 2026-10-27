@@ -1,0 +1,31 @@
+# Disposable integration environment: docker compose -f compose.test.yml up --build --abort-on-container-exit --exit-code-from tests
+services:
+  db:
+    image: mariadb:11
+    environment:
+      MARIADB_ROOT_PASSWORD: test-root
+      MARIADB_DATABASE: biggy
+      MARIADB_USER: biggy
+      MARIADB_PASSWORD: biggy
+    tmpfs:
+      - /var/lib/mysql
+    volumes:
+      - ./tests/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  tests:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_USER: biggy
+      DB_PASSWORD: biggy
+      DB_NAME: biggy
+      REQUIRE_TEST_DATABASE: "1"
+      SECRET_KEY: integration-test-secret
+    command: python -m pytest -q

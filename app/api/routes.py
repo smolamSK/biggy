@@ -41,6 +41,8 @@ def _method_not_allowed(_e):
 def _require_token():
     if not current_user.is_authenticated:
         return _err(401, "Missing or invalid API token.")
+    if current_user.is_portal:
+        return _err(403, "Portal accounts cannot access this API.")
     g.via_api = True  # lets the feed engine skip API-originated writes (loop guard)
     return None
 
@@ -81,6 +83,7 @@ def docs():
 
 
 @bp.route("/<table>", methods=["GET"])
+@bp.route("/tables/<table>/records", methods=["GET"])
 def list_rows(table):
     session = _s()
     mt = _table(session, table)
@@ -108,6 +111,7 @@ def list_rows(table):
 
 
 @bp.route("/<table>/fields", methods=["GET"])
+@bp.route("/tables/<table>/fields", methods=["GET"])
 def table_fields(table):
     """Field descriptors for a table — used by connectors to build field maps."""
     session = _s()
@@ -124,7 +128,8 @@ def table_fields(table):
         for f in mt.fields if f.phys_name in readable])
 
 
-@bp.route("/<table>/<int:pk>", methods=["GET"])
+@bp.route("/<table>/<string:pk>", methods=["GET"])
+@bp.route("/tables/<table>/records/<string:pk>", methods=["GET"])
 def get_row(table, pk):
     session = _s()
     mt = _table(session, table)
@@ -141,6 +146,7 @@ def get_row(table, pk):
 
 
 @bp.route("/<table>", methods=["POST"])
+@bp.route("/tables/<table>/records", methods=["POST"])
 def create_row(table):
     session = _s()
     mt = _table(session, table)
@@ -198,6 +204,7 @@ def _bulk_setup(table, key):
 
 
 @bp.route("/<table>/bulk", methods=["POST"])
+@bp.route("/tables/<table>/bulk", methods=["POST"])
 def bulk_create(table):
     ctx, err = _bulk_setup(table, "records")
     if err:
@@ -218,6 +225,7 @@ def bulk_create(table):
 
 
 @bp.route("/<table>/bulk", methods=["PATCH"])
+@bp.route("/tables/<table>/bulk", methods=["PATCH"])
 def bulk_update(table):
     ctx, err = _bulk_setup(table, "records")
     if err:
@@ -253,6 +261,7 @@ def bulk_update(table):
 
 
 @bp.route("/<table>/bulk", methods=["DELETE"])
+@bp.route("/tables/<table>/bulk", methods=["DELETE"])
 def bulk_delete(table):
     ctx, err = _bulk_setup(table, "ids")
     if err:
@@ -273,7 +282,8 @@ def bulk_delete(table):
     return jsonify(deleted=deleted, errors=errors), (207 if errors else 200)
 
 
-@bp.route("/<table>/<int:pk>", methods=["PATCH", "PUT"])
+@bp.route("/<table>/<string:pk>", methods=["PATCH", "PUT"])
+@bp.route("/tables/<table>/records/<string:pk>", methods=["PATCH", "PUT"])
 def update_row(table, pk):
     session = _s()
     mt = _table(session, table)
@@ -311,7 +321,8 @@ def update_row(table, pk):
     return jsonify(result)
 
 
-@bp.route("/<table>/<int:pk>", methods=["DELETE"])
+@bp.route("/<table>/<string:pk>", methods=["DELETE"])
+@bp.route("/tables/<table>/records/<string:pk>", methods=["DELETE"])
 def delete_row(table, pk):
     session = _s()
     mt = _table(session, table)
